@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="titulo descripcion">
+  <title id="titulo">Pantalla de presentación estática de TUMBO</title>
+  <desc id="descripcion">Ícono de TUMBO centrado y nombres de los cuatro integrantes.</desc>
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FBB103"/>
+      <stop offset="0.62" stop-color="#FBB103"/>
+      <stop offset="1" stop-color="#DC5B02"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#fondo)"/>
+  <circle cx="100" cy="160" r="240" fill="#FCEDBB" opacity="0.32"/>
+  <circle cx="1010" cy="1800" r="260" fill="#006AE7" opacity="0.12"/>
+  <text x="540" y="330" fill="#003592" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="6" text-anchor="middle">TRABAJO FINAL INTEGRADOR · 2026</text>
+  <circle cx="540" cy="815" r="300" fill="#FCEDBB" stroke="#F8FBFD" stroke-width="16"/>
+  <circle cx="540" cy="815" r="266" fill="#FCEDBB" stroke="#FBB103" stroke-width="10"/>
+  <image href="/imagenes/logo.png" x="300" y="575" width="480" height="480" preserveAspectRatio="xMidYMid meet"/>
+  <text x="540" y="1235" fill="#006AE7" font-family="Arial, sans-serif" font-size="116" font-weight="900" letter-spacing="14" text-anchor="middle">TUMBO</text>
+  <text x="540" y="1300" fill="#003592" font-family="Arial, sans-serif" font-size="32" font-weight="700" text-anchor="middle">UNA EXPERIENCIA QUE SE COMPARTE</text>
+  <line x1="180" y1="1390" x2="900" y2="1390" stroke="#FCEDBB" stroke-width="4"/>
+  <text x="540" y="1460" fill="#003592" font-family="Arial, sans-serif" font-size="30" font-weight="900" letter-spacing="4" text-anchor="middle">EQUIPO</text>
+  <text x="540" y="1525" fill="#003592" font-family="Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">Mateo Terrile · Ramiro Bianucci</text>
+  <text x="540" y="1575" fill="#003592" font-family="Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">Ignacio Agustín Cruz</text>
+  <text x="540" y="1625" fill="#003592" font-family="Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">Matías Gabriel Ferrari</text>
+</svg>

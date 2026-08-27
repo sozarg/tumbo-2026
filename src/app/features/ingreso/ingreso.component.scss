@@ -1,0 +1,294 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.login-page {
+  --background: #fbf1d5;
+}
+
+.login-layout {
+  display: grid;
+  min-height: 100%;
+  grid-template-columns: 1fr;
+  color: #003592;
+}
+
+.login-intro {
+  display: flex;
+  align-items: center;
+  padding: 2.5rem 1.25rem 1.25rem;
+  flex-direction: column;
+  text-align: center;
+  background:
+    radial-gradient(circle at 15% 15%, rgb(252 237 187 / 80%), transparent 28%),
+    linear-gradient(155deg, #fbb103, #dc5b02);
+}
+
+.login-intro img {
+  width: 7.25rem;
+  height: 7.25rem;
+  margin-bottom: 1.2rem;
+  border: 0.35rem solid #fcedbb;
+  border-radius: 50%;
+  box-shadow: 0 0.8rem 1.6rem rgb(0 53 146 / 20%);
+}
+
+.login-intro__eyebrow {
+  margin: 0;
+  color: #003592;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.login-intro h1 {
+  margin: 0.15rem 0 0.5rem;
+  color: #006ae7;
+  font-size: clamp(3rem, 15vw, 5rem);
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  line-height: 0.9;
+  text-shadow: 0.1rem 0.12rem 0 #f8fbfd;
+}
+
+.login-intro > p:last-child {
+  max-width: 19rem;
+  margin: 0;
+  color: #003592;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.login-panel {
+  width: min(100%, 38rem);
+  margin: 0 auto;
+  padding: 0.5rem 1rem 2rem;
+}
+
+.login-card {
+  margin: 0;
+  border: 0.1rem solid rgb(252 237 187 / 88%);
+  border-radius: 1.25rem;
+  background: #fcedbb;
+  box-shadow: 0 0.75rem 2rem rgb(0 53 146 / 10%);
+}
+
+.login-card ion-card-header {
+  padding-bottom: 0.25rem;
+}
+
+.login-card ion-card-title {
+  color: #003592;
+  font-size: 1.65rem;
+  font-weight: 900;
+}
+
+.login-card ion-card-subtitle {
+  margin-top: 0.35rem;
+  color: #003592;
+  font-size: 0.9rem;
+  opacity: 0.78;
+}
+
+.login-card ion-card-content {
+  padding-top: 0.75rem;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.field label {
+  display: block;
+  margin: 0 0 0.4rem 0.2rem;
+  color: #003592;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.field ion-input {
+  --background: #fbf1d5;
+  --border-color: #006ae7;
+  --border-radius: 0.8rem;
+  --color: #003592;
+  --highlight-color-focused: #006ae7;
+  --placeholder-color: #003592;
+  --placeholder-opacity: 0.55;
+}
+
+.field__error {
+  display: block;
+  margin: 0.4rem 0.2rem 0;
+  color: #dc5b02;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field ion-input {
+  padding-right: 2.6rem;
+}
+
+.password-field__toggle {
+  position: absolute;
+  z-index: 2;
+  top: 0.2rem;
+  right: 0.1rem;
+  --color: #003592;
+}
+
+.login-card__submit {
+  margin-top: 1.4rem;
+  --background: #006ae7;
+  --background-hover: #003592;
+  --border-radius: 0.8rem;
+  --color: #f8fbfd;
+  --padding-bottom: 1rem;
+  --padding-top: 1rem;
+  font-weight: 900;
+}
+
+.login-card__submit ion-spinner {
+  margin-right: 0.5rem;
+}
+
+.form-message {
+  margin: 0 0 0.75rem;
+  border-radius: 0.65rem;
+  padding: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.form-message--error {
+  color: #003592;
+  background: rgb(220 91 2 / 17%);
+  border: 0.1rem solid rgb(220 91 2 / 45%);
+}
+
+.quick-access {
+  padding-top: 1.75rem;
+}
+
+.quick-access__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-kicker {
+  margin: 0 0 0.2rem;
+  color: #dc5b02;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.quick-access h2 {
+  margin: 0;
+  color: #003592;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.quick-access__arrow {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #f8fbfd;
+  background: #006ae7;
+}
+
+.quick-access__hint {
+  margin: 0.45rem 0 0.9rem;
+  color: #003592;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.quick-access__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.quick-user {
+  height: auto;
+  margin: 0;
+  --border-color: rgb(0 106 231 / 48%);
+  --border-radius: 0.8rem;
+  --color: #003592;
+  text-align: left;
+}
+
+.quick-user::part(native) {
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.55rem 0.8rem;
+}
+
+.quick-user__name,
+.quick-user__role {
+  display: block;
+  white-space: normal;
+}
+
+.quick-user__name {
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.quick-user__role {
+  margin-top: 0.15rem;
+  color: #006ae7;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.demo-note {
+  margin: 1rem 0 0;
+  color: #003592;
+  font-size: 0.73rem;
+  line-height: 1.45;
+  opacity: 0.8;
+}
+
+.demo-note strong {
+  color: #006ae7;
+}
+
+@media (min-width: 45rem) {
+  .login-layout {
+    grid-template-columns: minmax(19rem, 0.85fr) minmax(28rem, 1.15fr);
+  }
+
+  .login-intro {
+    position: sticky;
+    top: 0;
+    min-height: 100vh;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .login-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem 2rem;
+  }
+
+  .quick-access__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

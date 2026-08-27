@@ -1,0 +1,548 @@
+<ion-content [fullscreen]="true" class="operation-page">
+  @if (usuario(); as usuarioActual) {
+    <main class="operation-layout">
+      <header class="operation-header">
+        <ion-button class="back-button" fill="clear" aria-label="Volver al inicio" (click)="volver()">
+          <ion-icon slot="icon-only" name="arrow-back-outline" />
+        </ion-button>
+
+        <div class="operation-brand">
+          <img ngSrc="imagenes/logo.png" width="48" height="48" priority alt="Ícono de TUMBO" />
+          <div>
+            <span>Centro de pruebas</span>
+            <strong>TUMBO</strong>
+          </div>
+        </div>
+
+        <ion-button class="logout-button" fill="outline" aria-label="Cerrar sesión" (click)="cerrarSesion()">
+          <ion-icon slot="start" name="log-out-outline" />
+          Salir
+        </ion-button>
+      </header>
+
+      <nav class="operation-tabs" aria-label="Secciones de la demostración">
+        <button
+          class="operation-tab"
+          [class.operation-tab--active]="segmento() === 'resumen'"
+          (click)="cambiarSegmento('resumen')"
+        >
+          Resumen
+        </button>
+        <button
+          class="operation-tab"
+          [class.operation-tab--active]="segmento() === 'gestion'"
+          (click)="cambiarSegmento('gestion')"
+        >
+          Gestión
+        </button>
+        <button
+          class="operation-tab"
+          [class.operation-tab--active]="segmento() === 'pedido'"
+          (click)="cambiarSegmento('pedido')"
+        >
+          Pedido
+        </button>
+        <button
+          class="operation-tab"
+          [class.operation-tab--active]="segmento() === 'experiencia'"
+          (click)="cambiarSegmento('experiencia')"
+        >
+          Experiencia
+        </button>
+        <button
+          class="operation-tab"
+          [class.operation-tab--active]="segmento() === 'cuenta'"
+          (click)="cambiarSegmento('cuenta')"
+        >
+          Cuenta
+        </button>
+      </nav>
+
+      @if (mensaje()) {
+        <div class="feedback" role="status">
+          <ion-icon name="checkmark-circle-outline" />
+          <span>{{ mensaje() }}</span>
+        </div>
+      }
+
+      @if (segmento() === 'resumen') {
+        <section class="operation-hero">
+          <div>
+            <p class="section-kicker">Primera entrega · flujo funcional</p>
+            <h1>Todo listo para probar, {{ usuarioActual.nombres.split(' ')[0] }}.</h1>
+            <p>
+              Este espacio conecta los roles del restaurante con datos de prueba.
+              Cada acción actualiza el recorrido para poder demostrarlo en clase.
+            </p>
+          </div>
+          <ion-chip class="profile-chip">{{ usuarioActual.etiquetaPerfil }}</ion-chip>
+        </section>
+
+        <section class="metric-grid" aria-label="Resumen del restaurante">
+          <div class="metric-card">
+            <span class="metric-card__number">{{ demo.empleados().length }}</span>
+            <span class="metric-card__label">Personal activo</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-card__number">{{ demo.productos().length }}</span>
+            <span class="metric-card__label">Productos en carta</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-card__number">{{ demo.mesas().length }}</span>
+            <span class="metric-card__label">Mesas registradas</span>
+          </div>
+          <div class="metric-card metric-card--accent">
+            <span class="metric-card__number">{{ demo.clientesPendientes().length }}</span>
+            <span class="metric-card__label">Clientes pendientes</span>
+          </div>
+        </section>
+
+        <section class="section-block" aria-labelledby="estado-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Seguimiento en tiempo real</p>
+              <h2 id="estado-title">Estado del pedido demo</h2>
+            </div>
+            <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
+          </div>
+
+          <ion-card class="order-summary-card">
+            <ion-card-content>
+              <div class="order-summary-card__top">
+                <div>
+                  <span class="order-summary-card__caption">Mesa {{ demo.pedidoActivo().mesa }}</span>
+                  <h3>{{ demo.pedidoActivo().cliente }}</h3>
+                </div>
+                <ion-icon name="restaurant-outline" />
+              </div>
+              <div class="progress-track" aria-label="Avance del pedido">
+                <span
+                  class="progress-track__fill"
+                  [class.progress-track__fill--half]="demo.pedidoActivo().estado === 'en_preparacion'"
+                  [class.progress-track__fill--complete]="demo.pedidoActivo().estado === 'listo' || demo.pedidoActivo().estado === 'entregado' || demo.pedidoActivo().estado === 'recibido'"
+                ></span>
+              </div>
+              <div class="order-summary-card__stages">
+                <span>Pedido</span>
+                <span>Cocina y bar</span>
+                <span>Entrega</span>
+              </div>
+              <p class="order-summary-card__date">
+                <ion-icon name="time-outline" />
+                {{ demo.pedidoActivo().creadoEn }}
+              </p>
+            </ion-card-content>
+          </ion-card>
+        </section>
+
+        <section class="section-block" aria-labelledby="scope-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Alcance documentado</p>
+              <h2 id="scope-title">Recorrido de la primera fecha</h2>
+            </div>
+          </div>
+          <div class="scope-grid">
+            <div><span>01–05</span><strong>Altas y catálogo</strong><p>Empleados, platos, bebidas, mesas y clientes.</p></div>
+            <div><span>06–10</span><strong>Acceso y espera</strong><p>Aprobaciones, notificaciones y asignación.</p></div>
+            <div><span>11–19</span><strong>Servicio completo</strong><p>Menú, pedido, cocina, bar y entrega.</p></div>
+            <div><span>20–22</span><strong>Cierre y análisis</strong><p>Encuesta, gráficos, cuenta, propina y pago.</p></div>
+          </div>
+        </section>
+
+        @if (demo.notificaciones()[0]; as notificacion) {
+          <section class="notice-card" aria-label="Última notificación">
+            <ion-icon name="sparkles-outline" />
+            <div>
+              <strong>Última notificación mock</strong>
+              <p>{{ notificacion.mensaje }} · {{ notificacion.fecha }}</p>
+            </div>
+          </section>
+        }
+      }
+
+      @if (segmento() === 'gestion') {
+        @if (perfilEsGestion()) {
+          <section class="section-block">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">Puntos 1, 2, 3, 4, 5</p>
+                <h2>Altas y configuración</h2>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <form class="demo-form" [formGroup]="empleadoForm" (ngSubmit)="registrarEmpleado()">
+                <div class="form-title">
+                  <ion-icon name="people-outline" />
+                  <div><h3>Alta de empleado</h3><p>Incluye perfil, DNI y CUIL.</p></div>
+                </div>
+                <ion-button class="secondary-action" fill="outline" type="button" (click)="simularDniEmpleado()">
+                  <ion-icon slot="start" name="qr-code-outline" />
+                  Simular lector de DNI
+                </ion-button>
+                <ion-input label="Nombres" label-placement="stacked" formControlName="nombres" fill="outline" />
+                @if (campoInvalido(empleadoForm.controls.nombres)) { <small>Ingresá los nombres.</small> }
+                <ion-input label="Apellidos" label-placement="stacked" formControlName="apellidos" fill="outline" />
+                @if (campoInvalido(empleadoForm.controls.apellidos)) { <small>Ingresá los apellidos.</small> }
+                <ion-input label="DNI" label-placement="stacked" formControlName="dni" fill="outline" inputmode="numeric" />
+                <ion-input label="CUIL" label-placement="stacked" formControlName="cuil" fill="outline" inputmode="numeric" />
+                <ion-input label="Correo" label-placement="stacked" formControlName="correo" fill="outline" type="email" />
+                <ion-select label="Perfil" label-placement="stacked" formControlName="perfil" fill="outline">
+                  <ion-select-option value="cocinero">Cocinero</ion-select-option>
+                  <ion-select-option value="cantinero">Cantinero</ion-select-option>
+                  <ion-select-option value="mozo">Mozo</ion-select-option>
+                </ion-select>
+                <ion-note>La foto personal queda preparada para captura con cámara en Capacitor.</ion-note>
+                <ion-button class="primary-action" type="submit" expand="block">
+                  <ion-icon slot="start" name="add-circle-outline" />Registrar empleado
+                </ion-button>
+              </form>
+
+              <form class="demo-form" [formGroup]="productoForm" (ngSubmit)="registrarProducto()">
+                <div class="form-title">
+                  <ion-icon name="cube-outline" />
+                  <div><h3>Alta de producto</h3><p>Tres imágenes y sector automático.</p></div>
+                </div>
+                <ion-input label="Nombre" label-placement="stacked" formControlName="nombre" fill="outline" />
+                <ion-textarea label="Descripción" label-placement="stacked" formControlName="descripcion" fill="outline" auto-grow="true" />
+                <div class="form-row">
+                  <ion-input label="Minutos" label-placement="stacked" formControlName="minutos" fill="outline" type="number" />
+                  <ion-input label="Precio" label-placement="stacked" formControlName="precio" fill="outline" type="number" />
+                </div>
+                <ion-select label="Tipo" label-placement="stacked" formControlName="tipo" fill="outline">
+                  <ion-select-option value="plato">Plato · cocina</ion-select-option>
+                  <ion-select-option value="bebida">Bebida · bar</ion-select-option>
+                </ion-select>
+                <ion-note><ion-icon name="image-outline" /> Se guardan tres fotos y el carrusel las muestra una por vez.</ion-note>
+                <ion-button class="primary-action" type="submit" expand="block">
+                  <ion-icon slot="start" name="add-circle-outline" />Agregar a la carta
+                </ion-button>
+              </form>
+
+              <form class="demo-form" [formGroup]="mesaForm" (ngSubmit)="registrarMesa()">
+                <div class="form-title">
+                  <ion-icon name="qr-code-outline" />
+                  <div><h3>Alta de mesa</h3><p>El QR se genera automáticamente.</p></div>
+                </div>
+                <div class="form-row">
+                  <ion-input label="Número" label-placement="stacked" formControlName="numero" fill="outline" type="number" />
+                  <ion-input label="Comensales" label-placement="stacked" formControlName="comensales" fill="outline" type="number" />
+                </div>
+                <ion-select label="Tipo de mesa" label-placement="stacked" formControlName="tipo" fill="outline">
+                  <ion-select-option value="estándar">Estándar</ion-select-option>
+                  <ion-select-option value="VIP">VIP</ion-select-option>
+                  <ion-select-option value="movilidad_reducida">Movilidad reducida</ion-select-option>
+                </ion-select>
+                <div class="qr-preview qr-preview--small">
+                  @if (qrImagen('mesa-' + mesaForm.controls.numero.value); as qr) {
+                    <img [src]="qr" alt="Código QR de la mesa" />
+                  } @else {
+                    <span>QR</span>
+                  }
+                  <small>tumbo://mesa/</small>
+                </div>
+                <ion-button class="primary-action" type="submit" expand="block">
+                  <ion-icon slot="start" name="add-circle-outline" />Crear mesa
+                </ion-button>
+              </form>
+
+              <form class="demo-form" [formGroup]="clienteForm" (ngSubmit)="registrarCliente()">
+                <div class="form-title">
+                  <ion-icon name="happy-outline" />
+                  <div><h3>Alta de cliente</h3><p>Queda pendiente de aprobación.</p></div>
+                </div>
+                <ion-button class="secondary-action" fill="outline" type="button" (click)="simularDniCliente()">
+                  <ion-icon slot="start" name="qr-code-outline" />
+                  Simular lector de DNI
+                </ion-button>
+                <ion-input label="Nombres" label-placement="stacked" formControlName="nombres" fill="outline" />
+                <ion-input label="Apellidos" label-placement="stacked" formControlName="apellidos" fill="outline" />
+                <ion-input label="DNI" label-placement="stacked" formControlName="dni" fill="outline" inputmode="numeric" />
+                <ion-input label="Correo" label-placement="stacked" formControlName="correo" fill="outline" type="email" />
+                <ion-note>La notificación y el correo se simulan hasta conectar Supabase y la Edge Function.</ion-note>
+                <ion-button class="primary-action" type="submit" expand="block">
+                  <ion-icon slot="start" name="add-circle-outline" />Registrar cliente
+                </ion-button>
+              </form>
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Puntos 6, 7 y 8</p><h2>Clientes pendientes</h2></div><ion-badge>{{ demo.clientesPendientes().length }}</ion-badge></div>
+            <div class="client-list">
+              @for (cliente of demo.clientesPendientes(); track cliente.id) {
+                <article class="client-row">
+                  <img [ngSrc]="cliente.foto" width="64" height="64" [alt]="'Foto de ' + cliente.nombres + ' ' + cliente.apellidos" />
+                  <div><strong>{{ cliente.apellidos }}, {{ cliente.nombres }}</strong><span>{{ cliente.correo }} · DNI {{ cliente.dni }}</span><em>Pendiente de aprobación</em></div>
+                  <div class="row-actions">
+                    <ion-button class="approve-button" size="small" (click)="resolverCliente(cliente.id, 'aprobado')">Aprobar</ion-button>
+                    <ion-button class="reject-button" fill="outline" size="small" (click)="resolverCliente(cliente.id, 'rechazado')">Rechazar</ion-button>
+                  </div>
+                </article>
+              } @empty {
+                <div class="empty-state">No hay clientes pendientes.</div>
+              }
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Punto 4</p><h2>Gestión de mesas</h2></div></div>
+            <div class="table-grid">
+              @for (mesa of demo.mesas(); track mesa.id) {
+                <button class="table-tile" [class.table-tile--free]="mesa.disponible" (click)="demo.cambiarDisponibilidadMesa(mesa.numero)">
+                  <span class="table-tile__number">{{ mesa.numero }}</span>
+                  <span>{{ mesa.tipo }}</span>
+                  <strong>{{ mesa.disponible ? 'Disponible' : 'Ocupada' }}</strong>
+                  <small>{{ mesa.comensales }} comensales · QR listo</small>
+                </button>
+              }
+            </div>
+          </section>
+        } @else if (usuarioActual.perfil === 'metre') {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Puntos 9 y 10</p><h2>Lista de espera</h2></div><ion-badge>{{ demo.espera().length }}</ion-badge></div>
+            <div class="wait-list">
+              @for (persona of demo.espera(); track persona.id) {
+                <article class="wait-row">
+                  <img [ngSrc]="persona.foto" width="58" height="58" [alt]="'Foto de ' + persona.nombre" />
+                  <div><strong>{{ persona.nombre }}</strong><span>{{ persona.fecha }}</span></div>
+                  @if (persona.mesaAsignada; as asignada) {
+                    <ion-chip class="assigned-chip">Mesa {{ asignada }}</ion-chip>
+                  } @else {
+                    <div class="assign-actions">
+                      @for (mesa of demo.mesas(); track mesa.id) {
+                        @if (mesa.disponible) {
+                          <ion-button fill="outline" size="small" (click)="asignarMesa(persona.id, mesa.numero)">Mesa {{ mesa.numero }}</ion-button>
+                        }
+                      }
+                    </div>
+                  }
+                  <ion-button class="icon-danger" fill="clear" aria-label="Eliminar de la lista" (click)="demo.eliminarDeEspera(persona.id)">
+                    <ion-icon slot="icon-only" name="trash-outline" />
+                  </ion-button>
+                </article>
+              } @empty {
+                <div class="empty-state">La lista de espera está vacía.</div>
+              }
+            </div>
+          </section>
+        } @else if (usuarioActual.perfil === 'cocinero' || usuarioActual.perfil === 'cantinero') {
+          <section class="section-block">
+            <div class="section-heading">
+              <div><p class="section-kicker">Puntos 16 y 17</p><h2>Sector {{ usuarioActual.perfil === 'cocinero' ? 'cocina' : 'bar' }}</h2></div>
+              <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
+            </div>
+            <ion-card class="sector-card">
+              <ion-card-header><ion-card-title>Mesa {{ demo.pedidoActivo().mesa }}</ion-card-title><ion-card-subtitle>{{ demo.pedidoActivo().creadoEn }} · {{ demo.pedidoActivo().cliente }}</ion-card-subtitle></ion-card-header>
+              <ion-card-content>
+                <ul class="sector-items">
+                  @for (item of demo.pedidoActivo().items; track item.productoId) {
+                    @if ((usuarioActual.perfil === 'cocinero' && item.sector === 'cocina') || (usuarioActual.perfil === 'cantinero' && item.sector === 'bar')) {
+                      <li><strong>{{ item.cantidad }} ×</strong><span>{{ item.nombre }}</span><small>{{ item.minutos }} min</small></li>
+                    }
+                  }
+                </ul>
+                <ion-button class="primary-action" expand="block" [disabled]="demo.pedidoActivo().estado !== 'confirmado' && demo.pedidoActivo().estado !== 'en_preparacion'" (click)="marcarSectorListo(usuarioActual.perfil === 'cocinero' ? 'cocina' : 'bar')">
+                  <ion-icon slot="start" name="checkmark-done-outline" />Marcar sector listo
+                </ion-button>
+              </ion-card-content>
+            </ion-card>
+          </section>
+        } @else if (usuarioActual.perfil === 'mozo') {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Puntos 11, 13, 14, 18, 19 y 22</p><h2>Pedidos y atención</h2></div><span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span></div>
+            <ion-card class="staff-order-card">
+              <ion-card-content>
+                <div class="staff-order-card__header"><div><span>Mesa {{ demo.pedidoActivo().mesa }}</span><h3>{{ demo.pedidoActivo().cliente }}</h3></div><ion-icon name="restaurant-outline" /></div>
+                <ul class="compact-list">
+                  @for (item of demo.pedidoActivo().items; track item.productoId) { <li><span>{{ item.cantidad }} × {{ item.nombre }}</span><strong>{{ formatearPrecio(item.precio * item.cantidad) }}</strong></li> }
+                </ul>
+                <div class="button-row">
+                  <ion-button class="reject-button" fill="outline" [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'" (click)="rechazarPedido()">Rechazar pedido</ion-button>
+                  <ion-button class="approve-button" [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'" (click)="confirmarPedido()">Confirmar pedido</ion-button>
+                </div>
+                <div class="button-row">
+                  <ion-button fill="outline" [disabled]="demo.pedidoActivo().estado !== 'listo'" (click)="entregarPedido()">Marcar entregado</ion-button>
+                  <ion-button [disabled]="demo.cuenta()?.estado !== 'pagada'" (click)="confirmarPago()">Confirmar pago</ion-button>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </section>
+        } @else {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Punto 9</p><h2>Entrada al restaurante</h2></div></div>
+            <div class="anonymous-entry">
+              <div class="qr-preview">
+                @if (qrImagen('entrada'); as qr) {
+                  <img [src]="qr" alt="Código QR de ingreso" />
+                } @else {
+                  <span>QR</span>
+                }
+                <small>tumbo://ingreso</small>
+              </div>
+              <div><h3>Escaneá el QR de ingreso</h3><p>Registrate con tu nombre, accedé a la espera y consultá las encuestas previas.</p></div>
+            </div>
+            <div class="anonymous-form">
+              <ion-input label="Nombre para la lista de espera" label-placement="stacked" fill="outline" [value]="nombreAnonimo()" (ionInput)="actualizarNombreAnonimo($event)" />
+              <ion-button class="primary-action" (click)="anotarCliente()">Anotarme</ion-button>
+            </div>
+          </section>
+        }
+      }
+
+      @if (segmento() === 'pedido') {
+        @if (perfilEsCliente()) {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Puntos 11 y 12</p><h2>Menú TUMBO</h2></div><ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 2 }}</ion-chip></div>
+            <div class="menu-grid">
+              @for (producto of demo.productos(); track producto.id) {
+                <article class="product-card">
+                  <div class="product-card__image">
+                    <img [ngSrc]="imagenActual(producto)" width="220" height="150" [alt]="'Foto de ' + producto.nombre" />
+                    <button aria-label="Ver siguiente imagen" (click)="alternarImagen(producto)"><ion-icon name="arrow-forward-outline" /></button>
+                  </div>
+                  <div class="product-card__body">
+                    <div class="product-card__meta"><span>{{ producto.tipo }} · {{ producto.minutos }} min</span><strong>{{ formatearPrecio(producto.precio) }}</strong></div>
+                    <h3>{{ producto.nombre }}</h3>
+                    <p>{{ producto.descripcion }}</p>
+                    <div class="product-card__actions">
+                      <ion-button class="quantity-button" fill="outline" [disabled]="cantidad(producto.id) === 0" (click)="quitar(producto)">−</ion-button>
+                      <strong>{{ cantidad(producto.id) }}</strong>
+                      <ion-button class="quantity-button" fill="outline" (click)="agregar(producto)">+</ion-button>
+                    </div>
+                  </div>
+                </article>
+              }
+            </div>
+          </section>
+
+          <section class="cart-bar" aria-label="Resumen del pedido">
+            <div><span>Importe acumulado</span><strong>{{ formatearPrecio(demo.totalCarrito()) }}</strong><small>Tiempo estimado: {{ demo.tiempoCarrito() }} minutos</small></div>
+            <ion-button class="primary-action" [disabled]="demo.carrito().length === 0" (click)="enviarPedido()"><ion-icon slot="start" name="send-outline" />Enviar pedido</ion-button>
+          </section>
+        } @else {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Puntos 13, 14, 16, 17 y 18</p><h2>Seguimiento operativo</h2></div><span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span></div>
+            <div class="operational-grid">
+              <ion-card class="operational-card"><ion-card-content><span>Cocina</span><strong>{{ demo.pedidoActivo().sectoresListos.cocina ? 'Listo' : 'En preparación' }}</strong><small>{{ demo.productosCocina().length }} productos disponibles</small></ion-card-content></ion-card>
+              <ion-card class="operational-card"><ion-card-content><span>Bar</span><strong>{{ demo.pedidoActivo().sectoresListos.bar ? 'Listo' : 'En preparación' }}</strong><small>{{ demo.productosBar().length }} bebidas disponibles</small></ion-card-content></ion-card>
+              <ion-card class="operational-card operational-card--wide"><ion-card-content><span>Pedido de mesa {{ demo.pedidoActivo().mesa }}</span><strong>{{ estadoPedido(demo.pedidoActivo().estado) }}</strong><small>{{ demo.pedidoActivo().creadoEn }} · importe sujeto a cuenta</small></ion-card-content></ion-card>
+            </div>
+          </section>
+        }
+      }
+
+      @if (segmento() === 'experiencia') {
+        @if (perfilEsCliente()) {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Punto 15</p><h2>Juegos y descuentos</h2></div><ion-chip class="discount-chip">{{ demo.descuento() }}% ganado</ion-chip></div>
+            @if (usuarioActual.perfil === 'cliente_anonimo') {
+              <div class="locked-card"><ion-icon name="close-circle-outline" /><div><strong>Función exclusiva para clientes registrados</strong><p>El cliente anónimo puede pedir, responder la encuesta y pagar, pero no accede a juegos ni descuentos.</p></div></div>
+            } @else {
+              <div class="games-grid">
+                <article class="game-card"><span>01</span><h3>Memoria TUMBO</h3><p>Encontrá la pareja en tu primer intento.</p><div><ion-button size="small" (click)="jugar('memoria', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('memoria', false)">Probar</ion-button></div></article>
+                <article class="game-card"><span>02</span><h3>Palabras rápidas</h3><p>Completá la palabra antes de que termine.</p><div><ion-button size="small" (click)="jugar('palabras', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('palabras', false)">Probar</ion-button></div></article>
+                <article class="game-card"><span>03</span><h3>Desafío de rapidez</h3><p>Elegí la respuesta correcta.</p><div><ion-button size="small" (click)="jugar('rapidez', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('rapidez', false)">Probar</ion-button></div></article>
+              </div>
+            }
+          </section>
+        }
+
+        <section class="section-block">
+          <div class="section-heading"><div><p class="section-kicker">Punto 20</p><h2>Encuesta de satisfacción</h2></div><span class="status-pill">{{ demo.encuestaRespondida() ? 'Respondida' : 'Pendiente' }}</span></div>
+          <form class="survey-card" [formGroup]="encuestaForm" (ngSubmit)="registrarEncuesta()">
+            <div class="survey-question"><strong>¿Cómo fue tu experiencia?</strong><ion-range formControlName="satisfaccion" min="1" max="5" pin="true"><ion-label slot="start">1</ion-label><ion-label slot="end">5</ion-label></ion-range></div>
+            <ion-textarea label="Contanos un poco más" label-placement="stacked" formControlName="comentario" fill="outline" auto-grow="true" placeholder="Tu opinión nos ayuda a mejorar." />
+            <ion-item lines="none"><ion-label>¿Recomendarías TUMBO?</ion-label><ion-toggle slot="end" formControlName="recomendaria" /></ion-item>
+            <ion-button class="primary-action" type="submit" [disabled]="demo.encuestaRespondida()"><ion-icon slot="start" name="document-text-outline" />Guardar encuesta</ion-button>
+          </form>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading"><div><p class="section-kicker">Resultados de cuatro semanas</p><h2>Gráficos, una pantalla por vez</h2></div></div>
+          <div class="chart-tabs">
+            <button [class.chart-tab--active]="grafico() === 'torta'" (click)="grafico.set('torta')">Torta</button>
+            <button [class.chart-tab--active]="grafico() === 'barras'" (click)="grafico.set('barras')">Barras</button>
+            <button [class.chart-tab--active]="grafico() === 'linea'" (click)="grafico.set('linea')">Línea</button>
+          </div>
+          @if (grafico() === 'torta') {
+            <div class="chart-card chart-card--pie"><div class="pie-chart"></div><div><strong>Satisfacción general</strong><p>Excelente 62% · Muy buena 25% · Buena 13%</p><span>Datos simulados de semanas 1 a 4</span></div></div>
+          } @else if (grafico() === 'barras') {
+            <div class="chart-card"><div class="bar-chart"><span style="--height: 72%"></span><span style="--height: 54%"></span><span style="--height: 86%"></span><span style="--height: 64%"></span></div><div><strong>Platos más pedidos</strong><p>Hamburguesa · Ravioles · Ensalada · Tacos</p><span>Datos simulados de semanas 1 a 4</span></div></div>
+          } @else {
+            <div class="chart-card"><div class="line-chart"><i></i><i></i><i></i><i></i><i></i></div><div><strong>Consumo por semana</strong><p>La tendencia se mantiene en crecimiento.</p><span>Datos simulados de semanas 1 a 4</span></div></div>
+          }
+        </section>
+
+        @if (usuarioActual.perfil === 'cliente_registrado' || usuarioActual.perfil === 'cliente_anonimo' || usuarioActual.perfil === 'mozo') {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Punto 11</p><h2>Sala de consulta al mozo</h2></div></div>
+            <div class="chat-card">
+              <div class="chat-messages">
+                @for (mensajeChat of demo.mensajes(); track mensajeChat.id) {
+                  <div class="chat-message" [class.chat-message--own]="mensajeChat.esPropio"><span>{{ mensajeChat.autor }} · {{ mensajeChat.fecha }}</span><p>{{ mensajeChat.texto }}</p></div>
+                }
+              </div>
+              <form [formGroup]="mensajeForm" (ngSubmit)="enviarMensaje()" class="chat-form"><ion-input formControlName="texto" fill="outline" placeholder="Escribí una consulta..." /><ion-button type="submit" aria-label="Enviar consulta"><ion-icon slot="icon-only" name="send-outline" /></ion-button></form>
+            </div>
+          </section>
+        }
+      }
+
+      @if (segmento() === 'cuenta') {
+        @if (perfilEsCliente()) {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Punto 21</p><h2>Cuenta y propina</h2></div><ion-icon class="section-icon" name="wallet-outline" /></div>
+            <div class="tip-card">
+              <div><h3>Elegí el QR de propina</h3><p>La cuenta se habilita después de seleccionar uno de los cinco niveles.</p></div>
+              <div class="tip-grid">
+                @for (propina of propinas; track propina) {
+                  <button class="tip-option" [class.tip-option--selected]="qrSeleccionado() === propina" (click)="seleccionarQr(propina)">
+                    @if (qrImagen('propina-' + propina); as qr) {
+                      <img class="qr-art" [src]="qr" alt="Código QR de propina" />
+                    } @else {
+                      <span class="qr-art" aria-hidden="true"></span>
+                    }
+                    <strong>{{ propina }}%</strong><small>{{ propina === 0 ? 'Sin propina' : 'Gracias' }}</small>
+                  </button>
+                }
+              </div>
+              <ion-button class="primary-action" expand="block" [disabled]="demo.porcentajePropina() === null" (click)="generarCuenta()">Generar cuenta</ion-button>
+            </div>
+          </section>
+
+          @if (demo.cuenta(); as cuenta) {
+            <section class="section-block">
+              <div class="bill-card">
+                <div class="bill-card__header"><div><span>Detalle de consumo</span><h2>Total TUMBO</h2></div><strong>{{ formatearPrecio(cuenta.total) }}</strong></div>
+                <ul class="bill-lines">
+                  @for (item of demo.pedidoActivo().items; track item.productoId) { <li><span>{{ item.cantidad }} × {{ item.nombre }}<small>{{ formatearPrecio(item.precio) }} unidad</small></span><strong>{{ formatearPrecio(item.precio * item.cantidad) }}</strong></li> }
+                  @if (cuenta.descuento > 0) { <li class="bill-line--discount"><span>Descuento de juego<small>{{ demo.pedidoActivo().descuentoPorJuego }}% · primer intento</small></span><strong>-{{ formatearPrecio(cuenta.descuento) }}</strong></li> }
+                  <li><span>Propina<small>{{ cuenta.porcentajePropina }}% de satisfacción</small></span><strong>{{ formatearPrecio(cuenta.propina) }}</strong></li>
+                </ul>
+                <div class="bill-total"><span>Total a abonar</span><strong>{{ formatearPrecio(cuenta.total) }}</strong></div>
+                @if (cuenta.estado === 'pendiente_pago') {
+                  <ion-button class="primary-action" expand="block" (click)="pagarCuenta()"><ion-icon slot="start" name="wallet-outline" />Pagar de forma simulada</ion-button>
+                } @else if (cuenta.estado === 'pagada') {
+                  <div class="payment-waiting"><ion-spinner name="dots" /><span>Pago realizado. Esperando confirmación del mozo.</span></div>
+                } @else {
+                  <div class="payment-success"><ion-icon name="checkmark-done-outline" /><span>Pago confirmado. La mesa quedó libre.</span></div>
+                }
+              </div>
+            </section>
+          }
+        } @else {
+          <section class="section-block">
+            <div class="section-heading"><div><p class="section-kicker">Punto 22</p><h2>Confirmación del pago</h2></div></div>
+            <div class="payment-staff-card">
+              <ion-icon name="wallet-outline" />
+              <div><strong>{{ demo.cuenta()?.estado === 'pagada' ? 'Pago recibido' : 'Esperando el pago del cliente' }}</strong><p>El mozo confirma el pago y la mesa vuelve a quedar disponible.</p></div>
+              <ion-button class="primary-action" [disabled]="demo.cuenta()?.estado !== 'pagada'" (click)="confirmarPago()">Confirmar y liberar mesa</ion-button>
+            </div>
+          </section>
+        }
+      }
+    </main>
+  }
+</ion-content>

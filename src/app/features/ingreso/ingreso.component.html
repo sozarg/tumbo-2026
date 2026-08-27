@@ -1,0 +1,136 @@
+<ion-content [fullscreen]="true" class="login-page">
+  <main class="login-layout">
+    <section class="login-intro" aria-labelledby="login-title">
+      <img
+        ngSrc="imagenes/logo.png"
+        width="116"
+        height="116"
+        priority
+        alt="Ícono de TUMBO"
+      />
+      <p class="login-intro__eyebrow">Bienvenido a</p>
+      <h1 id="login-title">TUMBO</h1>
+      <p>La mesa, el equipo y la experiencia en un solo lugar.</p>
+    </section>
+
+    <section class="login-panel" aria-label="Formulario de ingreso">
+      <ion-card class="login-card">
+        <ion-card-header>
+          <ion-card-title>Ingresar</ion-card-title>
+          <ion-card-subtitle>Accedé con tu cuenta de trabajo</ion-card-subtitle>
+        </ion-card-header>
+
+        <ion-card-content>
+          <form [formGroup]="formulario" (ngSubmit)="ingresar()" novalidate>
+            <div class="field">
+              <label for="correo">Correo electrónico</label>
+              <ion-input
+                id="correo"
+                autocomplete="email"
+                fill="outline"
+                formControlName="correo"
+                inputmode="email"
+                placeholder="nombre@tumbo.demo"
+                type="email"
+                [attr.aria-describedby]="campoInvalido('correo') ? 'correo-error' : null"
+              />
+              @if (campoInvalido('correo')) {
+                <ion-note id="correo-error" class="field__error" color="danger">
+                  {{ mensajeCampo('correo') }}
+                </ion-note>
+              }
+            </div>
+
+            <div class="field">
+              <label for="clave">Clave</label>
+              <div class="password-field">
+                <ion-input
+                  id="clave"
+                  autocomplete="current-password"
+                  fill="outline"
+                  formControlName="clave"
+                  placeholder="Ingresá tu clave"
+                  [type]="mostrarClave() ? 'text' : 'password'"
+                  [attr.aria-describedby]="campoInvalido('clave') ? 'clave-error' : null"
+                />
+                <ion-button
+                  class="password-field__toggle"
+                  fill="clear"
+                  type="button"
+                  [attr.aria-label]="mostrarClave() ? 'Ocultar clave' : 'Mostrar clave'"
+                  (click)="alternarClave()"
+                >
+                  <ion-icon
+                    slot="icon-only"
+                    [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"
+                  />
+                </ion-button>
+              </div>
+              @if (campoInvalido('clave')) {
+                <ion-note id="clave-error" class="field__error" color="danger">
+                  {{ mensajeCampo('clave') }}
+                </ion-note>
+              }
+            </div>
+
+            @if (errorMensaje()) {
+              <p class="form-message form-message--error" role="alert">
+                {{ errorMensaje() }}
+              </p>
+            }
+
+            <ion-button
+              class="login-card__submit"
+              expand="block"
+              type="submit"
+              [disabled]="enviando()"
+            >
+              @if (enviando()) {
+                <ion-spinner name="crescent" />
+                <span>Ingresando...</span>
+              } @else {
+                <ion-icon slot="start" name="log-in-outline" />
+                <span>Ingresar a TUMBO</span>
+              }
+            </ion-button>
+          </form>
+        </ion-card-content>
+      </ion-card>
+
+      <div class="quick-access">
+        <div class="quick-access__heading">
+          <div>
+            <p class="section-kicker">Para probar la app</p>
+            <h2>Accesos rápidos</h2>
+          </div>
+          <span class="quick-access__arrow" aria-hidden="true">
+            <ion-icon name="arrow-forward-outline" />
+          </span>
+        </div>
+
+        <p class="quick-access__hint">
+          Elegí un perfil para entrar directamente al panel de demostración.
+        </p>
+
+        <div class="quick-access__grid">
+          @for (usuario of usuariosRapidos; track usuario.id) {
+            <ion-button
+              class="quick-user"
+              fill="outline"
+              [disabled]="enviando()"
+              (click)="ingresarRapido(usuario)"
+            >
+              <span class="quick-user__name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
+              <span class="quick-user__role">{{ usuario.etiquetaPerfil }}</span>
+            </ion-button>
+          }
+        </div>
+
+        <p class="demo-note">
+          Demo temporal: cualquier acceso rápido funciona. Para el formulario,
+          usá la clave <strong>{{ claveDemostracion }}</strong>.
+        </p>
+      </div>
+    </section>
+  </main>
+</ion-content>

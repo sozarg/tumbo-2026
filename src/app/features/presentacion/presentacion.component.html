@@ -1,0 +1,41 @@
+<ion-content [fullscreen]="true" class="splash">
+  <main class="splash__layout">
+    <div class="splash__glow splash__glow--top" aria-hidden="true"></div>
+    <div class="splash__glow splash__glow--bottom" aria-hidden="true"></div>
+
+    <section class="splash__content" aria-labelledby="splash-title">
+      <p class="splash__eyebrow">Trabajo final integrador · 2026</p>
+
+      <div class="splash__logo-wrap">
+        <div class="splash__logo-ring">
+          <img
+            ngSrc="imagenes/logo.png"
+            width="320"
+            height="320"
+            priority
+            alt="Ícono de TUMBO"
+          />
+        </div>
+      </div>
+
+      <h1 id="splash-title">TUMBO</h1>
+      <p class="splash__tagline">Una experiencia que se comparte</p>
+
+      <div class="splash__team">
+        <span>Equipo</span>
+        <p>{{ integrantes.join(' · ') }}</p>
+      </div>
+
+      @if (mostrarContinuar()) {
+        <ion-button class="splash__continue" (click)="continuar()">
+          Ingresar
+        </ion-button>
+      } @else {
+        <div class="splash__loading" aria-live="polite">
+          <span class="splash__dots" aria-hidden="true"></span>
+          <span>Preparando tu mesa...</span>
+        </div>
+      }
+    </section>
+  </main>
+</ion-content>
