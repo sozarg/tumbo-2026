@@ -1,0 +1,426 @@
+{
+  "assets": [
+    {
+      "name": "carne",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        89,
+        6,
+        1442,
+        954
+      ],
+      "trimmed_width": 1353,
+      "trimmed_height": 948,
+      "transparent_pixels_percent": 44.82,
+      "partially_transparent_pixels": 867885,
+      "size_bytes": 2083814,
+      "edge_translucency_pixels": 6
+    },
+    {
+      "name": "pizza",
+      "width": 1312,
+      "height": 1199,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        81,
+        52,
+        1218,
+        1128
+      ],
+      "trimmed_width": 1137,
+      "trimmed_height": 1076,
+      "transparent_pixels_percent": 45.69,
+      "partially_transparent_pixels": 853786,
+      "size_bytes": 1541054,
+      "edge_translucency_pixels": 41
+    },
+    {
+      "name": "fideos",
+      "width": 1305,
+      "height": 1206,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        107,
+        47,
+        1226,
+        1108
+      ],
+      "trimmed_width": 1119,
+      "trimmed_height": 1061,
+      "transparent_pixels_percent": 43.0,
+      "partially_transparent_pixels": 896210,
+      "size_bytes": 1516049,
+      "edge_translucency_pixels": 14
+    },
+    {
+      "name": "cafe",
+      "width": 1312,
+      "height": 1199,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        79,
+        48,
+        1218,
+        1161
+      ],
+      "trimmed_width": 1139,
+      "trimmed_height": 1113,
+      "transparent_pixels_percent": 60.88,
+      "partially_transparent_pixels": 614739,
+      "size_bytes": 916574,
+      "edge_translucency_pixels": 21
+    },
+    {
+      "name": "sopa",
+      "width": 1312,
+      "height": 1199,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        42,
+        17,
+        1260,
+        1175
+      ],
+      "trimmed_width": 1218,
+      "trimmed_height": 1158,
+      "transparent_pixels_percent": 49.58,
+      "partially_transparent_pixels": 792816,
+      "size_bytes": 1253961,
+      "edge_translucency_pixels": 7
+    },
+    {
+      "name": "ensalada",
+      "width": 1312,
+      "height": 1199,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        0,
+        16,
+        1276,
+        1199
+      ],
+      "trimmed_width": 1276,
+      "trimmed_height": 1183,
+      "transparent_pixels_percent": 42.13,
+      "partially_transparent_pixels": 910038,
+      "size_bytes": 1334087,
+      "edge_translucency_pixels": 34
+    },
+    {
+      "name": "cubiertos",
+      "width": 1182,
+      "height": 1330,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        0,
+        9,
+        1166,
+        1330
+      ],
+      "trimmed_width": 1166,
+      "trimmed_height": 1321,
+      "transparent_pixels_percent": 79.86,
+      "partially_transparent_pixels": 315928,
+      "size_bytes": 677517,
+      "edge_translucency_pixels": 21
+    },
+    {
+      "name": "saleros",
+      "width": 1295,
+      "height": 1214,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        0,
+        0,
+        1230,
+        1214
+      ],
+      "trimmed_width": 1230,
+      "trimmed_height": 1214,
+      "transparent_pixels_percent": 50.21,
+      "partially_transparent_pixels": 782556,
+      "size_bytes": 1704551,
+      "edge_translucency_pixels": 89
+    },
+    {
+      "name": "rodillo",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        35,
+        57,
+        1640,
+        913
+      ],
+      "trimmed_width": 1605,
+      "trimmed_height": 856,
+      "transparent_pixels_percent": 79.77,
+      "partially_transparent_pixels": 317313,
+      "size_bytes": 564846,
+      "edge_translucency_pixels": 60
+    },
+    {
+      "name": "vino",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "has_alpha": true,
+      "alpha_bbox": [
+        0,
+        0,
+        1010,
+        1536
+      ],
+      "trimmed_width": 1010,
+      "trimmed_height": 1536,
+      "transparent_pixels_percent": 56.91,
+      "partially_transparent_pixels": 677669,
+      "size_bytes": 1790668,
+      "edge_translucency_pixels": 187
+    }
+  ],
+  "svg_variants": {
+    "carne": [
+      {
+        "name": "balanced",
+        "shapes": 5676,
+        "bytes": 1203064,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 14997,
+        "bytes": 6459593,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 849,
+        "bytes": 609383,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "pizza": [
+      {
+        "name": "balanced",
+        "shapes": 4704,
+        "bytes": 1060760,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 12809,
+        "bytes": 5802265,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 828,
+        "bytes": 382193,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "fideos": [
+      {
+        "name": "balanced",
+        "shapes": 4138,
+        "bytes": 1050674,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 10858,
+        "bytes": 4914737,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 818,
+        "bytes": 669390,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "cafe": [
+      {
+        "name": "balanced",
+        "shapes": 1935,
+        "bytes": 454210,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 4927,
+        "bytes": 2039526,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 941,
+        "bytes": 321378,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "sopa": [
+      {
+        "name": "balanced",
+        "shapes": 3201,
+        "bytes": 799616,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 8620,
+        "bytes": 3753836,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 960,
+        "bytes": 546980,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "ensalada": [
+      {
+        "name": "balanced",
+        "shapes": 2629,
+        "bytes": 669829,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 7257,
+        "bytes": 3338275,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 654,
+        "bytes": 373415,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "cubiertos": [
+      {
+        "name": "balanced",
+        "shapes": 2391,
+        "bytes": 738311,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 8409,
+        "bytes": 2734797,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 3896,
+        "bytes": 867972,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "saleros": [
+      {
+        "name": "balanced",
+        "shapes": 9425,
+        "bytes": 2133477,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 19474,
+        "bytes": 7770982,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 2367,
+        "bytes": 1982636,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "rodillo": [
+      {
+        "name": "balanced",
+        "shapes": 1243,
+        "bytes": 303096,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 2870,
+        "bytes": 1552844,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 529,
+        "bytes": 226555,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ],
+    "vino": [
+      {
+        "name": "balanced",
+        "shapes": 3711,
+        "bytes": 982871,
+        "selected": true,
+        "reason": "equilibrio de detalle, peso y acabado glossy"
+      },
+      {
+        "name": "detail",
+        "shapes": 9306,
+        "bytes": 3397954,
+        "selected": false,
+        "reason": "variante de comparación"
+      },
+      {
+        "name": "light",
+        "shapes": 2875,
+        "bytes": 1025269,
+        "selected": false,
+        "reason": "variante de comparación"
+      }
+    ]
+  }
+}

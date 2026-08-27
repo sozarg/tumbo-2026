@@ -8,7 +8,8 @@ La base Angular + Ionic está implementada y compila. La entrega actual incluye:
 
 - identidad visual basada en el logo entregado;
 - splash estática (docs/imagenes/splash-estatica.svg);
-- splash dinámica en Angular con animación, ícono centrado y los cuatro integrantes;
+- splash de inicialización mínima con el ícono centrado;
+- pantalla de bienvenida separada con marca, ingreso y metadata institucional;
 - formulario de ingreso con validación visible de correo y clave;
 - accesos rápidos relacionados con usuarios de prueba;
 - sesión, cierre de sesión y navegación por pantalla;
@@ -99,7 +100,7 @@ Los códigos QR de ingreso, mesas y propina se encuentran también en docs/image
         ├── inicio/
         └── operacion/
 
-Las rutas de funcionalidades se cargan de forma lazy. Los componentes usan standalone, signals, formularios reactivos y estilos SCSS mobile first. Capacitor queda inicializado en capacitor.config.ts; npm run cap:sync prepara el build web para una plataforma nativa cuando se agregue Android o iOS.
+Las rutas de funcionalidades se cargan de forma lazy. La ruta `splash` muestra únicamente el ícono durante el primer render y deriva inmediatamente a `presentacion`, que contiene la pantalla de bienvenida interactiva. Los componentes usan standalone, signals, formularios reactivos y estilos SCSS mobile first. Capacitor queda inicializado en capacitor.config.ts; npm run cap:sync prepara el build web para una plataforma nativa cuando se agregue Android o iOS.
 
 ## Criterios acordados
 

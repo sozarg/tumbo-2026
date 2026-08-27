@@ -1,41 +1,80 @@
-<ion-content [fullscreen]="true" class="splash">
-  <main class="splash__layout">
-    <div class="splash__glow splash__glow--top" aria-hidden="true"></div>
-    <div class="splash__glow splash__glow--bottom" aria-hidden="true"></div>
+<ion-content [fullscreen]="true" class="welcome-page">
+  <main class="welcome-layout">
+    <div class="welcome-decor" aria-hidden="true">
+      <img
+        class="welcome-decor__asset decor-sopa"
+        src="imagenes/tumbito/sopa.webp"
+        width="1218"
+        height="1158"
+        alt=""
+      />
+      <img
+        class="welcome-decor__asset decor-cafe"
+        src="imagenes/tumbito/cafe.webp"
+        width="1139"
+        height="1113"
+        alt=""
+      />
+      <img
+        class="welcome-decor__asset decor-pizza"
+        src="imagenes/tumbito/pizza.webp"
+        width="1137"
+        height="1076"
+        alt=""
+      />
+      <img
+        class="welcome-decor__asset decor-fideos"
+        src="imagenes/tumbito/fideos.webp"
+        width="1119"
+        height="1061"
+        alt=""
+      />
+      <img
+        class="welcome-decor__asset decor-carne"
+        src="imagenes/tumbito/carne.webp"
+        width="1353"
+        height="948"
+        alt=""
+      />
+      <img
+        class="welcome-decor__asset decor-ensalada"
+        src="imagenes/tumbito/ensalada.webp"
+        width="1276"
+        height="1183"
+        alt=""
+      />
+    </div>
 
-    <section class="splash__content" aria-labelledby="splash-title">
-      <p class="splash__eyebrow">Trabajo final integrador · 2026</p>
+    <div class="welcome-primary">
+      <section class="welcome-brand" aria-labelledby="welcome-title">
+        <img
+          class="welcome-brand__lockup"
+          ngSrc="imagenes/logo-nombre.png"
+          width="2168"
+          height="725"
+          priority
+          alt=""
+        />
+        <p id="welcome-title" class="welcome-brand__tagline">Una experiencia que se comparte</p>
+        <p class="welcome-brand__functional">
+          Gestioná mesas, pedidos y la atención de tu restaurante.
+        </p>
+      </section>
 
-      <div class="splash__logo-wrap">
-        <div class="splash__logo-ring">
-          <img
-            ngSrc="imagenes/logo.png"
-            width="320"
-            height="320"
-            priority
-            alt="Ícono de TUMBO"
-          />
-        </div>
-      </div>
+      <section class="welcome-action" aria-label="Acceso a la aplicación">
+        <ion-button class="welcome-action__button" (click)="continuar()">Ingresar</ion-button>
+      </section>
+    </div>
 
-      <h1 id="splash-title">TUMBO</h1>
-      <p class="splash__tagline">Una experiencia que se comparte</p>
-
-      <div class="splash__team">
-        <span>Equipo</span>
-        <p>{{ integrantes.join(' · ') }}</p>
-      </div>
-
-      @if (mostrarContinuar()) {
-        <ion-button class="splash__continue" (click)="continuar()">
-          Ingresar
-        </ion-button>
-      } @else {
-        <div class="splash__loading" aria-live="polite">
-          <span class="splash__dots" aria-hidden="true"></span>
-          <span>Preparando tu mesa...</span>
-        </div>
-      }
-    </section>
+    <footer class="welcome-footer" aria-label="Información institucional">
+      <div class="welcome-footer__rule" aria-hidden="true"></div>
+      <p class="welcome-footer__context">Trabajo final integrador · 2026</p>
+      <p class="welcome-footer__team">
+        <span>Mateo Terrile</span>
+        <span>Ramiro Bianucci</span>
+        <span>Ignacio Agustín Cruz</span>
+        <span>Matías Gabriel Ferrari</span>
+      </p>
+    </footer>
   </main>
 </ion-content>
