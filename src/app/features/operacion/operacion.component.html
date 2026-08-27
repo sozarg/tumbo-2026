@@ -7,7 +7,7 @@
         </ion-button>
 
         <div class="operation-brand">
-          <img ngSrc="imagenes/logo.png" width="48" height="48" priority alt="Ícono de TUMBO" />
+        <img ngSrc="imagenes/logo.png" width="48" height="48" priority alt="" />
           <div>
             <span>Centro de pruebas</span>
             <strong>TUMBO</strong>
@@ -236,7 +236,7 @@
                 </ion-select>
                 <div class="qr-preview qr-preview--small">
                   @if (qrImagen('mesa-' + mesaForm.controls.numero.value); as qr) {
-                    <img [src]="qr" alt="Código QR de la mesa" />
+                    <img [src]="qr" alt="" />
                   } @else {
                     <span>QR</span>
                   }
@@ -273,7 +273,7 @@
             <div class="client-list">
               @for (cliente of demo.clientesPendientes(); track cliente.id) {
                 <article class="client-row">
-                  <img [ngSrc]="cliente.foto" width="64" height="64" [alt]="'Foto de ' + cliente.nombres + ' ' + cliente.apellidos" />
+                  <img [ngSrc]="cliente.foto" width="64" height="64" alt="" />
                   <div><strong>{{ cliente.apellidos }}, {{ cliente.nombres }}</strong><span>{{ cliente.correo }} · DNI {{ cliente.dni }}</span><em>Pendiente de aprobación</em></div>
                   <div class="row-actions">
                     <ion-button class="approve-button" size="small" (click)="resolverCliente(cliente.id, 'aprobado')">Aprobar</ion-button>
@@ -305,7 +305,7 @@
             <div class="wait-list">
               @for (persona of demo.espera(); track persona.id) {
                 <article class="wait-row">
-                  <img [ngSrc]="persona.foto" width="58" height="58" [alt]="'Foto de ' + persona.nombre" />
+                  <img [ngSrc]="persona.foto" width="58" height="58" alt="" />
                   <div><strong>{{ persona.nombre }}</strong><span>{{ persona.fecha }}</span></div>
                   @if (persona.mesaAsignada; as asignada) {
                     <ion-chip class="assigned-chip">Mesa {{ asignada }}</ion-chip>
@@ -375,7 +375,7 @@
             <div class="anonymous-entry">
               <div class="qr-preview">
                 @if (qrImagen('entrada'); as qr) {
-                  <img [src]="qr" alt="Código QR de ingreso" />
+                  <img [src]="qr" alt="" />
                 } @else {
                   <span>QR</span>
                 }
@@ -399,7 +399,7 @@
               @for (producto of demo.productos(); track producto.id) {
                 <article class="product-card">
                   <div class="product-card__image">
-                    <img [ngSrc]="imagenActual(producto)" width="220" height="150" [alt]="'Foto de ' + producto.nombre" />
+                    <img [ngSrc]="imagenActual(producto)" width="220" height="150" alt="" />
                     <button aria-label="Ver siguiente imagen" (click)="alternarImagen(producto)"><ion-icon name="arrow-forward-outline" /></button>
                   </div>
                   <div class="product-card__body">
@@ -500,7 +500,7 @@
                 @for (propina of propinas; track propina) {
                   <button class="tip-option" [class.tip-option--selected]="qrSeleccionado() === propina" (click)="seleccionarQr(propina)">
                     @if (qrImagen('propina-' + propina); as qr) {
-                      <img class="qr-art" [src]="qr" alt="Código QR de propina" />
+                      <img class="qr-art" [src]="qr" alt="" />
                     } @else {
                       <span class="qr-art" aria-hidden="true"></span>
                     }

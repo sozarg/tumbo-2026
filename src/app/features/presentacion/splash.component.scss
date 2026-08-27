@@ -1,0 +1,54 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.splash-page {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  pointer-events: auto;
+  animation: splash-fade-out 420ms ease-in-out both;
+}
+
+.splash-page__sheet {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+  background: #fbf1d5;
+  background-image:
+    linear-gradient(90deg, rgb(220 91 2 / 9%) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(220 91 2 / 9%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(251 177 3 / 6%) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(251 177 3 / 6%) 1px, transparent 1px);
+  background-position: center;
+  background-size:
+    112px 112px,
+    112px 112px,
+    20px 20px,
+    20px 20px;
+}
+
+.splash-page__sheet img {
+  width: min(68vw, 16.875rem);
+  height: auto;
+  object-fit: contain;
+}
+
+@keyframes splash-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-page {
+    animation-duration: 1ms;
+  }
+}
