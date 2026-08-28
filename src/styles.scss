@@ -10,7 +10,68 @@
 @import '@ionic/angular/css/display.css';
 
 :root {
-  --ion-color-primary: #006ae7;
+  // Tokens de identidad y derivados para la superficie glass del ingreso.
+  --tumbo-naranja-marca: #dc5b02;
+  --tumbo-naranja-profundo: #a84402;
+  --tumbo-crema-fondo: #fbf1d5;
+  --tumbo-crema-brillante: #fcedbb;
+  --tumbo-azul-accion: #006ae7;
+  --tumbo-azul-accion-claro: #4d9cff;
+  --tumbo-azul-accion-hover: #62a8ff;
+  --tumbo-azul-sombra: #003592;
+  --tumbo-azul-brillante: #f8fbfd;
+  --tumbo-crema-08: rgb(252 237 187 / 8%);
+  --tumbo-crema-10: rgb(252 237 187 / 10%);
+  --tumbo-crema-12: rgb(252 237 187 / 12%);
+  --tumbo-crema-14: rgb(252 237 187 / 14%);
+  --tumbo-crema-16: rgb(252 237 187 / 16%);
+  --tumbo-crema-18: rgb(252 237 187 / 18%);
+  --tumbo-crema-45: rgb(252 237 187 / 45%);
+  --tumbo-crema-60: rgb(252 237 187 / 60%);
+  --tumbo-crema-65: rgb(252 237 187 / 65%);
+  --tumbo-crema-24: rgb(252 237 187 / 24%);
+  --tumbo-azul-accion-55: rgb(0 106 231 / 55%);
+  --tumbo-grilla-color: rgb(255 255 255 / 34%);
+  --tumbo-grilla-celda: 104px;
+  --tumbo-grilla-celda-movil: 86px;
+  --tumbo-ilustracion-opacidad: 0.17;
+  --tumbo-blanco-70: rgb(255 255 255 / 70%);
+  --tumbo-blanco-55: rgb(255 255 255 / 55%);
+  --tumbo-blanco-65: rgb(255 255 255 / 65%);
+  --tumbo-blanco-80: rgb(255 255 255 / 80%);
+  --tumbo-blanco-85: rgb(255 255 255 / 85%);
+  --tumbo-blanco-90: rgb(255 255 255 / 90%);
+  --tumbo-blanco-95: rgb(255 255 255 / 95%);
+  --tumbo-blanco-40: rgb(255 255 255 / 40%);
+  --tumbo-blanco-34: rgb(255 255 255 / 34%);
+  --tumbo-blanco-45: rgb(255 255 255 / 45%);
+  --tumbo-blanco-62: rgb(255 255 255 / 62%);
+  --tumbo-blanco-58: rgb(255 255 255 / 58%);
+  --tumbo-blanco-60: rgb(255 255 255 / 60%);
+  --tumbo-blanco-72: rgb(255 255 255 / 72%);
+  --tumbo-blanco-88: rgb(255 255 255 / 88%);
+  --tumbo-azul-texto-10: rgb(0 53 146 / 10%);
+  --tumbo-azul-texto-12: rgb(0 53 146 / 12%);
+  --tumbo-azul-texto-18: rgb(0 53 146 / 18%);
+  --tumbo-azul-22: rgb(0 106 231 / 22%);
+  --tumbo-azul-texto-28: rgb(0 53 146 / 28%);
+  --tumbo-azul-texto-32: rgb(0 53 146 / 32%);
+  --tumbo-azul-texto-30: rgb(0 53 146 / 30%);
+  --tumbo-azul-texto-40: rgb(0 53 146 / 40%);
+  --tumbo-azul-texto-45: rgb(0 53 146 / 45%);
+  --tumbo-azul-texto-50: rgb(0 53 146 / 50%);
+  --tumbo-azul-texto-55: rgb(0 53 146 / 55%);
+  --tumbo-azul-texto-62: rgb(0 53 146 / 62%);
+  --tumbo-azul-texto-14: rgb(0 53 146 / 14%);
+  --tumbo-ambar-8: rgb(251 177 3 / 8%);
+  --tumbo-azul-accion-14: rgb(0 106 231 / 14%);
+  --tumbo-ambar-hover: #e9a300;
+  --tumbo-ambar-activo: #cc8e00;
+  --tumbo-ambar: #fbb103;
+  --tumbo-ambar-sombra: rgb(150 103 0 / 18%);
+  --tumbo-ambar-sombra-hover: rgb(150 103 0 / 22%);
+
+  --ion-color-primary: var(--tumbo-azul-accion);
   --ion-color-primary-rgb: 0, 106, 231;
   --ion-color-primary-contrast: #f8fbfd;
   --ion-color-primary-contrast-rgb: 248, 251, 253;
@@ -46,9 +107,9 @@
   --ion-color-danger-contrast: #f8fbfd;
   --ion-color-danger-contrast-rgb: 248, 251, 253;
 
-  --ion-background-color: #fbf1d5;
+  --ion-background-color: var(--tumbo-crema-fondo);
   --ion-background-color-rgb: 251, 241, 213;
-  --ion-text-color: #003592;
+  --ion-text-color: var(--tumbo-azul-sombra);
   --ion-text-color-rgb: 0, 53, 146;
   --ion-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

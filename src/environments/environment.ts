@@ -16,5 +16,5 @@ export const environment: Entorno = {
   production: false,
   supabaseUrl: '',
   supabaseAnonKey: '',
-  claveDemostracion: 'Tumbo2026',
+  claveDemostracion: 'Tumbito2026',
 };

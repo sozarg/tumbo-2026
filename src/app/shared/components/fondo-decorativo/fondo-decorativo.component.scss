@@ -1,0 +1,62 @@
+:host {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.decor-grid {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-image:
+    linear-gradient(var(--tumbo-grilla-color) 2px, transparent 2px),
+    linear-gradient(90deg, var(--tumbo-grilla-color) 2px, transparent 2px);
+  background-position: center;
+  background-size: var(--tumbo-grilla-celda) var(--tumbo-grilla-celda);
+}
+
+.decor-aura {
+  position: absolute;
+  z-index: 1;
+  top: 42%;
+  left: 50%;
+  width: min(640px, 90vw);
+  height: min(520px, 70vh);
+  background:
+    radial-gradient(ellipse at 28% 28%, var(--tumbo-ambar-8) 0%, transparent 72%),
+    radial-gradient(ellipse at 72% 72%, var(--tumbo-azul-accion-14) 0%, transparent 72%);
+  filter: blur(60px);
+  transform: translate(-50%, -50%);
+}
+
+.decor-asset {
+  position: absolute;
+  height: auto;
+  opacity: var(--tumbo-ilustracion-opacidad);
+  object-fit: contain;
+  user-select: none;
+  filter: saturate(55%);
+}
+
+.decor-sopa { top: -6%; left: -5%; width: clamp(31.25rem, 28vw, 33.75rem); transform: rotate(-7deg); filter: blur(0.5px); }
+.decor-cafe { top: 4%; right: -2%; width: clamp(7.5rem, 7.5vw, 9rem); transform: rotate(7deg); }
+.decor-pizza { top: 18%; right: -2%; width: clamp(15.5rem, 13.5vw, 17rem); transform: rotate(8deg); }
+.decor-fideos { right: -4%; bottom: -5%; width: clamp(29.5rem, 27.5vw, 33.5rem); transform: rotate(7deg); filter: blur(0.5px); }
+.decor-carne { bottom: 13%; left: 8%; width: clamp(14.375rem, 13vw, 16.25rem); transform: rotate(4deg); }
+.decor-ensalada { right: -4%; bottom: 15.4%; width: clamp(11.5625rem, 10vw, 12.8125rem); transform: rotate(-5deg); }
+
+@media (min-width: 48rem) and (max-width: 100rem) {
+  .decor-cafe { top: -1%; width: 7rem; }
+  .decor-pizza { right: -3.5%; }
+}
+
+@media (max-width: 47.99rem) {
+  .decor-grid { background-size: var(--tumbo-grilla-celda-movil) var(--tumbo-grilla-celda-movil); }
+  .decor-sopa { top: -5%; left: -26%; width: 17rem; }
+  .decor-cafe { top: 2%; right: -10%; left: auto; width: 6.25rem; transform: rotate(7deg); }
+  .decor-pizza, .decor-fideos, .decor-ensalada { display: none; }
+  .decor-carne { bottom: 18%; left: -22%; width: 10rem; }
+}
