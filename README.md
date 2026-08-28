@@ -16,16 +16,19 @@ La base Angular + Ionic está implementada y compila. La entrega actual incluye:
 - centro de pruebas responsive con el flujo mock de los puntos 1 a 22;
 - estado mock desacoplado para altas, catálogo, mesas, espera, pedidos, cocina, bar, juegos, encuestas, cuenta, propina y pago.
 
-Supabase todavía no está configurado. Los servicios AutenticacionMockService y DemoRestauranteService dejan explícito qué debe reemplazarse al crear el proyecto de Supabase. No se guardan secretos reales en el repositorio.
+La capa de Supabase está implementada y probada: el esquema completo con RLS vive en supabase/migrations, y la autenticación real, los accesos rápidos leídos de la base, el control de estado pendiente/rechazado y la restauración de sesión están en src/app/core. Falta únicamente crear el proyecto en supabase.com y aplicar las migraciones; los pasos están en supabase/README.md.
 
-Para activarlo, completen los valores de src/environments/environment.ts tomando como referencia environment.example.ts y usando únicamente la clave anon pública. app.config.ts selecciona automáticamente el adaptador de Supabase cuando ambos valores están completos; con valores vacíos conserva el modo demo.
+Mientras eso no esté hecho, la aplicación arranca en modo demostración con AutenticacionMockService y DemoRestauranteService, sin que haga falta configurar nada. app.config.ts elige el adaptador según si environment tiene URL y clave.
+
+Para trabajar contra Supabase no se toca environment.ts: se copia environment.example.ts a environment.local.ts (ignorado por git) y se arranca con npm run start:local. No se guardan secretos reales en el repositorio.
 
 ## Ejecutar el proyecto
 
 Requisitos: Node.js LTS y npm.
 
     npm install
-    npm start
+    npm start          # modo demostración, no necesita configuración
+    npm run start:local # contra Supabase, requiere environment.local.ts
 
 Abrir http://localhost:4200/.
 
@@ -36,7 +39,7 @@ Para validar la compilación y los tests:
 
 ## Usuarios de demostración
 
-La clave provisional para el ingreso por formulario es Tumbo2026. Los accesos rápidos ingresan directamente:
+La clave provisional para el ingreso por formulario es Tumbo2026, tanto en modo demostración como con Supabase. Los accesos rápidos se generan a partir de los usuarios existentes: en modo demostración salen del mock, y con Supabase salen de la base, como exige el requisito excluyente de la cátedra.
 
 | Correo | Perfil |
 |---|---|
@@ -81,6 +84,7 @@ Se usa #003592 para texto corriente por contraste, #006AE7 para acciones y títu
 - Ícono: docs/imagenes/logo.png
 - Logo con nombre: docs/imagenes/logo-nombre.png
 - Splash estática: docs/imagenes/splash-estatica.svg
+- Puesta en marcha de Supabase: supabase/README.md
 - Consigna original del TFI: docs/Trabajo-practico-2026-TFI.pdf
 - Contexto ampliado del proyecto: CONTEXTO-PROYECTO.md
 - Manual visual de referencia: docs/manual-tfi.html
@@ -92,6 +96,7 @@ Los códigos QR de ingreso, mesas y propina se encuentran también en docs/image
 
     src/app/
     ├── core/
+    │   ├── guards/
     │   ├── models/
     │   └── services/
     └── features/

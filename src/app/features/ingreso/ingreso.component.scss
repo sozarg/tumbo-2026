@@ -238,10 +238,21 @@
   padding: 0.55rem 0.8rem;
 }
 
+/* Un solo hijo para el flex de ion-button; el apilado lo maneja este
+   contenedor y no depende del interior del componente. */
+.quick-user__texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 0.1rem;
+}
+
 .quick-user__name,
 .quick-user__role {
   display: block;
   white-space: normal;
+  line-height: 1.25;
 }
 
 .quick-user__name {

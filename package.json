@@ -4,10 +4,15 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:local": "ng serve --configuration local",
     "build": "ng build",
+    "prebuild": "node tools/generar-entorno.mjs",
+    "build:local": "ng build --configuration local",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "cap:sync": "npm run build && npx cap sync"
+    "cap:sync": "npm run build && npx cap sync",
+    "supabase:tipos": "npx supabase gen types typescript --linked > src/app/core/models/base-de-datos.ts",
+    "supabase:usuarios": "node supabase/crear-usuarios.mjs"
   },
   "private": true,
   "packageManager": "npm@11.17.0",

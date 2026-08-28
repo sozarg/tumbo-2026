@@ -55,7 +55,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": [
+              "src/styles.scss"
+            ]
           },
           "configurations": {
             "production": {
@@ -77,6 +79,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "local": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.local.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -89,6 +102,9 @@
             },
             "development": {
               "buildTarget": "tumbo:build:development"
+            },
+            "local": {
+              "buildTarget": "tumbo:build:local"
             }
           },
           "defaultConfiguration": "development"
