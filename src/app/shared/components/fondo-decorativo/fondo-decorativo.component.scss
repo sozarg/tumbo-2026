@@ -29,7 +29,8 @@
     radial-gradient(ellipse at 28% 28%, var(--tumbo-ambar-8) 0%, transparent 72%),
     radial-gradient(ellipse at 72% 72%, var(--tumbo-azul-accion-14) 0%, transparent 72%);
   filter: blur(60px);
-  transform: translate(-50%, -50%);
+  translate: -50% -50%;
+  animation: respirar-aura 19s ease-in-out infinite;
 }
 
 .decor-asset {
@@ -39,14 +40,59 @@
   object-fit: contain;
   user-select: none;
   filter: saturate(55%);
+  animation: flotar var(--flotar-duracion, 18s) ease-in-out infinite;
+  animation-delay: var(--flotar-desfase, 0s);
 }
 
-.decor-sopa { top: -6%; left: -5%; width: clamp(31.25rem, 28vw, 33.75rem); transform: rotate(-7deg); filter: blur(0.5px); }
-.decor-cafe { top: 4%; right: -2%; width: clamp(7.5rem, 7.5vw, 9rem); transform: rotate(7deg); }
-.decor-pizza { top: 18%; right: -2%; width: clamp(15.5rem, 13.5vw, 17rem); transform: rotate(8deg); }
-.decor-fideos { right: -4%; bottom: -5%; width: clamp(29.5rem, 27.5vw, 33.5rem); transform: rotate(7deg); filter: blur(0.5px); }
-.decor-carne { bottom: 13%; left: 8%; width: clamp(14.375rem, 13vw, 16.25rem); transform: rotate(4deg); }
-.decor-ensalada { right: -4%; bottom: 15.4%; width: clamp(11.5625rem, 10vw, 12.8125rem); transform: rotate(-5deg); }
+// ───────────────────────────────────────────────────────────────────
+// ANIMACIÓN DEL FONDO
+//
+// El ángulo de reposo de cada imagen se declara con `rotate:` y no con
+// `transform: rotate()`. Es a propósito: son propiedades distintas, así
+// que la animación puede mover `translate` sin pisar la rotación. Si el
+// ángulo siguiera dentro de `transform`, cada fotograma tendría que
+// repetirlo y cualquier cambio de diseño habría que replicarlo en los
+// keyframes.
+//
+// Se anima SOLO `translate`. El compositor lo resuelve en la GPU sin
+// recalcular el layout ni repintar; animar `top`/`left` haría lo
+// contrario y se notaría en el celular, que es donde se demuestra.
+//
+// Los desfases son negativos para que cada imagen arranque en un punto
+// distinto de su ciclo. Si empezaran todas en cero, el primer segundo se
+// verían moviéndose en bloque y el efecto se delataría.
+// ───────────────────────────────────────────────────────────────────
+
+// Recorrido elíptico de unos pocos píxeles: la idea es que se note solo
+// si uno se queda mirando, no que compita con el formulario.
+@keyframes flotar {
+  0%, 100% { translate: 0 0; }
+  25% { translate: var(--flotar-x) calc(var(--flotar-y) * -1); }
+  50% { translate: 0 calc(var(--flotar-y) * -2); }
+  75% { translate: calc(var(--flotar-x) * -1) calc(var(--flotar-y) * -1); }
+}
+
+@keyframes respirar-aura {
+  0%, 100% { scale: 1; opacity: 1; }
+  50% { scale: 1.06; opacity: 0.86; }
+}
+
+.decor-sopa { top: -6%; left: -5%; width: clamp(31.25rem, 28vw, 33.75rem); rotate: -7deg; filter: blur(0.5px); --flotar-x: 14px; --flotar-y: 8px; --flotar-duracion: 21s; --flotar-desfase: -3s; }
+.decor-cafe { top: 4%; right: -2%; width: clamp(7.5rem, 7.5vw, 9rem); rotate: 7deg; --flotar-x: 10px; --flotar-y: 6px; --flotar-duracion: 16s; --flotar-desfase: -7s; }
+.decor-pizza { top: 18%; right: -2%; width: clamp(15.5rem, 13.5vw, 17rem); rotate: 8deg; --flotar-x: 12px; --flotar-y: 7px; --flotar-duracion: 18s; --flotar-desfase: -11s; }
+.decor-fideos { right: -4%; bottom: -5%; width: clamp(29.5rem, 27.5vw, 33.5rem); rotate: 7deg; filter: blur(0.5px); --flotar-x: 15px; --flotar-y: 8px; --flotar-duracion: 23s; --flotar-desfase: -5s; }
+.decor-carne { bottom: 13%; left: 8%; width: clamp(14.375rem, 13vw, 16.25rem); rotate: 4deg; --flotar-x: 11px; --flotar-y: 6px; --flotar-duracion: 17s; --flotar-desfase: -13s; }
+.decor-ensalada { right: -4%; bottom: 15.4%; width: clamp(11.5625rem, 10vw, 12.8125rem); rotate: -5deg; --flotar-x: 9px; --flotar-y: 5px; --flotar-duracion: 15s; --flotar-desfase: -9s; }
+
+// Hay gente a la que el movimiento en pantalla le da mareo. Quien tenga
+// activado "reducir movimiento" en su sistema operativo ve el fondo
+// exactamente como estaba antes: quieto, en la posición de reposo.
+@media (prefers-reduced-motion: reduce) {
+  .decor-asset,
+  .decor-aura {
+    animation: none;
+  }
+}
 
 @media (min-width: 48rem) and (max-width: 100rem) {
   .decor-cafe { top: -1%; width: 7rem; }
@@ -56,7 +102,10 @@
 @media (max-width: 47.99rem) {
   .decor-grid { background-size: var(--tumbo-grilla-celda-movil) var(--tumbo-grilla-celda-movil); }
   .decor-sopa { top: -5%; left: -26%; width: 17rem; }
-  .decor-cafe { top: 2%; right: -10%; left: auto; width: 6.25rem; transform: rotate(7deg); }
+  // El ángulo va en `rotate:` igual que arriba. Si acá quedara un
+  // `transform: rotate()`, en celular se sumarían los dos y el café
+  // aparecería al doble de inclinación.
+  .decor-cafe { top: 2%; right: -10%; left: auto; width: 6.25rem; rotate: 7deg; }
   .decor-pizza, .decor-fideos, .decor-ensalada { display: none; }
   .decor-carne { bottom: 18%; left: -22%; width: 10rem; }
 }
