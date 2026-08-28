@@ -44,3 +44,10 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Supabase CLI (local)
+/supabase/.branches
+/supabase/.temp
+/supabase/.env
+.env
+.env.local
