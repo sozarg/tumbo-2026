@@ -81,8 +81,20 @@ with control (orden, que_se_controla, esperado, encontrado) as (
      where id in ('fotos-usuarios','fotos-productos','fotos-mesas'))
 
   union all
-  select 12, 'Migraciones registradas', 6, (
+  select 12, 'Migraciones registradas', 8, (
     select count(*)::int from supabase_migrations.schema_migrations)
+
+  union all
+  -- Los límites de longitud de las migraciones 000600 y 000700. Sin
+  -- ellos, cualquiera
+  -- con la clave anon puede mandar un texto de 10.000 caracteres por
+  -- PostgREST salteando el formulario.
+  select 13, 'Límites de longitud y formato', 27, (
+    select count(*)::int from pg_constraint c
+      join pg_namespace n on n.oid = c.connamespace
+     where n.nspname = 'public' and c.contype = 'c'
+       and (c.conname like 'largo\_%'
+            or c.conname in ('formato_nombres','formato_apellidos')))
 )
 
 select
