@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { sesionGuard } from './core/guards/sesion.guard';
 
 export const routes: Routes = [
   {
@@ -20,10 +21,12 @@ export const routes: Routes = [
   },
   {
     path: 'inicio',
+    canActivate: [sesionGuard],
     loadComponent: () => import('./features/inicio/inicio.component').then(({ Inicio }) => Inicio),
   },
   {
     path: 'operacion',
+    canActivate: [sesionGuard],
     loadComponent: () =>
       import('./features/operacion/operacion.component').then(({ Operacion }) => Operacion),
   },

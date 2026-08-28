@@ -24,7 +24,7 @@ import {
   eyeOutline,
   logInOutline,
 } from 'ionicons/icons';
-import { Usuario } from '../../core/models/usuario';
+import { AccesoRapido } from '../../core/models/usuario';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
 
 @Component({
@@ -60,8 +60,10 @@ export class Ingreso {
   protected readonly enviado = signal(false);
   protected readonly mostrarClave = signal(false);
   protected readonly errorMensaje = signal('');
-  protected readonly usuariosRapidos = this.autenticacion.usuariosDePrueba;
+  /** Salen de la base cuando Supabase está activo (requisito excluyente R12). */
+  protected readonly usuariosRapidos = this.autenticacion.accesosRapidos;
   protected readonly claveDemostracion = this.autenticacion.claveDemostracion;
+  protected readonly modo = this.autenticacion.modo;
 
   constructor() {
     addIcons({ arrowForwardOutline, eyeOffOutline, eyeOutline, logInOutline });
@@ -116,13 +118,13 @@ export class Ingreso {
     }
   }
 
-  protected async ingresarRapido(usuario: Usuario): Promise<void> {
+  protected async ingresarRapido(acceso: AccesoRapido): Promise<void> {
     this.enviado.set(false);
     this.errorMensaje.set('');
     this.enviando.set(true);
 
     try {
-      await this.autenticacion.ingresarRapido(usuario.id);
+      await this.autenticacion.ingresarRapido(acceso.id);
       await this.router.navigate(['/inicio']);
     } catch (error: unknown) {
       this.errorMensaje.set(
