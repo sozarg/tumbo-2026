@@ -1,94 +1,262 @@
-import { Injectable, inject } from '@angular/core';
-import { User } from '@supabase/supabase-js';
-import { PerfilUsuario, Usuario } from '../models/usuario';
-import { supabaseClient } from './supabase.client';
-import { AutenticacionPort } from './autenticacion.port';
+import { Injectable, inject, signal } from '@angular/core';
+import { environment } from '../../../environments/environment';
+import { Tablas, Vistas } from '../models/base-de-datos';
+import { AccesoRapido, Usuario, etiquetaDePerfil } from '../models/usuario';
+import { AutenticacionPort, ModoAutenticacion, ResultadoAutenticacion } from './autenticacion.port';
 import { SesionService } from './sesion.service';
+import { exigirCliente, supabaseClient } from './supabase.client';
+
+type FilaUsuario = Tablas<'usuarios'>;
+
+/**
+ * Fila de la vista accesos_rapidos.
+ *
+ * PostgreSQL no garantiza que las columnas de una vista sean no nulas,
+ * así que los tipos generados las marcan todas como opcionales. Por eso
+ * más abajo se descartan explícitamente las filas incompletas en lugar
+ * de asumir que vienen llenas.
+ */
+type FilaAccesoRapido = Vistas<'accesos_rapidos'>;
 
 @Injectable({ providedIn: 'root' })
 export class AutenticacionSupabaseService implements AutenticacionPort {
   private readonly sesion = inject(SesionService);
 
-  readonly claveDemostracion = '';
-  readonly usuariosDePrueba: readonly Usuario[] = [];
+  readonly modo: ModoAutenticacion = 'supabase';
+  readonly claveDemostracion = environment.claveDemostracion;
 
-  async ingresar(correo: string, clave: string): Promise<{ readonly usuario: Usuario }> {
+  private readonly accesos = signal<readonly AccesoRapido[]>([]);
+  readonly accesosRapidos = this.accesos.asReadonly();
+
+  readonly listo: Promise<void>;
+
+  constructor() {
+    this.listo = this.arrancar();
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Arranque
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Restaura la sesión guardada y carga los accesos rápidos.
+   *
+   * Nunca lanza: si algo falla al arrancar, la aplicación tiene que
+   * abrir igual en la pantalla de ingreso y explicar el problema ahí,
+   * no quedarse en blanco.
+   */
+  private async arrancar(): Promise<void> {
     if (!supabaseClient) {
-      throw new Error('Supabase todavía no está configurado. Usá el acceso demo mientras tanto.');
+      return;
     }
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
+    supabaseClient.auth.onAuthStateChange((evento) => {
+      if (evento === 'SIGNED_OUT') {
+        this.sesion.cerrar();
+      }
+    });
+
+    await Promise.all([this.restaurarSesion(), this.cargarAccesosRapidos()]);
+  }
+
+  private async restaurarSesion(): Promise<void> {
+    const cliente = supabaseClient;
+    if (!cliente) {
+      return;
+    }
+
+    try {
+      const { data } = await cliente.auth.getSession();
+      const identidad = data.session?.user;
+      if (!identidad) {
+        return;
+      }
+
+      const fila = await this.buscarPerfil(identidad.id);
+      // Una cuenta que quedó abierta y mientras tanto fue rechazada no
+      // debe seguir operando: se la cierra al arrancar.
+      if (!fila || fila.estado !== 'aprobado') {
+        await cliente.auth.signOut();
+        this.sesion.cerrar();
+        return;
+      }
+
+      this.sesion.iniciar(this.aUsuario(fila));
+    } catch {
+      this.sesion.cerrar();
+    }
+  }
+
+  /** Requisito excluyente R12: los accesos rápidos salen de la base. */
+  async cargarAccesosRapidos(): Promise<void> {
+    const cliente = supabaseClient;
+    if (!cliente) {
+      return;
+    }
+
+    try {
+      const { data, error } = await cliente.from('accesos_rapidos').select('*');
+
+      if (error || !data) {
+        this.accesos.set([]);
+        return;
+      }
+
+      this.accesos.set(
+        data
+          .map((fila) => this.aAccesoRapido(fila))
+          .filter((acceso): acceso is AccesoRapido => acceso !== null),
+      );
+    } catch {
+      this.accesos.set([]);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Ingreso
+  // ─────────────────────────────────────────────────────────────────
+
+  async ingresar(correo: string, clave: string): Promise<ResultadoAutenticacion> {
+    const cliente = exigirCliente();
+
+    const { data, error } = await cliente.auth.signInWithPassword({
       email: correo.trim().toLowerCase(),
       password: clave,
     });
 
     if (error || !data.user) {
-      throw new Error(error?.message ?? 'No se pudo iniciar sesión con Supabase.');
+      throw new Error(this.mensajeDeError(error?.message));
     }
 
-    const usuario = this.convertirUsuario(data.user, correo);
+    const fila = await this.buscarPerfil(data.user.id);
+
+    if (!fila) {
+      await cliente.auth.signOut();
+      throw new Error(
+        'La cuenta existe pero no tiene un perfil cargado. Avisale al dueño o al supervisor.',
+      );
+    }
+
+    // Puntos 5, 7 y 8: el cliente que no fue aceptado no puede ingresar.
+    // Se comprueba contra la tabla usuarios, nunca contra user_metadata,
+    // porque el metadata lo puede escribir la propia persona.
+    if (fila.estado !== 'aprobado') {
+      await cliente.auth.signOut();
+      throw new Error(this.mensajeSegunEstado(fila));
+    }
+
+    const usuario = this.aUsuario(fila);
     this.sesion.iniciar(usuario);
     return { usuario };
   }
 
-  async ingresarRapido(_id: string): Promise<{ readonly usuario: Usuario }> {
-    throw new Error('Los accesos rápidos pertenecen únicamente al modo demo.');
+  /**
+   * Ingreso rápido: toma el correo del acceso elegido y entra con la
+   * clave común de demostración. No es un atajo que saltee la
+   * autenticación: pasa por Supabase Auth igual que el formulario, y
+   * por lo tanto también respeta el estado de la cuenta.
+   */
+  async ingresarRapido(id: string): Promise<ResultadoAutenticacion> {
+    const acceso = this.accesos().find((candidato) => candidato.id === id);
+
+    if (!acceso) {
+      throw new Error('Ese acceso rápido ya no está disponible. Actualizá la pantalla.');
+    }
+
+    if (!this.claveDemostracion) {
+      throw new Error(
+        'Los accesos rápidos necesitan la clave común de demostración. ' +
+          'Completá claveDemostracion en environment.local.ts.',
+      );
+    }
+
+    return this.ingresar(acceso.correo, this.claveDemostracion);
   }
 
-  cerrarSesion(): void {
+  async cerrarSesion(): Promise<void> {
+    // Se espera el signOut antes de limpiar el estado: la cátedra pide
+    // verificar que las credenciales se borren, y si se navega sin
+    // esperar, el token puede seguir en el almacenamiento.
     if (supabaseClient) {
-      void supabaseClient.auth.signOut();
+      await supabaseClient.auth.signOut();
     }
     this.sesion.cerrar();
   }
 
-  private convertirUsuario(user: User, correo: string): Usuario {
-    const metadata: Record<string, unknown> = user.user_metadata ?? {};
-    const perfil = this.perfil(metadata['perfil']);
-    const nombres = this.texto(metadata['nombres']) ?? correo.split('@')[0] ?? 'Usuario';
-    const apellidos = this.texto(metadata['apellidos']) ?? '';
+  // ─────────────────────────────────────────────────────────────────
+  // Auxiliares
+  // ─────────────────────────────────────────────────────────────────
+
+  /** Descarta las filas incompletas en lugar de forzar los tipos. */
+  private aAccesoRapido(fila: FilaAccesoRapido): AccesoRapido | null {
+    const { id, nombres, correo, perfil } = fila;
+
+    if (id === null || nombres === null || correo === null || perfil === null) {
+      return null;
+    }
 
     return {
-      id: user.id,
+      id,
       nombres,
-      apellidos,
-      correo: user.email ?? correo,
+      apellidos: fila.apellidos ?? '',
+      correo,
       perfil,
-      etiquetaPerfil: this.etiqueta(perfil),
+      etiquetaPerfil: etiquetaDePerfil(perfil),
+      fotoUrl: fila.foto_url,
     };
   }
 
-  private perfil(valor: unknown): PerfilUsuario {
-    const perfiles: readonly PerfilUsuario[] = [
-      'dueno',
-      'supervisor',
-      'metre',
-      'mozo',
-      'cocinero',
-      'cantinero',
-      'cliente_registrado',
-      'cliente_anonimo',
-    ];
-    return typeof valor === 'string' && perfiles.includes(valor as PerfilUsuario)
-      ? (valor as PerfilUsuario)
-      : 'cliente_registrado';
+  private async buscarPerfil(id: string): Promise<FilaUsuario | null> {
+    const cliente = exigirCliente();
+    const { data, error } = await cliente.from('usuarios').select('*').eq('id', id).maybeSingle();
+
+    return error ? null : data;
   }
 
-  private etiqueta(perfil: PerfilUsuario): string {
-    const etiquetas: Record<PerfilUsuario, string> = {
-      dueno: 'Dueño',
-      supervisor: 'Supervisor',
-      metre: 'Maitre',
-      mozo: 'Mozo',
-      cocinero: 'Cocinero',
-      cantinero: 'Cantinero',
-      cliente_registrado: 'Cliente registrado',
-      cliente_anonimo: 'Cliente anónimo',
+  private aUsuario(fila: FilaUsuario): Usuario {
+    return {
+      id: fila.id,
+      nombres: fila.nombres,
+      apellidos: fila.apellidos ?? '',
+      correo: fila.correo ?? '',
+      perfil: fila.perfil,
+      etiquetaPerfil: etiquetaDePerfil(fila.perfil),
+      estado: fila.estado,
+      fotoUrl: fila.foto_url,
     };
-    return etiquetas[perfil];
   }
 
-  private texto(valor: unknown): string | null {
-    return typeof valor === 'string' && valor.trim() ? valor.trim() : null;
+  private mensajeSegunEstado(fila: FilaUsuario): string {
+    if (fila.estado === 'rechazado') {
+      return fila.motivo_rechazo
+        ? `Tu registro fue rechazado. Motivo: ${fila.motivo_rechazo}`
+        : 'Tu registro fue rechazado. Comunicate con el restaurante si creés que es un error.';
+    }
+    return (
+      'Tu cuenta todavía está pendiente de aprobación. ' +
+      'Un dueño o un supervisor tiene que aceptarla antes de que puedas ingresar.'
+    );
+  }
+
+  /** Traduce los mensajes de Supabase, que llegan en inglés. */
+  private mensajeDeError(mensaje: string | undefined): string {
+    if (!mensaje) {
+      return 'No se pudo iniciar sesión. Probá de nuevo en un momento.';
+    }
+    const normalizado = mensaje.toLowerCase();
+
+    if (normalizado.includes('invalid login credentials')) {
+      return 'El correo o la clave no coinciden con ninguna cuenta.';
+    }
+    if (normalizado.includes('email not confirmed')) {
+      return 'La cuenta existe pero todavía no confirmó su correo electrónico.';
+    }
+    if (normalizado.includes('too many requests') || normalizado.includes('rate limit')) {
+      return 'Hubo demasiados intentos seguidos. Esperá un momento y volvé a probar.';
+    }
+    if (normalizado.includes('failed to fetch') || normalizado.includes('network')) {
+      return 'No se pudo contactar al servidor. Revisá tu conexión a internet.';
+    }
+    return 'No se pudo iniciar sesión. Probá de nuevo en un momento.';
   }
 }

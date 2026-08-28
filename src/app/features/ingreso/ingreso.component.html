@@ -1,13 +1,7 @@
 <ion-content [fullscreen]="true" class="login-page">
   <main class="login-layout">
     <section class="login-intro" aria-labelledby="login-title">
-      <img
-        ngSrc="imagenes/logo.png"
-        width="116"
-        height="116"
-        priority
-        alt=""
-      />
+      <img ngSrc="imagenes/logo.png" width="116" height="116" priority alt="" />
       <p class="login-intro__eyebrow">Bienvenido a</p>
       <h1 id="login-title">TUMBO</h1>
       <p>La mesa, el equipo y la experiencia en un solo lugar.</p>
@@ -113,22 +107,36 @@
         </p>
 
         <div class="quick-access__grid">
-          @for (usuario of usuariosRapidos; track usuario.id) {
+          @for (usuario of usuariosRapidos(); track usuario.id) {
             <ion-button
               class="quick-user"
               fill="outline"
               [disabled]="enviando()"
               (click)="ingresarRapido(usuario)"
             >
-              <span class="quick-user__name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
-              <span class="quick-user__role">{{ usuario.etiquetaPerfil }}</span>
+              <span class="quick-user__texto">
+                <span class="quick-user__name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
+                <span class="quick-user__role">{{ usuario.etiquetaPerfil }}</span>
+              </span>
             </ion-button>
           }
         </div>
 
+        @if (usuariosRapidos().length === 0) {
+          <p class="form-message" role="status">
+            Todavía no hay cuentas cargadas para el acceso rápido. Revisá que la base de Supabase
+            tenga los usuarios de demostración creados.
+          </p>
+        }
+
         <p class="demo-note">
-          Demo temporal: cualquier acceso rápido funciona. Para el formulario,
-          usá la clave <strong>{{ claveDemostracion }}</strong>.
+          @if (modo === 'demo') {
+            Modo demostración: cualquier acceso rápido funciona.
+          } @else {
+            Los accesos rápidos entran con cuentas reales de Supabase.
+          }
+          Para el formulario, usá la clave <strong>{{ claveDemostracion }}</strong
+          >.
         </p>
       </div>
     </section>

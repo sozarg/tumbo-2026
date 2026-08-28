@@ -78,6 +78,8 @@ export class DemoRestauranteService {
       correo: datos.correo.trim().toLowerCase(),
       perfil: datos.perfil,
       etiquetaPerfil: etiqueta,
+      estado: 'aprobado',
+      fotoUrl: null,
     };
     this.empleados.update((empleados) => [...empleados, nuevo]);
     this.notificar('Nuevo integrante agregado al equipo.', ['dueno', 'supervisor']);
@@ -424,6 +426,8 @@ export class DemoRestauranteService {
       correo: correo as string,
       perfil: perfil as Extract<PerfilUsuario, 'cocinero' | 'cantinero' | 'mozo'>,
       etiquetaPerfil: etiquetaPerfil as string,
+      estado: 'aprobado' as const,
+      fotoUrl: null,
     }));
   }
 

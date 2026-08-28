@@ -3,13 +3,7 @@
     <main class="home-layout">
       <header class="home-header">
         <div class="brand-lockup">
-          <img
-            ngSrc="imagenes/logo.png"
-            width="62"
-            height="62"
-            priority
-            alt=""
-          />
+          <img ngSrc="imagenes/logo.png" width="62" height="62" priority alt="" />
           <div>
             <span class="brand-lockup__overline">Panel TUMBO</span>
             <strong>TUMBO</strong>
@@ -30,9 +24,7 @@
       <section class="welcome" aria-labelledby="welcome-title">
         <div>
           <p class="section-kicker">Sesión activa</p>
-          <h1 id="welcome-title">
-            Hola, {{ usuarioActual.nombres.split(' ')[0] }}.
-          </h1>
+          <h1 id="welcome-title">Hola, {{ usuarioActual.nombres.split(' ')[0] }}.</h1>
           <p>Este es el punto de partida para organizar la experiencia TUMBO.</p>
         </div>
         <ion-chip class="profile-chip">{{ usuarioActual.etiquetaPerfil }}</ion-chip>
@@ -54,7 +46,7 @@
       <section class="panel-section" aria-labelledby="actions-title">
         <div class="section-heading">
           <div>
-            <p class="section-kicker">Próximamente conectado a Supabase</p>
+            <p class="section-kicker">Conectado a Supabase</p>
             <h2 id="actions-title">Tu panel de trabajo</h2>
           </div>
           <span class="section-heading__count">04</span>
@@ -89,7 +81,9 @@
         </div>
         <ul class="delivery-list">
           <li><span aria-hidden="true">✓</span> Ícono y paleta de la aplicación definidos</li>
-          <li><span aria-hidden="true">✓</span> Splash estática y dinámica con los cuatro integrantes</li>
+          <li>
+            <span aria-hidden="true">✓</span> Splash estática y dinámica con los cuatro integrantes
+          </li>
           <li><span aria-hidden="true">✓</span> Formulario con validaciones y acceso funcional</li>
           <li><span aria-hidden="true">✓</span> Cierre de sesión listo para conectar a Supabase</li>
         </ul>

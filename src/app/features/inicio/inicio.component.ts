@@ -85,9 +85,15 @@ export class Inicio implements OnInit {
     }
   }
 
-  protected cerrarSesion(): void {
-    this.autenticacion.cerrarSesion();
-    void this.router.navigate(['/ingreso'], { replaceUrl: true });
+  /**
+   * Se espera el cierre antes de navegar: la cátedra pide verificar que
+   * las credenciales se borren, y si se navega sin esperar el token
+   * puede seguir en el almacenamiento unos milisegundos más.
+   * replaceUrl evita que el botón 'atrás' vuelva a la sesión cerrada.
+   */
+  protected async cerrarSesion(): Promise<void> {
+    await this.autenticacion.cerrarSesion();
+    await this.router.navigate(['/ingreso'], { replaceUrl: true });
   }
 
   protected abrirOperacion(): void {
