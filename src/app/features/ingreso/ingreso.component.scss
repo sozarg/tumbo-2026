@@ -1,6 +1,27 @@
 :host {
   display: block;
   height: 100%;
+  color: #003592;
+}
+
+.login-header {
+  --background: #fbf1d5;
+  --box-shadow: none;
+}
+
+.login-header ion-toolbar {
+  --background: #fbf1d5;
+  --border-color: rgb(0 53 146 / 9%);
+  --min-height: 4.25rem;
+  padding: 0.5rem 1rem;
+}
+
+.login-header img {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0 auto;
+  object-fit: contain;
 }
 
 .login-page {
@@ -8,58 +29,11 @@
 }
 
 .login-layout {
-  display: grid;
   min-height: 100%;
-  grid-template-columns: 1fr;
-  color: #003592;
-}
-
-.login-intro {
-  display: flex;
-  align-items: center;
-  padding: 2.5rem 1.25rem 1.25rem;
-  flex-direction: column;
-  text-align: center;
+  padding: clamp(1.25rem, 4vw, 3rem) 1rem max(2rem, env(safe-area-inset-bottom));
   background:
-    radial-gradient(circle at 15% 15%, rgb(252 237 187 / 80%), transparent 28%),
-    linear-gradient(155deg, #fbb103, #dc5b02);
-}
-
-.login-intro img {
-  width: 7.25rem;
-  height: 7.25rem;
-  margin-bottom: 1.2rem;
-  border: 0.35rem solid #fcedbb;
-  border-radius: 50%;
-  box-shadow: 0 0.8rem 1.6rem rgb(0 53 146 / 20%);
-}
-
-.login-intro__eyebrow {
-  margin: 0;
-  color: #003592;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.login-intro h1 {
-  margin: 0.15rem 0 0.5rem;
-  color: #006ae7;
-  font-size: clamp(3rem, 15vw, 5rem);
-  font-weight: 950;
-  letter-spacing: 0.06em;
-  line-height: 0.9;
-  text-shadow: 0.1rem 0.12rem 0 #f8fbfd;
-}
-
-.login-intro > p:last-child {
-  max-width: 19rem;
-  margin: 0;
-  color: #003592;
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.45;
+    radial-gradient(circle at 100% 0%, rgb(252 237 187 / 75%), transparent 32%),
+    #fbf1d5;
 }
 
 .login-panel {
@@ -280,23 +254,8 @@
 }
 
 @media (min-width: 45rem) {
-  .login-layout {
-    grid-template-columns: minmax(19rem, 0.85fr) minmax(28rem, 1.15fr);
-  }
-
-  .login-intro {
-    position: sticky;
-    top: 0;
-    min-height: 100vh;
-    justify-content: center;
-    padding: 2rem;
-  }
-
   .login-panel {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 3rem 2rem;
+    padding-inline: 2rem;
   }
 
   .quick-access__grid {

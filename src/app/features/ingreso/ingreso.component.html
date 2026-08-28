@@ -1,16 +1,16 @@
-<ion-content [fullscreen]="true" class="login-page">
-  <main class="login-layout">
-    <section class="login-intro" aria-labelledby="login-title">
-      <img ngSrc="imagenes/logo.png" width="116" height="116" priority alt="" />
-      <p class="login-intro__eyebrow">Bienvenido a</p>
-      <h1 id="login-title">TUMBO</h1>
-      <p>La mesa, el equipo y la experiencia en un solo lugar.</p>
-    </section>
+<ion-header class="login-header">
+  <ion-toolbar>
+    <img ngSrc="imagenes/logo.png" width="116" height="116" priority alt="TUMBO" />
+  </ion-toolbar>
+</ion-header>
 
+<ion-content class="login-page">
+  <main class="login-layout">
     <section class="login-panel" aria-label="Formulario de ingreso">
       <ion-card class="login-card">
         <ion-card-header>
-          <ion-card-title>Ingresar</ion-card-title>
+          <p class="section-kicker">Bienvenido a TUMBO</p>
+          <ion-card-title id="login-title">Ingresar</ion-card-title>
           <ion-card-subtitle>Accedé con tu cuenta de trabajo</ion-card-subtitle>
         </ion-card-header>
 
