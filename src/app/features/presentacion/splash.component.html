@@ -1,7 +1,27 @@
-<tumbo-presentacion aria-hidden="true" />
-
 <div class="splash-page" (animationend)="finalizarTransicion($event)">
-  <main class="splash-page__sheet" aria-label="TUMBO">
-    <img ngSrc="imagenes/logo.png" width="270" height="270" priority alt="" />
+  <main class="splash-page__sheet" aria-labelledby="splash-title">
+    <div class="splash-page__orbit splash-page__orbit--outer" aria-hidden="true"></div>
+    <div class="splash-page__orbit splash-page__orbit--inner" aria-hidden="true"></div>
+
+    <section class="splash-page__content">
+      <div class="splash-page__logo-wrap">
+        <img
+          class="splash-page__logo"
+          ngSrc="imagenes/logo.png"
+          width="1280"
+          height="1280"
+          priority
+          alt="TUMBO"
+        />
+      </div>
+
+      <h1 id="splash-title">TUMBITO</h1>
+      <p class="splash-page__tagline">Una experiencia que se comparte</p>
+
+      <div class="splash-page__loading" role="status" aria-label="Cargando aplicación">
+        <span class="splash-page__loading-dot" aria-hidden="true"></span>
+        <span>Preparando tu experiencia</span>
+      </div>
+    </section>
   </main>
 </div>

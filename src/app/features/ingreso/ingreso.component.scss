@@ -21,7 +21,9 @@
 .field ion-input::part(native) { border-radius: 14px; }
 .field ion-input:focus-within { --background: rgb(0 53 146 / 14%); --border-color: var(--tumbo-azul-accion); box-shadow: 0 0 0 3px var(--tumbo-azul-22); }
 .field--invalid ion-input { --border-color: var(--tumbo-naranja-marca); --highlight-color-focused: var(--tumbo-naranja-marca); }
-.field__error { display: block; margin: 8px 0 0; color: var(--tumbo-naranja-profundo); font-size: 12px; font-weight: 700; line-height: 1.4; }
+.field__error-slot { height: 34px; margin-top: 8px; }
+.field__error { display: block; margin: 0; color: var(--tumbo-naranja-profundo); font-size: 12px; font-weight: 700; line-height: 1.4; }
+.field__error-placeholder { display: block; height: 34px; visibility: hidden; }
 .password-field { position: relative; }
 .password-field ion-input { padding-right: 48px; }
 .password-field__toggle { position: absolute; z-index: 2; top: 4px; right: 0; --color: var(--tumbo-azul-accion); }
