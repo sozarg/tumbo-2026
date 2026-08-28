@@ -2,9 +2,8 @@
   display: block;
   height: 100%;
 }
-
 .welcome-page {
-  --background: #fbf1d5;
+  --background: var(--tumbo-crema-fondo);
 }
 
 .welcome-layout {
@@ -15,72 +14,7 @@
   overflow: hidden;
   padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
   color: #003592;
-  background: #fbf1d5;
-}
-
-.welcome-decor {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  overflow: hidden;
-  background-image:
-    linear-gradient(rgb(255 255 255 / 34%) 2px, transparent 2px),
-    linear-gradient(90deg, rgb(255 255 255 / 34%) 2px, transparent 2px);
-  background-position: center;
-  background-size: 104px 104px;
-  pointer-events: none;
-}
-
-.welcome-decor__asset {
-  position: absolute;
-  height: auto;
-  opacity: 0.17;
-  object-fit: contain;
-  user-select: none;
-}
-
-.decor-sopa {
-  top: -6%;
-  left: -5%;
-  width: clamp(31.25rem, 28vw, 33.75rem);
-  transform: rotate(-7deg);
-  filter: blur(0.5px);
-}
-
-.decor-cafe {
-  top: 4%;
-  left: 50%;
-  width: clamp(7.5rem, 7.5vw, 9rem);
-  transform: translateX(-50%) rotate(7deg);
-}
-
-.decor-pizza {
-  top: 18%;
-  right: -2%;
-  width: clamp(15.5rem, 13.5vw, 17rem);
-  transform: rotate(8deg);
-}
-
-.decor-fideos {
-  right: -4%;
-  bottom: -5%;
-  width: clamp(29.5rem, 27.5vw, 33.5rem);
-  transform: rotate(7deg);
-  filter: blur(0.5px);
-}
-
-.decor-carne {
-  bottom: 13%;
-  left: 8%;
-  width: clamp(14.375rem, 13vw, 16.25rem);
-  transform: rotate(4deg);
-}
-
-.decor-ensalada {
-  bottom: 15.4%;
-  left: 45%;
-  width: clamp(11.5625rem, 10vw, 12.8125rem);
-  transform: rotate(-5deg);
+  background: var(--tumbo-crema-fondo);
 }
 
 .welcome-primary,
@@ -140,12 +74,12 @@
   min-width: 12rem;
   max-width: calc(100vw - 2.5rem);
   height: 3.25rem;
-  --background: #fbb103;
-  --background-hover: #e9a300;
-  --background-activated: #cc8e00;
+  --background: var(--tumbo-ambar);
+  --background-hover: var(--tumbo-ambar-hover);
+  --background-activated: var(--tumbo-ambar-activo);
   --border-radius: 0.9375rem;
-  --box-shadow: 0 0.25rem 0.6rem rgb(150 103 0 / 18%);
-  --color: #003592;
+  --box-shadow: 0 0.25rem 0.6rem var(--tumbo-ambar-sombra);
+  --color: var(--tumbo-azul-sombra);
   --padding-start: 3.25rem;
   --padding-end: 3.25rem;
   cursor: pointer;
@@ -156,7 +90,7 @@
 }
 
 .welcome-action__button:hover {
-  --box-shadow: 0 0.35rem 0.75rem rgb(150 103 0 / 22%);
+  --box-shadow: 0 0.35rem 0.75rem var(--tumbo-ambar-sombra-hover);
 }
 
 .welcome-action__button:focus-visible {
@@ -206,56 +140,5 @@
 @media (min-width: 48rem) {
   .welcome-layout {
     padding-inline: clamp(2rem, 6vw, 7rem);
-  }
-}
-
-@media (min-width: 48rem) and (max-width: 100rem) {
-  .decor-cafe {
-    top: -1%;
-    width: 7rem;
-  }
-
-  .decor-pizza {
-    right: -3.5%;
-  }
-}
-
-@media (max-width: 47.99rem) {
-  .welcome-decor {
-    background-size: 86px 86px;
-  }
-
-  .decor-sopa {
-    top: -5%;
-    left: -26%;
-    width: 17rem;
-  }
-
-  .decor-cafe {
-    top: 2%;
-    right: -10%;
-    left: auto;
-    bottom: auto;
-    width: 6.25rem;
-    transform: rotate(7deg);
-  }
-
-  .decor-pizza,
-  .decor-fideos,
-  .decor-ensalada {
-    display: none;
-  }
-
-  .decor-carne {
-    bottom: 18%;
-    left: -22%;
-    width: 10rem;
-  }
-
-  .decor-ensalada {
-    right: -18%;
-    bottom: -10%;
-    left: auto;
-    width: 13rem;
   }
 }

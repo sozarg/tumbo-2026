@@ -9,9 +9,6 @@ import { Router } from '@angular/router';
 import { IonButton } from '@ionic/angular/ion-button';
 import { IonCard } from '@ionic/angular/ion-card';
 import { IonCardContent } from '@ionic/angular/ion-card-content';
-import { IonCardHeader } from '@ionic/angular/ion-card-header';
-import { IonCardSubtitle } from '@ionic/angular/ion-card-subtitle';
-import { IonCardTitle } from '@ionic/angular/ion-card-title';
 import { IonContent } from '@ionic/angular/ion-content';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
@@ -19,27 +16,25 @@ import { IonNote } from '@ionic/angular/ion-note';
 import { IonSpinner } from '@ionic/angular/ion-spinner';
 import { addIcons } from 'ionicons';
 import {
-  arrowForwardOutline,
   eyeOffOutline,
   eyeOutline,
   logInOutline,
 } from 'ionicons/icons';
 import { AccesoRapido } from '../../core/models/usuario';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
+import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 
 @Component({
   imports: [
     IonButton,
     IonCard,
     IonCardContent,
-    IonCardHeader,
-    IonCardSubtitle,
-    IonCardTitle,
     IonContent,
     IonIcon,
     IonInput,
     IonNote,
     IonSpinner,
+    FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
@@ -66,7 +61,7 @@ export class Ingreso {
   protected readonly modo = this.autenticacion.modo;
 
   constructor() {
-    addIcons({ arrowForwardOutline, eyeOffOutline, eyeOutline, logInOutline });
+    addIcons({ eyeOffOutline, eyeOutline, logInOutline });
   }
 
   protected campoInvalido(nombre: 'correo' | 'clave'): boolean {

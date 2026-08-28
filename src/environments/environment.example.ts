@@ -17,5 +17,5 @@ export const environment: Entorno = {
   production: false,
   supabaseUrl: 'https://TU-PROYECTO.supabase.co',
   supabaseAnonKey: 'PEGAR_AQUI_LA_CLAVE_ANON_PUBLICA',
-  claveDemostracion: 'Tumbo2026',
+  claveDemostracion: 'Tumbito2026',
 };

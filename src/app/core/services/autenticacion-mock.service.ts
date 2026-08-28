@@ -17,7 +17,7 @@ export class AutenticacionMockService implements AutenticacionPort {
   private readonly sesion = inject(SesionService);
 
   readonly modo: ModoAutenticacion = 'demo';
-  readonly claveDemostracion = 'Tumbo2026';
+  readonly claveDemostracion = 'Tumbito2026';
   readonly listo = Promise.resolve();
 
   private readonly accesos = signal<readonly AccesoRapido[]>([
