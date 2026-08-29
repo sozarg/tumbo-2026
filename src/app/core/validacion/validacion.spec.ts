@@ -3,6 +3,7 @@ import { LIMITES } from './limites';
 import { mensajeDeError } from './mensajes';
 import {
   conLimite,
+  correoValido,
   sinEspaciosSolos,
   soloLetras,
   soloNumeros,
@@ -54,6 +55,52 @@ describe('validadores de nombre', () => {
 
   it('rechaza un valor que solo tiene espacios', () => {
     expect(probar('    ')).toBe(false);
+  });
+});
+
+describe('correoValido', () => {
+  /**
+   * La regla del formulario y la de la base tienen que aceptar y
+   * rechazar exactamente lo mismo. `Validators.email` de Angular no
+   * sirve para esto: da por bueno 'hola@gmail', que el CHECK
+   * formato_correo de PostgreSQL después rechaza. El usuario veía el
+   * campo en verde y recibía un error del servidor al enviar.
+   *
+   * REGEX_BASE es copia literal del CHECK. Cada caso se compara contra
+   * las dos reglas, así que si alguien toca una de las dos, falla acá.
+   */
+  const REGEX_BASE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+  const CASOS: readonly [string, boolean][] = [
+    ['hola', false],
+    ['hola@', false],
+    ['@gmail.com', false],
+    ['hola@gmail', false],
+    ['hola@gmail.', false],
+    ['hola@.com', false],
+    ['hola @gmail.com', false],
+    [' hola@gmail.com ', false],
+    ['hola@gmail.com', true],
+    ['nombre.apellido@bna.com.ar', true],
+    ['a@b.co', true],
+  ];
+
+  for (const [valor, esperado] of CASOS) {
+    it(`${esperado ? 'acepta' : 'rechaza'} ${JSON.stringify(valor)}`, () => {
+      const control = new FormControl(valor, [correoValido]);
+      expect(control.valid).toBe(esperado);
+      // y la base opina lo mismo
+      expect(REGEX_BASE.test(valor)).toBe(esperado);
+    });
+  }
+
+  it('no opina sobre el campo vacío: de eso se encarga required', () => {
+    expect(correoValido(new FormControl(''))).toBeNull();
+  });
+
+  it('es más estricto que Validators.email, que acepta hola@gmail', () => {
+    expect(new FormControl('hola@gmail', [Validators.email]).valid).toBe(true);
+    expect(new FormControl('hola@gmail', [correoValido]).valid).toBe(false);
   });
 });
 

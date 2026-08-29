@@ -21,10 +21,32 @@ import { CampoConLimite, LIMITES } from './limites';
  */
 const SOLO_LETRAS = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]*$/;
 
+/**
+ * Correo electrónico, con EXACTAMENTE la misma regla que la base.
+ *
+ * Es una copia literal del CHECK `formato_correo` de
+ * supabase/migrations/20260901000100_tablas_base.sql. No se usa
+ * `Validators.email` de Angular porque su regla es más permisiva: acepta
+ * un dominio sin punto, así que da por bueno `hola@gmail`, que la base
+ * después rechaza. El usuario veía el formulario en verde y recibía un
+ * error del servidor al enviar.
+ */
+const CORREO = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
 /** Vacío o solo espacios: lo deja pasar para que se queje `required` */
 function estaVacio(valor: unknown): boolean {
   return valor === null || valor === undefined || String(valor).trim() === '';
 }
+
+/**
+ * Correo válido según la misma regla que aplica PostgreSQL.
+ * Reemplaza a `Validators.email`, no lo acompaña: tener los dos solo
+ * agregaría un error redundante.
+ */
+export const correoValido: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  if (estaVacio(control.value)) return null;
+  return CORREO.test(String(control.value)) ? null : { correoValido: true };
+};
 
 /**
  * Nombre de persona: letras, espacios, tildes, ñ, apóstrofo y guión.
