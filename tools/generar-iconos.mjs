@@ -83,11 +83,35 @@ await writeFile(
     .toBuffer(),
 );
 
-// Pantalla de carga nativa: la que se ve entre que tocás el ícono y que
-// arranca la aplicación. Es cuadrada y grande porque Android la recorta
-// al alto y ancho de cada pantalla; por eso el logo ocupa poco y queda
-// bien centrado en cualquier celular.
-const splash = await createIcon(2732, 0.36, CREMA);
+// Pantalla de carga nativa. El requisito excluyente R14 pide que la
+// presentación estática muestre el ícono, el nombre del grupo y los
+// apellidos y nombres de los cuatro integrantes, así que NO se genera
+// desde el logo pelado: se rasteriza public/imagenes/splash-estatica.svg,
+// que ya tiene todo eso.
+//
+// El <image> del SVG apunta al logo con una ruta absoluta que sharp no
+// resuelve —no carga archivos externos, por seguridad—, así que se
+// incrusta el PNG como data URI antes de rasterizar. Sin esto el círculo
+// del medio sale vacío.
+const svg = (await readFile(path.join(root, 'public', 'imagenes', 'splash-estatica.svg'), 'utf8'))
+  .replace('href="/imagenes/logo.png"', `href="data:image/png;base64,${logo.toString('base64')}"`);
+
+// El diseño es vertical (1080x1920) y Android recorta la splash al alto
+// y ancho de cada pantalla. Se lo deja a 2400 de alto dentro de un lienzo
+// cuadrado de 2732: así el recorte de un celular en vertical se come solo
+// el margen crema y ningún texto queda cortado.
+const presentacion = await sharp(Buffer.from(svg))
+  .resize({ height: 2400 })
+  .png({ compressionLevel: 9 })
+  .toBuffer();
+
+const splash = await sharp({
+  create: { width: 2732, height: 2732, channels: 4, background: CREMA },
+})
+  .composite([{ input: presentacion, gravity: 'center' }])
+  .png({ compressionLevel: 9 })
+  .toBuffer();
+
 await writeFile(path.join(salidaCapacitor, 'splash.png'), splash);
 await writeFile(path.join(salidaCapacitor, 'splash-dark.png'), splash);
 
