@@ -108,6 +108,31 @@ borde naranja.
 
 ---
 
+## 3 bis. Las ilustraciones del fondo
+
+No hay nada que correr a mano: `npm run apk` ya lo hace solo. Se explica
+igual porque conviene saber que está pasando.
+
+Los archivos de `public/imagenes/tumbito/` son los originales de diseño y
+miden más de 1100 píxeles de ancho. En el celular ninguno se dibuja a más
+de 272. Cuando el APK los usaba tal cual, el navegador tenía que
+decodificar las tres visibles a tamaño completo justo mientras la splash
+se animaba, y se veía un tirón: medido, un cuadro de 117 milisegundos
+cuando el resto eran de 17.
+
+`tools/generar-ilustraciones.mjs` escribe al lado de cada original tres
+versiones más chicas (`sopa-240.webp`, `sopa-480.webp`, `sopa-960.webp`)
+y el `srcset` del fondo deja que el celular elija la que le sirve. El
+peor cuadro pasó de 117 a 33-50 ms, que es lo mismo que se mide sin
+ninguna ilustración: dejaron de costar.
+
+> **Los originales no se tocan.** Si Terrile cambia una ilustración,
+> pisa el original y listo: el script se da cuenta por la fecha del
+> archivo y rehace las variantes en la próxima compilación. La primera
+> corrida tarda más o menos un minuto; después se saltea sola.
+
+---
+
 ## 4. Comprobar que quedó bien
 
 En el celular, con la aplicación instalada:

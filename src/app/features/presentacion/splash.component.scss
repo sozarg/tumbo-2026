@@ -12,6 +12,26 @@
   animation: splash-exit 420ms cubic-bezier(0.76, 0, 0.24, 1) 1.88s both;
 }
 
+/* NADA SE MUEVE HASTA QUE EL HILO PRINCIPAL ESTÉ LIBRE.
+
+   Una animación CSS empieza a contar apenas el elemento entra al DOM, y
+   eso pasa mientras Angular e Ionic todavía están arrancando. Ese tiempo
+   se consume igual aunque no se pinte nada: la splash no aparecía desde
+   su primer fotograma, aparecía YA EMPEZADA y de golpe. Medido con la
+   CPU al 4×: el primer dibujado recién a los 287 ms, con la animación ya
+   un 12 % adentro, y cinco cuadros perdidos en el primer medio segundo
+   —uno de 167 ms—.
+
+   Con esto las animaciones quedan congeladas en su fotograma cero y
+   `Splash.arrancar()` les saca el freno recién cuando mide dos cuadros
+   seguidos en hora. Mientras tanto la pantalla muestra el crema del
+   body (#fbf1d5), que es exactamente el mismo fondo de la splash: no se
+   ve una espera, se ve la splash antes de empezar a moverse. */
+.splash-page:not(.splash-page--lista),
+.splash-page:not(.splash-page--lista) * {
+  animation-play-state: paused;
+}
+
 .splash-page__sheet {
   position: relative;
   display: grid;
@@ -22,7 +42,9 @@
   color: var(--tumbo-azul-sombra);
   background: var(--tumbo-crema-fondo);
   transform-origin: 50% 50%;
-  animation: splash-stage-zoom 2.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation:
+    splash-stage-zoom 2.3s both,
+    splash-stage-fade 280ms ease-out both;
 }
 
 .splash-page__content {
@@ -42,7 +64,7 @@
   align-items: center;
   flex-direction: column;
   text-align: center;
-  animation: splash-content-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: splash-content-in 900ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
 .splash-page__logo-wrap {
@@ -51,7 +73,7 @@
   aspect-ratio: 1;
   place-items: center;
   animation:
-    splash-logo-in 720ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both,
+    splash-logo-in 720ms cubic-bezier(0.34, 1.56, 0.64, 1) 80ms both,
     splash-logo-float 1.15s ease-in-out 820ms infinite alternate;
 }
 
@@ -62,6 +84,18 @@
   object-fit: contain;
   object-position: center;
   transform-origin: 50% 50%;
+  /* La animación de salida agranda el logo 6,5 veces. `will-change` le
+     avisa al navegador que le conviene rasterizarlo una vez y dejar el
+     escalado en manos de la GPU, en lugar de volver a dibujarlo en cada
+     cuadro a un tamaño cada vez mayor.
+
+     Aclaración honesta: esto NO era lo que producía el tirón que veíamos
+     —eran las ilustraciones del fondo de la pantalla siguiente, medido
+     en `tools/generar-ilustraciones.mjs`—. Se queda igual porque es lo
+     correcto para una animación de escala, pero no se le atribuya una
+     mejora que no dio. */
+  backface-visibility: hidden;
+  will-change: transform;
   animation: splash-logo-cover 420ms cubic-bezier(0.76, 0, 0.24, 1) 1.88s both;
 }
 
@@ -78,6 +112,27 @@
 .splash-page h1 {
   max-width: 100%;
   margin: 0.2rem 0 0;
+  /* EL TÍTULO NO SE PUEDE PARTIR EN DOS LÍNEAS. NUNCA.
+
+     `splash-title-in` anima `letter-spacing` de 0.42em a 0.08em, y
+     `letter-spacing` es una propiedad de LAYOUT: cada cuadro recalcula
+     el ancho del título. En un celular de 412 píxeles, "TUMBITO" con
+     0.42em no entra en una línea y se parte en dos; cuando la
+     separación se achica lo suficiente vuelve a entrar en una y el h1
+     pierde una línea entera de golpe.
+
+     Como el contenido está centrado verticalmente, esa línea que
+     desaparece mueve TODO lo de arriba —el logo incluido— la mitad de
+     su alto, en un solo cuadro. Medido: 26,84 píxeles de salto a los
+     1054 ms, contra fracciones de píxel en los cuadros vecinos. Se veía
+     como si la animación se cortara y la imagen retomara más abajo.
+
+     Con `nowrap` el título nunca cambia de cantidad de líneas, así que
+     el alto del bloque es constante y no hay nada que saltar. Que la
+     versión ancha se desborde a los costados ya estaba contemplado: el
+     `min-width: 0` de .splash-page__content la deja desbordar pareja a
+     los dos lados y .splash-page__sheet la recorta. */
+  white-space: nowrap;
   color: var(--tumbo-azul-sombra);
   font-size: clamp(2.6rem, 13vw, 5.4rem);
   font-weight: 850;
@@ -156,34 +211,73 @@
     splash-orbit-drift 6s ease-in-out 1.5s infinite alternate-reverse;
 }
 
+/* `visibility: hidden` al final saca la splash del trabajo de dibujado.
+   Antes quedaba invisible pero seguía animándose —el logo escalando a
+   1500 píxeles— hasta después de navegar, compitiendo por el hilo de
+   composición justo cuando la presentación se está pintando. */
 @keyframes splash-exit {
-  from { opacity: 1; }
+  from { opacity: 1; visibility: visible; }
   45% { opacity: 1; }
-  to { opacity: 0; }
+  99% { opacity: 0; visibility: visible; }
+  to { opacity: 0; visibility: hidden; }
 }
 
 /* Transición principal tipo "launch": el escenario respira, acerca el
-   logotipo y termina con una aceleración sutil antes de revelar la app. */
+   logotipo y termina con una aceleración sutil antes de revelar la app.
+
+   POR QUÉ CADA TRAMO DECLARA SU PROPIA CURVA
+   Una curva puesta en `animation:` se aplica ENTRE CADA PAR de
+   fotogramas clave, no a la animación entera. `cubic-bezier(0.2,0.8,0.2,1)`
+   es una desaceleración fuerte: termina cada tramo casi detenida y
+   empieza el siguiente a máxima velocidad. Con cuatro fotogramas clave
+   eso daba cuatro saltos de velocidad de 0 al máximo. Medido, la
+   velocidad del zoom era: -0.266 → -0.037 → -0.246 → ... → -0.001 →
+   +0.194. Frená, arrancá, frená, arrancá. A 60 cuadros por segundo y
+   sin perder ninguno, pero el ojo lo lee como un tirón.
+
+   Ahora cada tramo termina Y empieza detenido (`ease-in-out`), así la
+   velocidad no salta en ningún fotograma clave. El primero usa una
+   curva con entrada suave para que el "launch" no arranque de golpe.
+
+   La opacidad se fue a su propia animación (`splash-stage-fade`): antes
+   compartía los fotogramas clave del zoom y obligaba a que el 12 %
+   existiera, que era justo el que partía el movimiento en dos. */
 @keyframes splash-stage-zoom {
-  0% { opacity: 0; transform: scale(1.18); }
-  12% { opacity: 1; transform: scale(1.06); }
-  55% { opacity: 1; transform: scale(1); }
-  86% { opacity: 1; transform: scale(1.035); }
-  100% { opacity: 1; transform: scale(1); }
+  0% { transform: scale(1.18); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  55% { transform: scale(1); animation-timing-function: ease-in-out; }
+  86% { transform: scale(1.035); animation-timing-function: ease-in-out; }
+  100% { transform: scale(1); }
 }
 
+@keyframes splash-stage-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Mismo caso que splash-logo-in: el rebote lo hace la curva. */
 @keyframes splash-content-in {
   from { opacity: 0; transform: translateY(1.8rem) scale(0.82); }
-  70% { opacity: 1; transform: translateY(-0.25rem) scale(1.015); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Ojo: esta regla estaba declarada dos veces en el archivo. La primera
    nunca se aplicaba, porque en CSS gana la última definición con el
-   mismo nombre. Se dejó solo la que estaba en uso. */
+   mismo nombre. Se dejó solo la que estaba en uso.
+
+   EL REBOTE YA NO ES UN FOTOGRAMA CLAVE, ES LA CURVA
+   Antes había un fotograma al 72 % que se pasaba de largo (scale 1.03)
+   y volvía. Como la curva se aplica entre CADA par de fotogramas, ese
+   tramo de vuelta empezaba a máxima velocidad: el logo llegaba, se
+   quedaba casi quieto y de golpe pegaba un tirón para atrás. Medido:
+   la velocidad caía a +0.005 a los 583 ms y saltaba a -0.273 a los 650.
+
+   `cubic-bezier(0.34, 1.56, 0.64, 1)` se pasa de largo sola —el 1.56
+   es lo que la manda más allá del destino— y vuelve con la velocidad
+   continua. El rebote se ve igual; lo que se fue es el tirón. Y de
+   paso se pasan de largo las tres propiedades a la vez, no solo la
+   escala, así que el movimiento queda más coherente. */
 @keyframes splash-logo-in {
   from { opacity: 0; transform: translateY(2rem) scale(0.72) rotate(-3deg); }
-  72% { opacity: 1; transform: translateY(-0.35rem) scale(1.03) rotate(1deg); }
   to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
 }
 
