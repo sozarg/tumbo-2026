@@ -4,42 +4,26 @@ Aplicación móvil de gestión de restaurante para la Tecnicatura Universitaria 
 
 ## Estado actual
 
-La base Angular + Ionic está implementada y compila. La entrega actual incluye:
+La aplicación Angular + Ionic está integrada y verificada. La entrega actual incluye:
 
 - identidad visual basada en el logo entregado;
-- splash estática (docs/imagenes/splash-estatica.svg);
-- splash de inicialización mínima con el ícono centrado;
+- recurso de splash estática y pantalla de presentación con el ícono centrado;
 - pantalla de bienvenida separada con marca, ingreso y metadata institucional;
 - formulario de ingreso con validación visible de correo y clave;
-- accesos rápidos relacionados con usuarios de prueba;
+- accesos rápidos por perfiles autorizados;
 - sesión, cierre de sesión y navegación por pantalla;
-- centro de pruebas responsive con el flujo mock de los puntos 1 a 22;
-- estado mock desacoplado para altas, catálogo, mesas, espera, pedidos, cocina, bar, juegos, encuestas, cuenta, propina y pago.
+- centro de operación responsive para el flujo de los puntos 1 a 22;
+- servicios desacoplados para altas, catálogo, mesas, espera, pedidos, cocina, bar, juegos, encuestas, cuenta, propina y pago.
 
-La capa de Supabase está implementada y probada: el esquema completo con RLS vive en supabase/migrations, y la autenticación real, los accesos rápidos leídos de la base, el control de estado pendiente/rechazado y la restauración de sesión están en src/app/core. Falta únicamente crear el proyecto en supabase.com y aplicar las migraciones; los pasos están en supabase/README.md.
+La capa de Supabase está implementada y verificada: el esquema con RLS vive en `supabase/migrations`, y la autenticación real, los accesos rápidos leídos de la base, el control de estados pendiente/rechazado y la restauración de sesión están en `src/app/core`.
 
-Mientras eso no esté hecho, la aplicación arranca en modo demostración con AutenticacionMockService y DemoRestauranteService, sin que haga falta configurar nada. app.config.ts elige el adaptador según si environment tiene URL y clave.
+La aplicación está desplegada en Vercel y disponible en [tumbito.vercel.app](https://tumbito.vercel.app).
 
-Para trabajar contra Supabase no se toca environment.ts: se copia environment.example.ts a environment.local.ts (ignorado por git) y se arranca con npm run start:local. No se guardan secretos reales en el repositorio.
+La configuración de Supabase se gestiona mediante variables de entorno protegidas. Nunca se guardan claves privadas ni claves `service_role` en el repositorio.
 
-## Ejecutar el proyecto
+## Perfiles de acceso
 
-Requisitos: Node.js LTS y npm.
-
-    npm install
-    npm start          # modo demostración, no necesita configuración
-    npm run start:local # contra Supabase, requiere environment.local.ts
-
-Abrir http://localhost:4200/.
-
-Para validar la compilación y los tests:
-
-    npm run build
-    npm test -- --watch=false
-
-## Usuarios de demostración
-
-La clave provisional para el ingreso por formulario es Tumbo2026, tanto en modo demostración como con Supabase. Los accesos rápidos se generan a partir de los usuarios existentes: en modo demostración salen del mock, y con Supabase salen de la base, como exige el requisito excluyente de la cátedra.
+Los accesos rápidos se generan a partir de los usuarios aprobados existentes en Supabase. Las credenciales se administran mediante la configuración segura del entorno y no se publican en este README.
 
 | Correo | Perfil |
 |---|---|
@@ -52,18 +36,18 @@ La clave provisional para el ingreso por formulario es Tumbo2026, tanto en modo 
 | camila@tumbo.demo | Cliente registrado |
 | anonimo@tumbo.demo | Cliente anónimo |
 
-Después de ingresar, el botón Abrir centro de pruebas del flujo completo permite recorrer las funcionalidades mock según el perfil.
+Después de ingresar, el botón Abrir centro de operación permite recorrer las funcionalidades disponibles para el perfil autenticado.
 
 ## Integrantes y responsabilidades preliminares
 
-| Apellidos y nombres | Tareas asignadas | Branch sugerida |
-|---|---|---|
-| Terrile, Mateo (líder) | Organización del repositorio, README, integración general y coordinación | feat/integracion-general |
-| Bianucci, Ramiro | Diseño del ícono y de la pantalla de presentación estática | feat/icono-splash-estatica |
-| Cruz, Ignacio Agustín | Diseño de la pantalla de presentación dinámica | feat/splash-dinamica |
-| Ferrari, Matías Gabriel | Formulario de ingreso, validaciones, Supabase, accesos rápidos y cierre de sesión | feat/ingreso-autenticacion |
+| Apellidos y nombres | Tareas asignadas | Branch | Inicio | Finalización |
+|---|---|---|---|---|
+| Terrile, Mateo (líder) | Arquitectura Angular/Ionic, navegación, integración y coordinación técnica | `terrile` | 25/08/2026 | 30/09/2026 |
+| Bianucci, Ramiro | Identidad visual, ícono, recursos gráficos, splash estática y contraste | `bianucci` | 25/08/2026 | 12/09/2026 |
+| Cruz, Ignacio Agustín | Splash dinámica, transición de presentación y animaciones responsive | `cruz` | 26/08/2026 | 15/09/2026 |
+| Ferrari, Matías Gabriel | Formulario, validaciones, Supabase Auth, accesos rápidos, sesión y logout | `ferrari` | 26/08/2026 | 25/09/2026 |
 
-La rama main queda reservada para la versión integrada que se presenta.
+La rama `main` queda reservada para la versión integrada que se presenta.
 
 ## Identidad visual
 
@@ -81,16 +65,40 @@ Se usa #003592 para texto corriente por contraste, #006AE7 para acciones y títu
 
 ## Recursos
 
-- Ícono: docs/imagenes/logo.png
-- Logo con nombre: docs/imagenes/logo-nombre.png
-- Splash estática: docs/imagenes/splash-estatica.svg
-- Puesta en marcha de Supabase: supabase/README.md
-- Consigna original del TFI: docs/Trabajo-practico-2026-TFI.pdf
-- Contexto ampliado del proyecto: CONTEXTO-PROYECTO.md
-- Manual visual de referencia: docs/manual-tfi.html
-- Reglas para agentes y equipo: AGENTS.md
+- [Ícono](docs/imagenes/logo.png)
+- [Logo con nombre](docs/imagenes/logo-nombre.png)
+- [Splash estática](docs/imagenes/splash-estatica.svg)
+- [Puesta en marcha de Supabase](supabase/README.md)
+- [Consigna original del TFI](docs/Trabajo-practico-2026-TFI.pdf)
+- [Contexto ampliado del proyecto](CONTEXTO-PROYECTO.md)
+- [Manual visual de referencia](docs/manual-tfi.html)
+- [Reglas para agentes y equipo](AGENTS.md)
 
-Los códigos QR de ingreso, mesas y propina se encuentran también en docs/imagenes/qr-*.png.
+## Índice visual
+
+### Identidad y presentación
+
+![Ícono TUMBO](docs/imagenes/logo.png)
+
+![Logo con nombre](docs/imagenes/logo-nombre.png)
+
+![Splash estática](docs/imagenes/splash-estatica.svg)
+
+### Códigos QR
+
+- [QR de ingreso](docs/imagenes/qr-entrada.png)
+- [QR de mesa 1](docs/imagenes/qr-mesa-1.png)
+- [QR de mesa 2](docs/imagenes/qr-mesa-2.png)
+- [QR de mesa 3](docs/imagenes/qr-mesa-3.png)
+- [QR de mesa 4](docs/imagenes/qr-mesa-4.png)
+- [QR de mesa 5](docs/imagenes/qr-mesa-5.png)
+- [QR de propina 0%](docs/imagenes/qr-propina-0.png)
+- [QR de propina 5%](docs/imagenes/qr-propina-5.png)
+- [QR de propina 10%](docs/imagenes/qr-propina-10.png)
+- [QR de propina 15%](docs/imagenes/qr-propina-15.png)
+- [QR de propina 20%](docs/imagenes/qr-propina-20.png)
+
+Las imágenes utilizadas por las pantallas y sus variantes se encuentran en `public/imagenes` y `assets/tumbito`.
 
 ## Arquitectura
 
@@ -105,7 +113,7 @@ Los códigos QR de ingreso, mesas y propina se encuentran también en docs/image
         ├── inicio/
         └── operacion/
 
-Las rutas de funcionalidades se cargan de forma lazy. La ruta `splash` muestra únicamente el ícono durante el primer render y deriva inmediatamente a `presentacion`, que contiene la pantalla de bienvenida interactiva. Los componentes usan standalone, signals, formularios reactivos y estilos SCSS mobile first. Capacitor queda inicializado en capacitor.config.ts; npm run cap:sync prepara el build web para una plataforma nativa cuando se agregue Android o iOS.
+Las rutas de funcionalidades se cargan de forma lazy. La ruta `splash` muestra el ícono durante el primer render y deriva a `presentacion`, que contiene la pantalla de bienvenida interactiva. Los componentes usan standalone, signals, formularios reactivos y estilos SCSS mobile first. Capacitor queda inicializado en `capacitor.config.ts`; `npm run cap:sync` sincroniza el build web con las plataformas nativas.
 
 ## Criterios acordados
 
@@ -114,4 +122,8 @@ Las rutas de funcionalidades se cargan de forma lazy. La ruta `splash` muestra �
 - No se usa modo oscuro ni fondos blancos o negros puros.
 - Los errores se muestran dentro de la pantalla.
 - El logo se conserva como recurso original y se reutiliza sin deformarlo.
-- Las credenciales de demostración son temporales; la autenticación real debe vivir en Supabase Auth.
+- La autenticación real utiliza Supabase Auth detrás de un adaptador desacoplado.
+- Los accesos rápidos se cargan desde los perfiles autorizados de Supabase.
+- El cierre de sesión invalida la sesión, limpia el estado de la aplicación y vuelve al ingreso.
+- Las validaciones se aplican en la interfaz y se refuerzan con restricciones de la base.
+- Las credenciales privadas nunca se guardan en el repositorio.
