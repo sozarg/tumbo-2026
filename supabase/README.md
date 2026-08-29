@@ -14,6 +14,7 @@ Responsable del módulo: **Ferrari, Matías Gabriel**.
 | `migrations/` | El esquema completo: tablas, funciones, triggers y RLS. Es la fuente de verdad de la base |
 | `seed.sql` | Datos de referencia: 5 mesas, 5 platos, 5 bebidas, propinas, juegos y encuesta |
 | `crear-usuarios.mjs` | Crea las cuentas de demostración en Supabase Auth |
+| `verificar-esquema.sql` | 13 controles para confirmar que la base quedó bien. Se pega en el SQL Editor |
 
 Las cuentas no están en `seed.sql` a propósito: viven en el esquema
 `auth`, que es de Supabase y cambia entre versiones. Insertarlas a mano
@@ -82,9 +83,20 @@ La referencia del proyecto es lo que aparece en la URL del panel:
 npx supabase db push
 ```
 
-Esto corre las seis migraciones en orden. Tiene que terminar sin
+Esto corre las ocho migraciones en orden. Tiene que terminar sin
 errores. Si alguna falla, **no** se edita una migración ya aplicada: se
 crea una nueva con `npx supabase migration new arreglar_lo_que_sea`.
+
+| Migración | Qué hace |
+|---|---|
+| `000000_tipos_y_enums` | Los 15 tipos enumerados |
+| `000100_tablas_base` | Personas, catálogo y datos de referencia |
+| `000200_tablas_operacion` | Estadías, pedidos, mensajes, encuestas, cuentas |
+| `000300_funciones` | Funciones de dominio, triggers y la vista de accesos rápidos |
+| `000400_politicas_rls` | RLS en las 19 tablas, 43 políticas |
+| `000500_storage` | Los 3 buckets de imágenes |
+| `000600_limites_de_longitud` | Topes de caracteres y formato en todos los campos de texto |
+| `000700_correo_mas_corto` | Baja el tope del correo de 254 a 80 |
 
 ---
 
@@ -179,7 +191,62 @@ equipo pueda trabajar sin configurar nada.
 
 ---
 
-## 8. Regenerar los tipos cuando cambie el esquema
+## 8. Los límites de caracteres
+
+Las migraciones `000600` y `000700` le ponen tope a todos los campos de texto. Los
+mismos números están en `src/app/core/validacion/limites.ts`, y hay un
+test que compara los dos archivos: si alguien cambia uno y se olvida del
+otro, `npm test` falla.
+
+**Están duplicados a propósito.** El formulario es la primera línea: le
+muestra el error al usuario antes de que apriete el botón. La base es la
+última: nadie la puede saltear, ni siquiera pegándole directo a la API
+con la clave anon, que es pública. Si el límite estuviera solo en el
+formulario no serviría de nada.
+
+Los principales:
+
+| Campo | Rango |
+|---|---|
+| Nombres y apellidos | 2 a 50, solo letras (con tildes, ñ, apóstrofo y guión) |
+| Correo | hasta 80 |
+| Clave | 6 a 72 |
+| Nombre de producto | 2 a 60 |
+| Descripción de producto | 10 a 300 |
+| Motivo de rechazo | 5 a 300 |
+| Mensaje de la sala | hasta 500 |
+
+Para armar un formulario nuevo (las altas de los puntos 1 a 4) **no hay
+que reescribir estas reglas**:
+
+```ts
+import { conLimite, soloLetras, validadoresDeNombre } from '../../core/validacion/validadores';
+import { mensajeDeError } from '../../core/validacion/mensajes';
+
+formulario = this.fb.nonNullable.group({
+  nombres: ['', validadoresDeNombre('nombres')],
+  descripcion: ['', [Validators.required, ...conLimite('descripcionProducto')]],
+});
+
+// en el componente
+mensajeCampo(campo: string) {
+  return mensajeDeError(this.formulario.controls[campo], 'descripción');
+}
+```
+
+Así todos los formularios dicen los errores igual y coinciden con lo que
+acepta la base.
+
+> Ojo con una consecuencia: el trigger de alta ahora **exige** que el
+> nombre venga en `user_metadata`. Antes, si no venía, lo sacaba de la
+> parte del correo anterior a la arroba, y eso rompía con las reglas
+> nuevas (un correo como `m.ferrari@bna.com.ar` daba el nombre
+> `m.ferrari`, que tiene un punto). El formulario de registro tiene que
+> mandar `nombres`, `apellidos` y `dni`.
+
+---
+
+## 9. Regenerar los tipos cuando cambie el esquema
 
 ```bash
 npm run supabase:tipos
@@ -192,7 +259,7 @@ que `AGENTS.md` prohíbe.
 
 ---
 
-## 9. El deploy de Vercel
+## 10. El deploy de Vercel
 
 El repositorio está conectado a Vercel, que compila desde `main`. Como
 `environment.ts` va versionado con los valores vacíos, **el deploy
@@ -253,6 +320,9 @@ Con `npm run start:local` andando:
 - [ ] Cerrar sesión vuelve al ingreso, y el botón "atrás" del navegador no reabre el panel
 - [ ] En Application › Local Storage del navegador, después de cerrar sesión no queda ningún token de Supabase
 - [ ] Ir a `/inicio` escribiendo la URL a mano, sin sesión, redirige al ingreso
+- [ ] En el campo de correo, el navegador no deja escribir más de 80 caracteres
+- [ ] Escribir una clave de 3 caracteres muestra "La clave tiene que tener al menos 6 caracteres."
+- [ ] `verificar-esquema.sql` devuelve OK en los 13 controles
 
 ---
 

@@ -17,6 +17,7 @@
             <form [formGroup]="formulario" (ngSubmit)="ingresar()" novalidate>
             <div class="field" [class.field--invalid]="campoInvalido('correo')">
               <label for="correo">Correo electrónico</label>
+
               <ion-input id="correo" autocomplete="email" fill="outline" formControlName="correo" inputmode="email" placeholder="nombre@tumbito.demo" type="email" [attr.aria-invalid]="campoInvalido('correo')" [attr.aria-describedby]="campoInvalido('correo') ? 'correo-error' : null" />
               <div class="field__error-slot">
                 @if (campoInvalido('correo')) {
@@ -29,7 +30,7 @@
             <div class="field" [class.field--invalid]="campoInvalido('clave')">
               <label for="clave">Clave</label>
               <div class="password-field">
-                <ion-input id="clave" autocomplete="current-password" fill="outline" formControlName="clave" placeholder="Ingresá tu clave" [type]="mostrarClave() ? 'text' : 'password'" [attr.aria-invalid]="campoInvalido('clave')" [attr.aria-describedby]="campoInvalido('clave') ? 'clave-error' : null" />
+                <ion-input id="clave" autocomplete="current-password" fill="outline" formControlName="clave" placeholder="Ingresá tu clave" [maxlength]="limites.clave.max" [type]="mostrarClave() ? 'text' : 'password'" [attr.aria-invalid]="campoInvalido('clave')" [attr.aria-describedby]="campoInvalido('clave') ? 'clave-error' : null" />
                 <ion-button class="password-field__toggle" fill="clear" type="button" [attr.aria-label]="mostrarClave() ? 'Ocultar clave' : 'Mostrar clave'" (click)="alternarClave()"><ion-icon slot="icon-only" [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'" /></ion-button>
               </div>
               <div class="field__error-slot">

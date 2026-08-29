@@ -23,6 +23,9 @@ import {
 import { AccesoRapido } from '../../core/models/usuario';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
+import { LIMITES } from '../../core/validacion/limites';
+import { mensajeDeError } from '../../core/validacion/mensajes';
+import { conLimite, sinEspaciosSolos } from '../../core/validacion/validadores';
 
 @Component({
   imports: [
@@ -48,9 +51,14 @@ export class Ingreso {
   private readonly router = inject(Router);
 
   protected readonly formulario = this.formularioBuilder.nonNullable.group({
-    correo: ['', [Validators.required, Validators.email]],
-    clave: ['', [Validators.required, Validators.minLength(6)]],
+    correo: [
+      '',
+      [Validators.required, sinEspaciosSolos, Validators.email, ...conLimite('correo')],
+    ],
+    clave: ['', [Validators.required, sinEspaciosSolos, ...conLimite('clave')]],
   });
+  /** Los mismos topes que la base, para el atributo maxlength de los inputs */
+  protected readonly limites = LIMITES;
   protected readonly enviando = signal(false);
   protected readonly enviado = signal(false);
   protected readonly mostrarClave = signal(false);
@@ -70,17 +78,7 @@ export class Ingreso {
   }
 
   protected mensajeCampo(nombre: 'correo' | 'clave'): string {
-    const control = this.formulario.controls[nombre];
-
-    if (control.hasError('required')) {
-      return nombre === 'correo' ? 'Ingresá tu correo.' : 'Ingresá tu clave.';
-    }
-
-    if (control.hasError('email')) {
-      return 'Ingresá un correo válido, por ejemplo: nombre@dominio.com.';
-    }
-
-    return 'La clave debe tener al menos 6 caracteres.';
+    return mensajeDeError(this.formulario.controls[nombre], nombre);
   }
 
   protected alternarClave(): void {
