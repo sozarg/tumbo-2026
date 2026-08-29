@@ -7,7 +7,7 @@
     "start:local": "ng serve --configuration local",
     "build": "ng build",
     "icons": "node tools/generar-iconos.mjs",
-    "icons:android": "npx @capacitor/assets generate --android",
+    "icons:android": "npx @capacitor/assets generate --android && node tools/corregir-iconos-android.mjs",
     "prebuild": "node tools/generar-entorno.mjs",
     "build:local": "ng build --configuration local",
     "build:apk": "ng build --configuration apk",

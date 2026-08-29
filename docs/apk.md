@@ -80,6 +80,18 @@ del navegador en `public/icons/` y, en `assets/`, las cuatro imágenes
 fuente que necesita Android. `npm run icons:android` las recorta a todas
 las densidades y las escribe dentro de `android/`.
 
+> **Por qué `icons:android` corre dos comandos.** `@capacitor/assets`
+> escribe `ic_launcher_foreground.png` con el tamaño del ícono ANTIGUO
+> (48dp: 192 píxeles en xxxhdpi) en lugar del tamaño del ícono ADAPTABLE
+> (108dp: 432 píxeles), y el celular lo tiene que agrandar 2,25 veces
+> para dibujarlo. Además le mete un `inset` del 16,7 % que se suma al
+> aire que ya trae nuestra imagen, así que el logo terminaba ocupando el
+> 40 % del ícono en vez del 60 %. `tools/corregir-iconos-android.mjs`
+> reescribe las dos capas en las densidades correctas y los XML sin ese
+> recuadro. **No saques ese segundo comando**: si lo hacés, el ícono
+> vuelve a verse pixelado, y con él la pantalla de carga del sistema,
+> que desde Android 12 usa el mismo ícono.
+
 Se corre solo cuando cambia el logo. Después hace falta un `npm run apk`
 y volver a generar el APK.
 
