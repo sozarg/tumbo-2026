@@ -8,47 +8,241 @@
   z-index: 10;
   inset: 0;
   pointer-events: auto;
-  animation: splash-fade-out 420ms ease-in-out both;
+  transform-origin: 50% 50%;
+  animation: splash-exit 420ms cubic-bezier(0.76, 0, 0.24, 1) 1.88s both;
 }
 
 .splash-page__sheet {
   position: relative;
   display: grid;
+  overflow: hidden;
   min-height: 100dvh;
   place-items: center;
-  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
-  background: #fbf1d5;
-  background-image:
-    linear-gradient(90deg, rgb(220 91 2 / 9%) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(220 91 2 / 9%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(251 177 3 / 6%) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(251 177 3 / 6%) 1px, transparent 1px);
-  background-position: center;
-  background-size:
-    112px 112px,
-    112px 112px,
-    20px 20px,
-    20px 20px;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+  color: var(--tumbo-azul-sombra);
+  background: var(--tumbo-crema-fondo);
+  transform-origin: 50% 50%;
+  animation: splash-stage-zoom 2.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.splash-page__sheet img {
-  width: min(68vw, 16.875rem);
+.splash-page__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(100%, 32rem);
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  animation: splash-content-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.splash-page__logo-wrap {
+  display: grid;
+  width: clamp(12rem, 58vw, 20rem);
+  aspect-ratio: 1;
+  place-items: center;
+  animation:
+    splash-logo-in 720ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both,
+    splash-logo-float 1.15s ease-in-out 820ms infinite alternate;
+}
+
+.splash-page__logo {
+  width: 100%;
   height: auto;
+  max-height: 100%;
   object-fit: contain;
+  object-position: center;
+  transform-origin: 50% 50%;
+  animation: splash-logo-cover 420ms cubic-bezier(0.76, 0, 0.24, 1) 1.88s both;
 }
 
-@keyframes splash-fade-out {
-  from {
-    opacity: 1;
-  }
+.splash-page__eyebrow {
+  margin: clamp(1.4rem, 4vh, 2.4rem) 0 0;
+  color: var(--tumbo-naranja-profundo);
+  font-size: clamp(0.66rem, 1.7vw, 0.78rem);
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  animation: splash-text-in 700ms cubic-bezier(0.16, 1, 0.3, 1) 650ms both;
+}
 
-  to {
-    opacity: 0;
-  }
+.splash-page h1 {
+  margin: 0.2rem 0 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(2.6rem, 13vw, 5.4rem);
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  animation: splash-title-in 850ms cubic-bezier(0.16, 1, 0.3, 1) 800ms both;
+}
+
+.splash-page__tagline {
+  margin: 0.75rem 0 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(0.9rem, 2.8vw, 1.1rem);
+  font-weight: 650;
+  animation: splash-text-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 1.02s both;
+}
+
+.splash-page__team {
+  display: flex;
+  max-width: 25rem;
+  margin-top: clamp(1.5rem, 5vh, 2.8rem);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem 1rem;
+  color: rgb(0 53 146 / 76%);
+  font-size: clamp(0.72rem, 2vw, 0.84rem);
+  line-height: 1.45;
+  animation: splash-text-in 700ms cubic-bezier(0.16, 1, 0.3, 1) 1.2s both;
+}
+
+.splash-page__team span + span::before {
+  margin-right: 1rem;
+  color: var(--tumbo-naranja-marca);
+  content: '·';
+}
+
+.splash-page__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: clamp(1.2rem, 4vh, 2rem);
+  color: var(--tumbo-azul-accion);
+  font-size: 0.76rem;
+  font-weight: 700;
+  animation: splash-text-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 1.28s both;
+}
+
+.splash-page__loading-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--tumbo-naranja-marca);
+  animation: splash-dot 900ms ease-in-out infinite alternate;
+}
+
+.splash-page__orbit {
+  position: absolute;
+  border: 1px solid rgb(220 91 2 / 18%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.splash-page__orbit--outer {
+  width: min(95vw, 48rem);
+  aspect-ratio: 1;
+  animation:
+    splash-orbit-in 1.2s ease-out 150ms both,
+    splash-orbit-drift 8s ease-in-out 1.35s infinite alternate;
+}
+
+.splash-page__orbit--inner {
+  width: min(70vw, 30rem);
+  aspect-ratio: 1;
+  border-color: rgb(251 177 3 / 25%);
+  animation:
+    splash-orbit-in 1.2s ease-out 350ms both,
+    splash-orbit-drift 6s ease-in-out 1.5s infinite alternate-reverse;
+}
+
+@keyframes splash-exit {
+  from { opacity: 1; }
+  45% { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Transición principal tipo "launch": el escenario respira, acerca el
+   logotipo y termina con una aceleración sutil antes de revelar la app. */
+@keyframes splash-stage-zoom {
+  0% { opacity: 0; transform: scale(1.18); }
+  12% { opacity: 1; transform: scale(1.06); }
+  55% { opacity: 1; transform: scale(1); }
+  86% { opacity: 1; transform: scale(1.035); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes splash-content-in {
+  from { opacity: 0; transform: translateY(1.8rem) scale(0.82); }
+  70% { opacity: 1; transform: translateY(-0.25rem) scale(1.015); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes splash-logo-in {
+  from { opacity: 0; transform: scale(0.45) rotate(-12deg); }
+  70% { opacity: 1; transform: scale(1.06) rotate(2deg); }
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes splash-logo-in {
+  from { opacity: 0; transform: translateY(2rem) scale(0.72) rotate(-3deg); }
+  72% { opacity: 1; transform: translateY(-0.35rem) scale(1.03) rotate(1deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes splash-logo-float {
+  from { translate: 0 0; rotate: 0deg; }
+  to { translate: 0 -0.3rem; rotate: 1deg; }
+}
+
+@keyframes splash-logo-cover {
+  from { transform: scale(1); }
+  to { transform: scale(6.5); }
+}
+
+@keyframes splash-title-in {
+  from { opacity: 0; letter-spacing: 0.42em; transform: scale(0.72); }
+  to { opacity: 1; letter-spacing: 0.08em; transform: scale(1); }
+}
+
+@keyframes splash-text-in {
+  from { opacity: 0; transform: translateY(0.7rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splash-logo-pulse {
+  0%, 100% { box-shadow: 0 0 0 0.6rem rgb(220 91 2 / 10%); }
+  50% { box-shadow: 0 0 0 0.95rem rgb(220 91 2 / 18%); }
+}
+
+@keyframes splash-dot {
+  from { opacity: 0.35; transform: scale(0.75); }
+  to { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes splash-orbit-in {
+  from { opacity: 0; transform: scale(0.72); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes splash-orbit-drift {
+  from { translate: -1.2% -0.8%; rotate: -2deg; }
+  to { translate: 1.2% 0.8%; rotate: 2deg; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .splash-page {
+  .splash-page,
+  .splash-page__content,
+  .splash-page__logo-wrap,
+  .splash-page__orbit,
+  .splash-page__loading-dot {
     animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+
+  .splash-page__logo {
+    animation: none;
+  }
+
+  .splash-page__orbit--outer,
+  .splash-page__orbit--inner {
+    animation-name: splash-orbit-in;
+  }
+}
+
+@media (max-height: 42rem) {
+  .splash-page__team,
+  .splash-page__loading {
+    margin-top: 1rem;
   }
 }

@@ -15,6 +15,25 @@
   padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
   color: #003592;
   background: var(--tumbo-crema-fondo);
+  animation: presentacion-reveal 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes presentacion-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-layout {
+    animation-duration: 1ms;
+  }
 }
 
 .welcome-primary,
