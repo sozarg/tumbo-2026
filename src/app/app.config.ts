@@ -1,4 +1,9 @@
-import { ApplicationConfig, inject, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  ErrorHandler,
+  inject,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { provideIonicAngular } from '@ionic/angular/provide';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
@@ -6,10 +11,13 @@ import { environment } from '../environments/environment';
 import { AutenticacionMockService } from './core/services/autenticacion-mock.service';
 import { AutenticacionSupabaseService } from './core/services/autenticacion-supabase.service';
 import { AUTENTICACION } from './core/services/autenticacion.port';
+import { ManejadorErrores } from './core/services/manejador-errores';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    // R9: hasta los errores que nadie atrapó tienen que vibrar.
+    { provide: ErrorHandler, useClass: ManejadorErrores },
     provideIonicAngular(),
     provideRouter(routes),
     {

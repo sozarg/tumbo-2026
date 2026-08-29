@@ -30,6 +30,15 @@
   z-index: 1;
   display: flex;
   width: min(100%, 32rem);
+  /* Un ítem de grilla no se achica por debajo del ancho mínimo de su
+     contenido, y el h1 arranca la animación con letter-spacing 0.42em:
+     eso lo hace medir unos 418 píxeles de layout aunque en pantalla se
+     vea chico por el scale(0.72) inicial. Sin este min-width la caja se
+     estiraba a 418 sobre 353 disponibles, se desbordaba hacia la
+     derecha, y el logo aparecía 35 píxeles corrido hasta que el
+     letter-spacing terminaba de encogerse. Con min-width: 0 la caja
+     mantiene su ancho y el título desborda parejo a los dos lados. */
+  min-width: 0;
   align-items: center;
   flex-direction: column;
   text-align: center;
@@ -67,6 +76,7 @@
 }
 
 .splash-page h1 {
+  max-width: 100%;
   margin: 0.2rem 0 0;
   color: var(--tumbo-azul-sombra);
   font-size: clamp(2.6rem, 13vw, 5.4rem);
@@ -168,12 +178,9 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes splash-logo-in {
-  from { opacity: 0; transform: scale(0.45) rotate(-12deg); }
-  70% { opacity: 1; transform: scale(1.06) rotate(2deg); }
-  to { opacity: 1; transform: scale(1) rotate(0deg); }
-}
-
+/* Ojo: esta regla estaba declarada dos veces en el archivo. La primera
+   nunca se aplicaba, porque en CSS gana la última definición con el
+   mismo nombre. Se dejó solo la que estaba en uso. */
 @keyframes splash-logo-in {
   from { opacity: 0; transform: translateY(2rem) scale(0.72) rotate(-3deg); }
   72% { opacity: 1; transform: translateY(-0.35rem) scale(1.03) rotate(1deg); }

@@ -1,0 +1,16 @@
+<span
+  class="espera"
+  [class.espera--grande]="tamano() === 'grande'"
+  role="status"
+  [attr.aria-label]="etiqueta()"
+>
+  <span class="espera__anillo" aria-hidden="true"></span>
+  <img
+    class="espera__logo"
+    src="icons/icon-192.png"
+    width="192"
+    height="192"
+    alt=""
+    aria-hidden="true"
+  />
+</span>

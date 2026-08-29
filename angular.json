@@ -90,6 +90,27 @@
                   "with": "src/environments/environment.local.ts"
                 }
               ]
+            },
+            "apk": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.2MB",
+                  "maximumError": "1.5MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "20kB",
+                  "maximumError": "24kB"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.local.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"

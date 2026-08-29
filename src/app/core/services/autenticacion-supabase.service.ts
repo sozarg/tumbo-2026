@@ -4,9 +4,13 @@ import { Tablas, Vistas } from '../models/base-de-datos';
 import { AccesoRapido, Usuario, etiquetaDePerfil } from '../models/usuario';
 import { AutenticacionPort, ModoAutenticacion, ResultadoAutenticacion } from './autenticacion.port';
 import { SesionService } from './sesion.service';
+import { almacenamientoSesion } from './almacenamiento-sesion';
 import { exigirCliente, supabaseClient } from './supabase.client';
 
 type FilaUsuario = Tablas<'usuarios'>;
+
+/** Dónde se guarda el token de notificaciones de este dispositivo. */
+const CLAVE_TOKEN_PUSH = 'tumbo.token-push';
 
 /**
  * Fila de la vista accesos_rapidos.
@@ -173,14 +177,70 @@ export class AutenticacionSupabaseService implements AutenticacionPort {
     return this.ingresar(acceso.correo, this.claveDemostracion);
   }
 
+  /**
+   * Cierre de sesión completo (requisito excluyente R13).
+   *
+   * El enunciado pide poder VERIFICAR que las credenciales se borren, no
+   * solo que el usuario vuelva al ingreso. Por eso son cuatro pasos y en
+   * este orden:
+   *
+   *   1. Borrar el token de este dispositivo de `dispositivos_push`,
+   *      mientras todavía hay sesión: después del signOut, RLS ya no
+   *      deja tocar esa fila. Si no se hace, el celular sigue recibiendo
+   *      notificaciones de una cuenta que cerró sesión.
+   *   2. `signOut`, esperado. Si se navega sin esperar, el token puede
+   *      seguir unos milisegundos en el almacenamiento.
+   *   3. Limpiar el almacenamiento a mano, por si quedó una clave de una
+   *      versión anterior de supabase-js con otro prefijo.
+   *   4. Limpiar el estado en memoria.
+   *
+   * Ninguno de los tres primeros puede voltear el cuarto: si algo falla
+   * —sin red, por ejemplo— igual se cierra la sesión del lado del
+   * usuario. Quedarse adentro por un error de red sería peor.
+   */
   async cerrarSesion(): Promise<void> {
-    // Se espera el signOut antes de limpiar el estado: la cátedra pide
-    // verificar que las credenciales se borren, y si se navega sin
-    // esperar, el token puede seguir en el almacenamiento.
-    if (supabaseClient) {
-      await supabaseClient.auth.signOut();
+    try {
+      await this.olvidarDispositivo();
+    } catch {
+      // Sin red o sin permiso: se sigue. La fila queda huérfana y se
+      // limpia en el próximo ingreso desde este mismo dispositivo.
     }
+
+    try {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
+    } catch {
+      // Aunque el servidor no conteste, la sesión local se cierra igual.
+    }
+
+    try {
+      await almacenamientoSesion.limpiar();
+    } catch {
+      // Nada que hacer: el estado en memoria se limpia igual.
+    }
+
     this.sesion.cerrar();
+  }
+
+  /**
+   * Borra el token push de ESTE dispositivo, no los de los otros: el
+   * enunciado se demuestra con cuatro celulares en simultáneo y cerrar
+   * sesión en uno no puede dejar mudos a los demás.
+   *
+   * Hoy todavía no hay nada que escriba en `dispositivos_push` —falta el
+   * alta con Firebase—, así que esto no borra nada. Se deja escrito
+   * ahora para que el día que se registre el token, el cierre de sesión
+   * ya lo contemple y nadie se olvide.
+   */
+  private async olvidarDispositivo(): Promise<void> {
+    const token = await almacenamientoSesion.getItem(CLAVE_TOKEN_PUSH);
+    if (!token || !supabaseClient) {
+      return;
+    }
+
+    await supabaseClient.from('dispositivos_push').delete().eq('token', token);
+    await almacenamientoSesion.removeItem(CLAVE_TOKEN_PUSH);
   }
 
   // ─────────────────────────────────────────────────────────────────

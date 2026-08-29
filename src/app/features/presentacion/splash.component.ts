@@ -1,6 +1,7 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { SonidosService } from '../../core/services/sonidos.service';
 
 @Component({
   imports: [NgOptimizedImage],
@@ -10,6 +11,7 @@ import { Router } from '@angular/router';
 })
 export class Splash implements OnInit, OnDestroy {
   private readonly router = inject(Router);
+  private readonly sonidos = inject(SonidosService);
   private temporizador?: ReturnType<typeof setTimeout>;
   private transicionFinalizada = false;
 
@@ -39,6 +41,9 @@ export class Splash implements OnInit, OnDestroy {
     }
 
     this.transicionFinalizada = true;
+    // R11: el sonido de apertura va acá y no en el arranque porque los
+    // navegadores bloquean el audio hasta que hubo interacción.
+    this.sonidos.sonarApertura();
     void this.router.navigate(['/presentacion'], { replaceUrl: true });
   }
 }

@@ -1,0 +1,59 @@
+:host {
+  display: inline-flex;
+}
+
+.espera {
+  position: relative;
+  display: inline-grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  place-items: center;
+}
+
+.espera--grande {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+/**
+ * El anillo es lo único que gira. El logo se queda quieto: una vaquita
+ * dando vueltas a 24 píxeles se lee como una mancha, y encima marea.
+ */
+.espera__anillo {
+  position: absolute;
+  /* Azul y no ámbar: el indicador aparece adentro del botón ámbar de
+     ingresar, y un anillo ámbar sobre fondo ámbar no se distingue.
+     R3 pide contraste nítido, también en los controles. */
+  border: 2px solid var(--tumbo-azul-sombra);
+  border-radius: 50%;
+  border-top-color: transparent;
+  inset: 0;
+  animation: espera-girar 720ms linear infinite;
+}
+
+.espera--grande .espera__anillo {
+  border-width: 4px;
+}
+
+.espera__logo {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+}
+
+@keyframes espera-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Misma consideración que en el fondo decorativo: hay gente a la que el
+   movimiento en pantalla le da mareo. Sin animación el anillo queda
+   completo y estático, y el logo se sigue viendo. */
+@media (prefers-reduced-motion: reduce) {
+  .espera__anillo {
+    border-top-color: var(--tumbo-azul-sombra);
+    animation: none;
+  }
+}

@@ -1,10 +1,6 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonButton } from '@ionic/angular/ion-button';
 import { IonCard } from '@ionic/angular/ion-card';
@@ -13,19 +9,16 @@ import { IonContent } from '@ionic/angular/ion-content';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
 import { IonNote } from '@ionic/angular/ion-note';
-import { IonSpinner } from '@ionic/angular/ion-spinner';
 import { addIcons } from 'ionicons';
-import {
-  eyeOffOutline,
-  eyeOutline,
-  logInOutline,
-} from 'ionicons/icons';
+import { eyeOffOutline, eyeOutline, logInOutline } from 'ionicons/icons';
 import { AccesoRapido } from '../../core/models/usuario';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
+import { ErroresService } from '../../core/services/errores.service';
+import { Espera } from '../../shared/components/espera/espera.component';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
-import { conLimite, sinEspaciosSolos } from '../../core/validacion/validadores';
+import { conLimite, correoValido, sinEspaciosSolos } from '../../core/validacion/validadores';
 
 @Component({
   imports: [
@@ -36,7 +29,7 @@ import { conLimite, sinEspaciosSolos } from '../../core/validacion/validadores';
     IonIcon,
     IonInput,
     IonNote,
-    IonSpinner,
+    Espera,
     FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
@@ -49,12 +42,10 @@ export class Ingreso {
   private readonly formularioBuilder = inject(FormBuilder);
   private readonly autenticacion = inject(AUTENTICACION);
   private readonly router = inject(Router);
+  private readonly errores = inject(ErroresService);
 
   protected readonly formulario = this.formularioBuilder.nonNullable.group({
-    correo: [
-      '',
-      [Validators.required, sinEspaciosSolos, Validators.email, ...conLimite('correo')],
-    ],
+    correo: ['', [Validators.required, sinEspaciosSolos, correoValido, ...conLimite('correo')]],
     clave: ['', [Validators.required, sinEspaciosSolos, ...conLimite('clave')]],
   });
   /** Los mismos topes que la base, para el atributo maxlength de los inputs */
@@ -70,6 +61,30 @@ export class Ingreso {
 
   constructor() {
     addIcons({ eyeOffOutline, eyeOutline, logInOutline });
+  }
+
+  /**
+   * Deja la pantalla en blanco cada vez que se entra (requisito
+   * excluyente R13).
+   *
+   * POR QUÉ HACE FALTA
+   * `ion-router-outlet` NO destruye la pantalla al navegar: la deja en
+   * la pila para poder animar el gesto de "atrás". Así que al cerrar
+   * sesión se vuelve a ESTA MISMA instancia, con el formulario tal como
+   * quedó. El efecto era que la siguiente persona veía el correo del
+   * anterior y, si había tocado el ojito, su clave en texto plano.
+   *
+   * Por eso el reinicio va en `ionViewWillEnter` y no en el constructor
+   * ni en `ngOnInit`: esos corren una sola vez en la vida del
+   * componente, y acá el problema es justamente que esa vida no termina.
+   */
+  ionViewWillEnter(): void {
+    this.formulario.reset();
+    this.mostrarClave.set(false);
+    this.enviado.set(false);
+    this.enviando.set(false);
+    this.errorMensaje.set('');
+    this.errores.limpiar();
   }
 
   protected campoInvalido(nombre: 'correo' | 'clave'): boolean {
@@ -103,9 +118,8 @@ export class Ingreso {
       );
       await this.router.navigate(['/inicio']);
     } catch (error: unknown) {
-      this.errorMensaje.set(
-        error instanceof Error ? error.message : 'No se pudo iniciar sesión.',
-      );
+      // R9: todo error pasa por ErroresService, que además vibra.
+      this.errorMensaje.set(await this.errores.desdeExcepcion(error, 'No se pudo iniciar sesión.'));
     } finally {
       this.enviando.set(false);
     }
@@ -120,9 +134,8 @@ export class Ingreso {
       await this.autenticacion.ingresarRapido(acceso.id);
       await this.router.navigate(['/inicio']);
     } catch (error: unknown) {
-      this.errorMensaje.set(
-        error instanceof Error ? error.message : 'No se pudo iniciar sesión.',
-      );
+      // R9: todo error pasa por ErroresService, que además vibra.
+      this.errorMensaje.set(await this.errores.desdeExcepcion(error, 'No se pudo iniciar sesión.'));
     } finally {
       this.enviando.set(false);
     }
