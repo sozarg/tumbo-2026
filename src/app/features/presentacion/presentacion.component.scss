@@ -75,42 +75,39 @@
   height: auto;
   object-fit: contain;
 }
-
 .welcome-brand__tagline {
-  margin: clamp(0.5rem, 1.5vh, 1.25rem) 0 0;
+  /* font-family: var(--font-display); */
+  margin: clamp(0.5rem, 1.5vh, 1.5rem) 0 0;
   color: rgb(0 53 146 / 90%);
   
-  /* Celular / Android: escala máxima display */
-  font-size: clamp(3.2rem, 13vw, 4.4rem);
-  font-weight: 900;
-  line-height: 0.92;
-  letter-spacing: -0.045em;
+  /* Baja hasta 1.5rem en pantallas diminutas y escala fluidamente hasta 5.5rem */
+  font-size: clamp(1.5rem, 7.5vw, 5.5rem);
+  
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   text-wrap: balance;
-  overflow-wrap: break-word;
-  word-break: normal;
+  
+  /* Permite cortes de palabra si el espacio horizontal se agota */
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  
   width: 100%;
   max-width: 100%;
-  padding-inline: 0.15rem;
-
-  /* Escritorio: horizontal gigante */
-  @media (min-width: 48rem) {
-    white-space: nowrap;
-    font-size: clamp(4.2rem, 5.8vw, 5.8rem);
-    line-height: 1;
-    letter-spacing: -0.02em;
-    max-width: 100%;
-    width: auto;
-  }
+  padding-inline: 0.25rem;
+  box-sizing: border-box;
 }
+
 /* Subtítulo más visible y proporcionado */
 .welcome-brand__functional {
   max-width: min(100%, 34rem);
   margin: 0.8rem 0 0;
   color: rgb(0 53 146 / 78%);
-  font-size: clamp(1.15rem, 4vw, 1.45rem);
+  font-size: clamp(0.95rem, 3.5vw, 1.45rem);
   font-weight: 500;
   line-height: 1.4;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .welcome-action {
