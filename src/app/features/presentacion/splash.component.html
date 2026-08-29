@@ -1,4 +1,8 @@
-<div class="splash-page" (animationend)="finalizarTransicion($event)">
+<div
+  class="splash-page"
+  [class.splash-page--lista]="lista()"
+  (animationend)="finalizarTransicion($event)"
+>
   <main class="splash-page__sheet" aria-labelledby="splash-title">
     <div class="splash-page__orbit splash-page__orbit--outer" aria-hidden="true"></div>
     <div class="splash-page__orbit splash-page__orbit--inner" aria-hidden="true"></div>
