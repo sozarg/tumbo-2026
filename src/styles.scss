@@ -9,6 +9,50 @@
 @import '@ionic/angular/css/flex-utils.css';
 @import '@ionic/angular/css/display.css';
 
+/* Poppins (Familia principal) */
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Medium.ttf') format('truetype'); /* Si lo tenés */
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* OhChewy (Fuente decorativa/títulos) */
+@font-face {
+  font-family: 'Oh-Chewy';
+  src: url('/fonts/Oh-Chewy.ttf') format('truetype'); /* Ajustá el nombre exacto de tu archivo */
+  font-weight: 400; /* o el peso correspondiente */
+  font-style: normal;
+  font-display: swap;
+}
+
+
+
 :root {
   // Tokens de identidad y derivados para la superficie glass del ingreso.
   --tumbo-naranja-marca: #dc5b02;
@@ -111,7 +155,8 @@
   --ion-background-color-rgb: 251, 241, 213;
   --ion-text-color: var(--tumbo-azul-sombra);
   --ion-text-color-rgb: 0, 53, 146;
-  --ion-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ion-font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Oh-Chewy', cursive, sans-serif;
 }
 
 * {
@@ -128,6 +173,7 @@ body {
 
 body {
   color: #003592;
+  font-family: var(--ion-font-family);
 }
 
 ion-app,
