@@ -6,6 +6,7 @@ import { environment } from '../environments/environment';
 import { AutenticacionMockService } from './core/services/autenticacion-mock.service';
 import { AutenticacionSupabaseService } from './core/services/autenticacion-supabase.service';
 import { AUTENTICACION } from './core/services/autenticacion.port';
+import { OperacionService } from './core/services/operacion.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,5 +21,6 @@ export const appConfig: ApplicationConfig = {
         return environment.supabaseUrl && environment.supabaseAnonKey ? supabase : mock;
       },
     },
+    OperacionService,
   ],
 };
