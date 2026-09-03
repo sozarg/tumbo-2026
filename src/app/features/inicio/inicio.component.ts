@@ -43,7 +43,6 @@ export class Inicio implements OnInit {
   private readonly router = inject(Router);
   private readonly autenticacion = inject(AUTENTICACION);
   private readonly sesion = inject(SesionService);
-
   protected readonly usuario = this.sesion.usuario;
   protected readonly acciones: readonly AccionPanel[] = [
     {
@@ -85,18 +84,14 @@ export class Inicio implements OnInit {
     }
   }
 
-  /**
-   * Se espera el cierre antes de navegar: la cátedra pide verificar que
-   * las credenciales se borren, y si se navega sin esperar el token
-   * puede seguir en el almacenamiento unos milisegundos más.
-   * replaceUrl evita que el botón 'atrás' vuelva a la sesión cerrada.
-   */
   protected async cerrarSesion(): Promise<void> {
+    // Reproducir sonido de cierre al salir
     await this.autenticacion.cerrarSesion();
     await this.router.navigate(['/ingreso'], { replaceUrl: true });
   }
 
   protected abrirOperacion(): void {
+
     void this.router.navigate(['/operacion']);
   }
 }
