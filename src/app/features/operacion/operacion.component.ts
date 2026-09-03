@@ -19,7 +19,6 @@ import { IonNote } from '@ionic/angular/ion-note';
 import { IonRange } from '@ionic/angular/ion-range';
 import { IonSelect } from '@ionic/angular/ion-select';
 import { IonSelectOption } from '@ionic/angular/ion-select-option';
-import { IonSpinner } from '@ionic/angular/ion-spinner';
 import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
@@ -82,9 +81,9 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonRange,
     IonSelect,
     IonSelectOption,
-    IonSpinner,
     IonTextarea,
     IonToggle,
+    Espera,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
@@ -198,9 +197,14 @@ export class Operacion implements OnInit {
     void this.router.navigate(['/inicio']);
   }
 
-  protected cerrarSesion(): void {
-    this.autenticacion.cerrarSesion();
-    void this.router.navigate(['/ingreso'], { replaceUrl: true });
+  /**
+   * Se espera el cierre antes de navegar. Antes no se esperaba, así que
+   * la navegación arrancaba con el token todavía en el almacenamiento:
+   * justo lo que R13 pide poder verificar que no pasa.
+   */
+  protected async cerrarSesion(): Promise<void> {
+    await this.autenticacion.cerrarSesion();
+    await this.router.navigate(['/ingreso'], { replaceUrl: true });
   }
 
   protected campoInvalido(control: AbstractControl): boolean {

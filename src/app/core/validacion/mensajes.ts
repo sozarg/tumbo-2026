@@ -24,7 +24,7 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
     return `Completá ${el}.`;
   }
 
-  if (errores['email']) {
+  if (errores['email'] || errores['correoValido']) {
     return 'Ingresá un correo válido, por ejemplo: nombre@dominio.com.';
   }
 
