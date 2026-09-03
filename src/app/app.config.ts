@@ -11,9 +11,7 @@ import { environment } from '../environments/environment';
 import { AutenticacionMockService } from './core/services/autenticacion-mock.service';
 import { AutenticacionSupabaseService } from './core/services/autenticacion-supabase.service';
 import { AUTENTICACION } from './core/services/autenticacion.port';
-import { provideCargadorDeIlustraciones } from './core/imagenes/cargador-de-ilustraciones';
-import { PrecargaDiferida } from './core/rutas/precarga-diferida';
-import { ManejadorErrores } from './core/services/manejador-errores';
+import { OperacionService } from './core/services/operacion.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -44,5 +42,6 @@ export const appConfig: ApplicationConfig = {
         return environment.supabaseUrl && environment.supabaseAnonKey ? supabase : mock;
       },
     },
+    OperacionService,
   ],
 };
