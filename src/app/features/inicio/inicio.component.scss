@@ -142,12 +142,12 @@
 }
 
 .demo-banner p {
+  /* R5: no se corta el texto informativo. Se deja que ocupe las líneas
+     que necesite en vez de terminar en puntos suspensivos. */
   margin: 0.2rem 0 0;
-  overflow: hidden;
   color: #003592;
   font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
   opacity: 0.75;
 }
 

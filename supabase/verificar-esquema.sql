@@ -65,7 +65,7 @@ with control (orden, que_se_controla, esperado, encontrado) as (
      where tgname = 'trg_auth_usuario_nuevo' and not tgisinternal)
 
   union all
-  select 9, 'Triggers del dominio', 6, (
+  select 9, 'Triggers del dominio', 7, (
     select count(*)::int from pg_trigger t
       join pg_class c on c.oid = t.tgrelid
       join pg_namespace n on n.oid = c.relnamespace
@@ -81,20 +81,28 @@ with control (orden, que_se_controla, esperado, encontrado) as (
      where id in ('fotos-usuarios','fotos-productos','fotos-mesas'))
 
   union all
-  select 12, 'Migraciones registradas', 8, (
+  select 12, 'Migraciones registradas', 9, (
     select count(*)::int from supabase_migrations.schema_migrations)
 
   union all
   -- Los límites de longitud de las migraciones 000600 y 000700. Sin
-  -- ellos, cualquiera
-  -- con la clave anon puede mandar un texto de 10.000 caracteres por
-  -- PostgREST salteando el formulario.
+  -- ellos, cualquiera con la clave anon puede mandar un texto de 10.000
+  -- caracteres por PostgREST salteando el formulario.
   select 13, 'Límites de longitud y formato', 27, (
     select count(*)::int from pg_constraint c
       join pg_namespace n on n.oid = c.connamespace
      where n.nspname = 'public' and c.contype = 'c'
        and (c.conname like 'largo\_%'
             or c.conname in ('formato_nombres','formato_apellidos')))
+
+  union all
+  -- Sin este trigger, cualquier cliente registrado puede hacer
+  -- `update usuarios set perfil='dueno' where id=auth.uid()` con la
+  -- clave pública y quedar de dueño. Es el control más importante
+  -- de toda esta lista.
+  select 14, 'Freno a la escalada de privilegios', 1, (
+    select count(*)::int from pg_trigger
+     where tgname = 'trg_usuarios_proteger_autorizacion' and not tgisinternal)
 )
 
 select

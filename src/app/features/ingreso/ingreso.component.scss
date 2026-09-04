@@ -40,7 +40,10 @@
 .quick-user::part(native) { min-height: 60px; justify-content: flex-start; padding: 12px 14px; text-align: left; }
 .quick-user:hover { --background: var(--tumbo-blanco-80); --border-color: var(--tumbo-azul-accion-55); --box-shadow: none; transform: translateY(-1px); }
 .quick-user__texto { display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 4px; }
-.quick-user__name { overflow: hidden; width: 100%; color: var(--tumbo-azul-sombra); font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+/* R5: el nombre del usuario es contenido informativo y no se puede
+   cortar. Antes se truncaba con puntos suspensivos; ahora se parte en
+   dos líneas y el botón crece, que es lo que pide el enunciado. */
+.quick-user__name { width: 100%; color: var(--tumbo-azul-sombra); font-size: 13px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .quick-user__role { color: var(--tumbo-azul-accion); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
 .welcome-footer { width: 100%; margin-top: 48px; padding-bottom: max(0px, env(safe-area-inset-bottom)); color: var(--tumbo-azul-texto-50); text-align: center; }
 .welcome-footer__rule { height: 1px; margin-bottom: 16px; background: var(--tumbo-azul-texto-12); }
