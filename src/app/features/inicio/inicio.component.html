@@ -29,12 +29,12 @@
         <ion-chip class="profile-chip">{{ usuarioActual.etiquetaPerfil }}</ion-chip>
       </section>
 
-      <section class="demo-banner" aria-label="Estado de la demostración">
+      <section class="demo-banner" aria-label="Datos de la sesión">
         <div class="demo-banner__icon">
           <ion-icon name="sparkles-outline" />
         </div>
         <div>
-          <strong>Modo primera entrega</strong>
+          <strong>Sesión iniciada</strong>
           <p>
             Hola, {{ usuarioActual.nombres }} {{ usuarioActual.apellidos }} ·
             {{ usuarioActual.correo }}
@@ -45,29 +45,29 @@
       <section class="panel-section" aria-labelledby="actions-title">
         <div class="section-heading">
           <div>
-            <p class="section-kicker">Conectado a Supabase</p>
+            <p class="section-kicker">{{ modo === 'supabase' ? 'Conectado a Supabase' : 'Datos de demostración' }}</p>
             <h2 id="actions-title">Tu panel de trabajo</h2>
           </div>
           <span class="section-heading__count">04</span>
         </div>
 
-        <div class="action-grid">
+        <div class="action-grid" role="list" aria-label="Áreas del panel">
           @for (accion of acciones; track accion.titulo) {
-            <ion-card class="action-card">
+            <ion-card class="action-card" role="listitem">
               <ion-card-content>
                 <div class="action-card__icon">
                   <ion-icon [name]="accion.icono" />
                 </div>
                 <h3>{{ accion.titulo }}</h3>
                 <p>{{ accion.descripcion }}</p>
-                <span class="action-card__status">Base preparada</span>
+                <span class="action-card__status">Se gestiona desde el centro de operación</span>
               </ion-card-content>
             </ion-card>
           }
         </div>
         <ion-button class="open-operation" expand="block" (click)="abrirOperacion()">
           <ion-icon slot="start" name="sparkles-outline" />
-          Abrir centro de pruebas del flujo completo
+          Abrir el centro de operación
         </ion-button>
       </section>
 
@@ -79,12 +79,10 @@
           </div>
         </div>
         <ul class="delivery-list">
-          <li><span aria-hidden="true">✓</span> Ícono y paleta de la aplicación definidos</li>
-          <li>
-            <span aria-hidden="true">✓</span> Splash estática y dinámica con los cuatro integrantes
-          </li>
-          <li><span aria-hidden="true">✓</span> Formulario con validaciones y acceso funcional</li>
-          <li><span aria-hidden="true">✓</span> Cierre de sesión listo para conectar a Supabase</li>
+          <li>Ícono de la aplicación y paleta de marca</li>
+          <li>Presentación estática y animada con los cuatro integrantes</li>
+          <li>Ingreso con validaciones y accesos rápidos desde la base</li>
+          <li>Cierre de sesión con borrado de credenciales</li>
         </ul>
       </section>
     </main>

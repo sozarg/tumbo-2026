@@ -19,10 +19,10 @@ import { IonNote } from '@ionic/angular/ion-note';
 import { IonRange } from '@ionic/angular/ion-range';
 import { IonSelect } from '@ionic/angular/ion-select';
 import { IonSelectOption } from '@ionic/angular/ion-select-option';
-import { IonSpinner } from '@ionic/angular/ion-spinner';
 import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
+import { Espera } from '../../shared/components/espera/espera.component';
 import {
   addCircleOutline,
   arrowBackOutline,
@@ -56,7 +56,7 @@ import {
   TipoMesa,
   TipoProducto,
 } from '../../core/models/demo-restaurante';
-import { DemoRestauranteService } from '../../core/services/demo-restaurante.service';
+import { OperacionService } from '../../core/services/operacion.service';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { SesionService } from '../../core/services/sesion.service';
 
@@ -82,9 +82,9 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonRange,
     IonSelect,
     IonSelectOption,
-    IonSpinner,
     IonTextarea,
     IonToggle,
+    Espera,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
@@ -97,7 +97,7 @@ export class Operacion implements OnInit {
   private readonly router = inject(Router);
   private readonly sesion = inject(SesionService);
   private readonly autenticacion = inject(AUTENTICACION);
-  protected readonly demo = inject(DemoRestauranteService);
+  protected readonly demo = inject(OperacionService);
 
   protected readonly usuario = this.sesion.usuario;
   protected readonly segmento = signal<SegmentoDemo>('resumen');
@@ -198,38 +198,43 @@ export class Operacion implements OnInit {
     void this.router.navigate(['/inicio']);
   }
 
-  protected cerrarSesion(): void {
-    this.autenticacion.cerrarSesion();
-    void this.router.navigate(['/ingreso'], { replaceUrl: true });
+  /**
+   * Se espera el cierre antes de navegar. Antes no se esperaba, así que
+   * la navegación arrancaba con el token todavía en el almacenamiento:
+   * justo lo que R13 pide poder verificar que no pasa.
+   */
+  protected async cerrarSesion(): Promise<void> {
+    await this.autenticacion.cerrarSesion();
+    await this.router.navigate(['/ingreso'], { replaceUrl: true });
   }
 
   protected campoInvalido(control: AbstractControl): boolean {
     return control.invalid && control.touched;
   }
 
-  protected registrarEmpleado(): void {
+  protected async registrarEmpleado(): Promise<void> {
     if (!this.validar(this.empleadoForm)) {
       return;
     }
-    this.demo.registrarEmpleado(this.empleadoForm.getRawValue() as AltaEmpleadoDemo);
+    await this.demo.registrarEmpleado(this.empleadoForm.getRawValue() as AltaEmpleadoDemo);
     this.empleadoForm.reset({ perfil: 'cocinero' });
     this.mensaje.set('Empleado registrado con validación de datos completa.');
   }
 
-  protected registrarProducto(): void {
+  protected async registrarProducto(): Promise<void> {
     if (!this.validar(this.productoForm)) {
       return;
     }
-    this.demo.registrarProducto(this.productoForm.getRawValue() as AltaProductoDemo);
+    await this.demo.registrarProducto(this.productoForm.getRawValue() as AltaProductoDemo);
     this.productoForm.reset({ minutos: 10, precio: 1000, tipo: 'plato' });
     this.mensaje.set('Producto agregado con tres imágenes de demostración.');
   }
 
-  protected registrarMesa(): void {
+  protected async registrarMesa(): Promise<void> {
     if (!this.validar(this.mesaForm)) {
       return;
     }
-    const creada = this.demo.registrarMesa(this.mesaForm.getRawValue() as AltaMesaDemo);
+    const creada = (await this.demo.registrarMesa(this.mesaForm.getRawValue() as AltaMesaDemo)).ok;
     this.mensaje.set(
       creada
         ? 'Mesa creada: el QR se generó automáticamente.'
@@ -237,32 +242,32 @@ export class Operacion implements OnInit {
     );
   }
 
-  protected registrarCliente(): void {
+  protected async registrarCliente(): Promise<void> {
     if (!this.validar(this.clienteForm)) {
       return;
     }
-    this.demo.registrarCliente(this.clienteForm.getRawValue() as AltaClienteDemo);
+    await this.demo.registrarCliente(this.clienteForm.getRawValue() as AltaClienteDemo);
     this.clienteForm.reset();
     this.mensaje.set('Cliente creado en estado pendiente de aprobación.');
   }
 
-  protected resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): void {
-    this.demo.resolverCliente(id, estado);
+  protected async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<void> {
+    await this.demo.resolverCliente(id, estado);
     this.mensaje.set(estado === 'aprobado' ? 'Cliente aprobado.' : 'Cliente rechazado.');
   }
 
-  protected asignarMesa(idEspera: string, numero: number): void {
-    const asignada = this.demo.asignarMesa(idEspera, numero);
+  protected async asignarMesa(idEspera: string, numero: number): Promise<void> {
+    const asignada = await this.demo.asignarMesa(idEspera, numero);
     this.mensaje.set(asignada ? 'Mesa ' + numero + ' asignada y notificada.' : 'Esa mesa no está disponible.');
   }
 
-  protected anotarCliente(): void {
+  protected async anotarCliente(): Promise<void> {
     const nombre = this.nombreAnonimo().trim();
     if (!nombre) {
       this.mensaje.set('Ingresá tu nombre para entrar a la lista de espera.');
       return;
     }
-    this.demo.anotarEnEspera(nombre);
+    await this.demo.anotarEnEspera(nombre);
     this.nombreAnonimo.set('');
     this.mensaje.set('Te anotamos en la lista de espera.');
   }
@@ -309,49 +314,59 @@ export class Operacion implements OnInit {
     this.demo.quitarDelCarrito(producto.id);
   }
 
+  protected async cambiarDisponibilidadMesa(numero: number): Promise<void> {
+    const resultado = await this.demo.cambiarDisponibilidadMesa(numero);
+    if (resultado.error) this.mensaje.set(resultado.error);
+  }
+
+  protected async eliminarDeEspera(id: string): Promise<void> {
+    const resultado = await this.demo.eliminarDeEspera(id);
+    if (resultado.error) this.mensaje.set(resultado.error);
+  }
+
   protected cantidad(productoId: string): number {
     return this.demo.carrito().find((item) => item.productoId === productoId)?.cantidad ?? 0;
   }
 
-  protected enviarPedido(): void {
+  protected async enviarPedido(): Promise<void> {
     const usuario = this.usuario();
     const nombre = usuario ? usuario.nombres + ' ' + usuario.apellidos : 'Cliente';
     const mesa = this.demo.mesaVinculada() ?? 2;
-    const enviado = this.demo.enviarPedido(nombre, mesa);
+    const enviado = (await this.demo.enviarPedido()).ok;
     this.mensaje.set(enviado ? 'Pedido enviado al mozo.' : 'Agregá productos antes de enviar el pedido.');
   }
 
-  protected rechazarPedido(): void {
+  protected async rechazarPedido(): Promise<void> {
     this.demo.rechazarPedido('Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.');
     this.mensaje.set('Pedido rechazado y devuelto al cliente con el motivo.');
   }
 
-  protected confirmarPedido(): void {
-    this.demo.confirmarPedido();
+  protected async confirmarPedido(): Promise<void> {
+    await this.demo.confirmarPedido();
     this.mensaje.set('Pedido confirmado: cocina y bar recibieron sus ítems.');
   }
 
-  protected marcarSectorListo(sector: SectorProducto): void {
-    this.demo.marcarSectorListo(sector);
+  protected async marcarSectorListo(sector: SectorProducto): Promise<void> {
+    await this.demo.marcarSectorListo(sector);
     this.mensaje.set('Sector ' + sector + ' actualizado.');
   }
 
-  protected entregarPedido(): void {
-    this.demo.marcarEntregado();
+  protected async entregarPedido(): Promise<void> {
+    await this.demo.marcarEntregado();
     this.mensaje.set('Pedido marcado como entregado; el cliente debe confirmar la recepción.');
   }
 
-  protected recibirPedido(): void {
-    this.demo.confirmarRecepcion();
+  protected async recibirPedido(): Promise<void> {
+    await this.demo.confirmarRecepcion();
     this.mensaje.set('Recepción confirmada. Ya se puede responder la encuesta y pedir la cuenta.');
   }
 
-  protected enviarMensaje(): void {
+  protected async enviarMensaje(): Promise<void> {
     if (!this.validar(this.mensajeForm)) {
       return;
     }
     const usuario = this.usuario();
-    this.demo.agregarMensaje(
+    await this.demo.agregarMensaje(
       usuario ? usuario.nombres + ' ' + usuario.apellidos : 'Cliente',
       this.mensajeForm.controls.texto.value,
       true,
@@ -360,8 +375,8 @@ export class Operacion implements OnInit {
     this.mensaje.set('Consulta enviada a todos los mozos.');
   }
 
-  protected jugar(idJuego: string, gano: boolean): void {
-    const intento = this.demo.jugar(idJuego, gano);
+  protected async jugar(idJuego: string, gano: boolean): Promise<void> {
+    const intento = (await this.demo.jugar(idJuego, gano)).intento;
     this.mensaje.set(
       gano && intento === 1
         ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
@@ -369,11 +384,11 @@ export class Operacion implements OnInit {
     );
   }
 
-  protected registrarEncuesta(): void {
+  protected async registrarEncuesta(): Promise<void> {
     if (!this.validar(this.encuestaForm)) {
       return;
     }
-    const registrada = this.demo.registrarEncuesta();
+    const registrada = (await this.demo.registrarEncuesta()).ok;
     this.mensaje.set(
       registrada
         ? 'Encuesta guardada: los gráficos ya tienen un nuevo dato.'
@@ -386,8 +401,8 @@ export class Operacion implements OnInit {
     this.mensaje.set('Seleccionaste una propina del ' + porcentaje + '%.');
   }
 
-  protected generarCuenta(): void {
-    const generada = this.demo.generarCuenta();
+  protected async generarCuenta(): Promise<void> {
+    const generada = (await this.demo.generarCuenta()).ok;
     this.mensaje.set(
       generada
         ? 'Cuenta generada con el detalle completo.'
@@ -395,13 +410,13 @@ export class Operacion implements OnInit {
     );
   }
 
-  protected pagarCuenta(): void {
-    this.demo.pagarCuenta();
+  protected async pagarCuenta(): Promise<void> {
+    await this.demo.pagarCuenta();
     this.mensaje.set('Pago simulado realizado. El mozo debe confirmarlo.');
   }
 
-  protected confirmarPago(): void {
-    this.demo.confirmarPago();
+  protected async confirmarPago(): Promise<void> {
+    await this.demo.confirmarPago();
     this.mensaje.set('Pago confirmado y mesa liberada.');
   }
 

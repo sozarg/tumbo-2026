@@ -1,11 +1,78 @@
+<!--
+  POR QUÉ CADA IMAGEN TIENE `ngSrcset` Y `sizes`
+
+  Los archivos de `public/imagenes/tumbito/` son los originales de diseño
+  y miden más de 1100 píxeles de ancho. En pantalla ninguno pasa de 540
+  (escritorio) ni de 272 (celular). Sin `srcset` el navegador bajaba y
+  decodificaba las seis a tamaño completo: 7,4 millones de píxeles de un
+  saque, entre 50 y 80 milisegundos de hilo principal, justo mientras la
+  splash se está animando. Ese era el tirón.
+
+  `tools/generar-ilustraciones.mjs` escribe las variantes de 240, 480 y
+  960 píxeles; `core/imagenes/cargador-de-ilustraciones.ts` le enseña a
+  NgOptimizedImage cómo se llaman. El último escalón del `ngSrcset` es el
+  ancho del original, para pantallas grandes con mucha densidad.
+
+  Los `sizes` copian los anchos del SCSS. Si cambia el tamaño de una
+  ilustración allá, hay que cambiarlo acá: si `sizes` miente, el
+  navegador elige mal y la imagen sale borrosa o vuelve a pesar de más.
+-->
 <div class="decor-grid" aria-hidden="true">
   @if (aura()) {
     <div class="decor-aura"></div>
   }
-  <img class="decor-asset decor-sopa" ngSrc="imagenes/tumbito/sopa.webp" width="1218" height="1158" alt="" />
-  <img class="decor-asset decor-cafe" ngSrc="imagenes/tumbito/cafe.webp" width="1139" height="1113" alt="" />
-  <img class="decor-asset decor-pizza" ngSrc="imagenes/tumbito/pizza.webp" width="1137" height="1076" alt="" />
-  <img class="decor-asset decor-fideos" ngSrc="imagenes/tumbito/fideos.webp" width="1119" height="1061" alt="" />
-  <img class="decor-asset decor-carne" ngSrc="imagenes/tumbito/carne.webp" width="1353" height="948" alt="" />
-  <img class="decor-asset decor-ensalada" ngSrc="imagenes/tumbito/ensalada.webp" width="1276" height="1183" alt="" />
+  <img
+    class="decor-asset decor-sopa"
+    ngSrc="imagenes/tumbito/sopa.webp"
+    ngSrcset="240w, 480w, 960w, 1218w"
+    sizes="(max-width: 47.99rem) 17rem, 33.75rem"
+    width="1218"
+    height="1158"
+    alt=""
+  />
+  <img
+    class="decor-asset decor-cafe"
+    ngSrc="imagenes/tumbito/cafe.webp"
+    ngSrcset="240w, 480w, 960w, 1139w"
+    sizes="(max-width: 47.99rem) 6.25rem, 9rem"
+    width="1139"
+    height="1113"
+    alt=""
+  />
+  <img
+    class="decor-asset decor-pizza"
+    ngSrc="imagenes/tumbito/pizza.webp"
+    ngSrcset="240w, 480w, 960w, 1137w"
+    sizes="17rem"
+    width="1137"
+    height="1076"
+    alt=""
+  />
+  <img
+    class="decor-asset decor-fideos"
+    ngSrc="imagenes/tumbito/fideos.webp"
+    ngSrcset="240w, 480w, 960w, 1119w"
+    sizes="33.5rem"
+    width="1119"
+    height="1061"
+    alt=""
+  />
+  <img
+    class="decor-asset decor-carne"
+    ngSrc="imagenes/tumbito/carne.webp"
+    ngSrcset="240w, 480w, 960w, 1353w"
+    sizes="(max-width: 47.99rem) 10rem, 16.25rem"
+    width="1353"
+    height="948"
+    alt=""
+  />
+  <img
+    class="decor-asset decor-ensalada"
+    ngSrc="imagenes/tumbito/ensalada.webp"
+    ngSrcset="240w, 480w, 960w, 1276w"
+    sizes="12.8125rem"
+    width="1276"
+    height="1183"
+    alt=""
+  />
 </div>

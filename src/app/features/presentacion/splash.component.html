@@ -1,4 +1,8 @@
-<div class="splash-page" (animationend)="finalizarTransicion($event)">
+<div
+  class="splash-page"
+  [class.splash-page--lista]="lista()"
+  (animationend)="finalizarTransicion($event)"
+>
   <main class="splash-page__sheet" aria-labelledby="splash-title">
     <div class="splash-page__orbit splash-page__orbit--outer" aria-hidden="true"></div>
     <div class="splash-page__orbit splash-page__orbit--inner" aria-hidden="true"></div>
@@ -15,8 +19,22 @@
         />
       </div>
 
+      <p class="splash-page__eyebrow">Grupo TUMBO</p>
       <h1 id="splash-title">TUMBITO</h1>
       <p class="splash-page__tagline">Una experiencia que se comparte</p>
+
+      <!--
+        Requisito excluyente R14: la pantalla de presentación tiene que
+        mostrar el ícono, el nombre del grupo y los apellidos y nombres
+        de cada integrante. Los estilos .splash-page__eyebrow y
+        .splash-page__team ya estaban en el SCSS, solo faltaba usarlos.
+      -->
+      <p class="splash-page__team">
+        <span>Terrile, Mateo</span>
+        <span>Bianucci, Ramiro</span>
+        <span>Cruz, Ignacio Agustín</span>
+        <span>Ferrari, Matías Gabriel</span>
+      </p>
 
       <div class="splash-page__loading" role="status" aria-label="Cargando aplicación">
         <span class="splash-page__loading-dot" aria-hidden="true"></span>

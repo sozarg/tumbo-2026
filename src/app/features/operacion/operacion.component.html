@@ -9,7 +9,7 @@
         <div class="operation-brand">
         <img ngSrc="imagenes/logo.png" width="48" height="48" priority alt="" />
           <div>
-            <span>Centro de pruebas</span>
+            <span>Centro de operación</span>
             <strong>TUMBO</strong>
           </div>
         </div>
@@ -69,9 +69,9 @@
         <section class="operation-hero">
           <div>
             <p class="section-kicker">Primera entrega · flujo funcional</p>
-            <h1>Todo listo para probar, {{ usuarioActual.nombres.split(' ')[0] }}.</h1>
+            <h1>Todo listo, {{ usuarioActual.nombres.split(' ')[0] }}.</h1>
             <p>
-              Este espacio conecta los roles del restaurante con datos de prueba.
+              Este espacio conecta los roles del restaurante con la operación del salón.
               Cada acción actualiza el recorrido para poder demostrarlo en clase.
             </p>
           </div>
@@ -101,7 +101,7 @@
           <div class="section-heading">
             <div>
               <p class="section-kicker">Seguimiento en tiempo real</p>
-              <h2 id="estado-title">Estado del pedido demo</h2>
+              <h2 id="estado-title">Estado del pedido</h2>
             </div>
             <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
           </div>
@@ -154,7 +154,7 @@
           <section class="notice-card" aria-label="Última notificación">
             <ion-icon name="sparkles-outline" />
             <div>
-              <strong>Última notificación mock</strong>
+              <strong>Última notificación</strong>
               <p>{{ notificacion.mensaje }} · {{ notificacion.fecha }}</p>
             </div>
           </section>
@@ -260,7 +260,7 @@
                 <ion-input label="Apellidos" label-placement="stacked" formControlName="apellidos" fill="outline" />
                 <ion-input label="DNI" label-placement="stacked" formControlName="dni" fill="outline" inputmode="numeric" />
                 <ion-input label="Correo" label-placement="stacked" formControlName="correo" fill="outline" type="email" />
-                <ion-note>La notificación y el correo se simulan hasta conectar Supabase y la Edge Function.</ion-note>
+                <ion-note>El alta se simula hasta conectar una Edge Function segura con service_role para crear la cuenta en Supabase.</ion-note>
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon slot="start" name="add-circle-outline" />Registrar cliente
                 </ion-button>
@@ -290,7 +290,7 @@
             <div class="section-heading"><div><p class="section-kicker">Punto 4</p><h2>Gestión de mesas</h2></div></div>
             <div class="table-grid">
               @for (mesa of demo.mesas(); track mesa.id) {
-                <button class="table-tile" [class.table-tile--free]="mesa.disponible" (click)="demo.cambiarDisponibilidadMesa(mesa.numero)">
+                <button class="table-tile" [class.table-tile--free]="mesa.disponible" (click)="cambiarDisponibilidadMesa(mesa.numero)">
                   <span class="table-tile__number">{{ mesa.numero }}</span>
                   <span>{{ mesa.tipo }}</span>
                   <strong>{{ mesa.disponible ? 'Disponible' : 'Ocupada' }}</strong>
@@ -318,7 +318,7 @@
                       }
                     </div>
                   }
-                  <ion-button class="icon-danger" fill="clear" aria-label="Eliminar de la lista" (click)="demo.eliminarDeEspera(persona.id)">
+                  <ion-button class="icon-danger" fill="clear" aria-label="Eliminar de la lista" (click)="eliminarDeEspera(persona.id)">
                     <ion-icon slot="icon-only" name="trash-outline" />
                   </ion-button>
                 </article>
@@ -525,7 +525,7 @@
                 @if (cuenta.estado === 'pendiente_pago') {
                   <ion-button class="primary-action" expand="block" (click)="pagarCuenta()"><ion-icon slot="start" name="wallet-outline" />Pagar de forma simulada</ion-button>
                 } @else if (cuenta.estado === 'pagada') {
-                  <div class="payment-waiting"><ion-spinner name="dots" /><span>Pago realizado. Esperando confirmación del mozo.</span></div>
+                  <div class="payment-waiting"><tumbo-espera etiqueta="Esperando la confirmación del mozo" /><span>Pago realizado. Esperando confirmación del mozo.</span></div>
                 } @else {
                   <div class="payment-success"><ion-icon name="checkmark-done-outline" /><span>Pago confirmado. La mesa quedó libre.</span></div>
                 }

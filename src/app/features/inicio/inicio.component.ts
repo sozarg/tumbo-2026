@@ -44,6 +44,12 @@ export class Inicio implements OnInit {
   private readonly autenticacion = inject(AUTENTICACION);
   private readonly sesion = inject(SesionService);
   protected readonly usuario = this.sesion.usuario;
+  /**
+   * El estado de conexión se lee del servicio, no es un texto fijo.
+   * Antes la pantalla decía "Conectado a Supabase" siempre, incluso
+   * cuando la aplicación estaba corriendo con datos de demostración.
+   */
+  protected readonly modo = this.autenticacion.modo;
   protected readonly acciones: readonly AccionPanel[] = [
     {
       icono: 'restaurant-outline',
