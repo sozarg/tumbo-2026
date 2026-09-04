@@ -374,6 +374,7 @@ export interface Database {
           confirmado_en: string | null;
           listo_en: string | null;
           entregado_en: string | null;
+          recibido_en: string | null;
         };
         Insert: {
           id?: string;
@@ -386,6 +387,7 @@ export interface Database {
           confirmado_en?: string | null;
           listo_en?: string | null;
           entregado_en?: string | null;
+          recibido_en?: string | null;
         };
         Update: {
           id?: string;
@@ -398,6 +400,7 @@ export interface Database {
           confirmado_en?: string | null;
           listo_en?: string | null;
           entregado_en?: string | null;
+          recibido_en?: string | null;
         };
       };
       preguntas_encuesta: {

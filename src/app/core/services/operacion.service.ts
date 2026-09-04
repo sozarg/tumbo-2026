@@ -92,8 +92,10 @@ export class OperacionService {
   }
 
   async registrarEmpleado(d: AltaEmpleadoDemo): Promise<Resultado> {
-    if (!this.cliente) { this.mock.registrarEmpleado(d); return { ok: true }; }
-    return this.insertar('usuarios', { id: crypto.randomUUID(), nombres: d.nombres, apellidos: d.apellidos, dni: d.dni.replace(/\D/g, ''), cuil: d.cuil, correo: d.correo.trim().toLowerCase(), perfil: d.perfil, estado: 'aprobado' });
+    // La creación de auth.users requiere service_role, que nunca se expone al navegador.
+    // Hasta contar con una Edge Function, las altas siguen siendo explícitamente mock.
+    this.mock.registrarEmpleado(d);
+    return { ok: true };
   }
   async registrarProducto(d: AltaProductoDemo): Promise<Resultado> {
     if (!this.cliente) { this.mock.registrarProducto(d); return { ok: true }; }
@@ -105,8 +107,10 @@ export class OperacionService {
     return this.insertar('mesas', { numero: d.numero, cantidad_comensales: d.comensales, tipo: this.tipoMesa(d.tipo) });
   }
   async registrarCliente(d: AltaClienteDemo): Promise<Resultado> {
-    if (!this.cliente) { this.mock.registrarCliente(d); return { ok: true }; }
-    return this.insertar('usuarios', { id: crypto.randomUUID(), nombres: d.nombres, apellidos: d.apellidos, dni: d.dni.replace(/\D/g, ''), correo: d.correo.trim().toLowerCase(), perfil: 'cliente_registrado', estado: 'pendiente' });
+    // La creación de auth.users requiere service_role, que nunca se expone al navegador.
+    // Hasta contar con una Edge Function, las altas siguen siendo explícitamente mock.
+    this.mock.registrarCliente(d);
+    return { ok: true };
   }
   async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<Resultado> {
     if (!this.cliente) { this.mock.resolverCliente(id, estado); return { ok: true }; }
@@ -187,7 +191,7 @@ export class OperacionService {
   async pagarCuenta(): Promise<Resultado> { return this.actualizarCuenta('pagada'); }
   async confirmarPago(): Promise<Resultado> { return this.actualizarCuenta('confirmada'); }
 
-  private async cambiarEstadoPedido(estado: 'rechazado' | 'confirmado' | 'entregado' | 'recibido', extra: Record<string, unknown> = {}): Promise<Resultado> { if (!this.cliente) { if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? '')); else if (estado === 'confirmado') this.mock.confirmarPedido(); else if (estado === 'entregado') this.mock.marcarEntregado(); else this.mock.confirmarRecepcion(); return { ok: true }; } const estadoReal = estado === 'recibido' ? 'pagado' : estado; return this.pedidoReal ? this.actualizar('pedidos', this.pedidoReal.id, { estado: estadoReal, ...extra }) : { ok: false, error: 'No hay pedido activo.' }; }
+  private async cambiarEstadoPedido(estado: 'rechazado' | 'confirmado' | 'entregado' | 'recibido', extra: Record<string, unknown> = {}): Promise<Resultado> { if (!this.cliente) { if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? '')); else if (estado === 'confirmado') this.mock.confirmarPedido(); else if (estado === 'entregado') this.mock.marcarEntregado(); else this.mock.confirmarRecepcion(); return { ok: true }; } if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' }; if (estado === 'recibido') return this.actualizar('pedidos', this.pedidoReal.id, { recibido_en: new Date().toISOString() }); return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra }); }
   private async actualizarCuenta(estado: 'pagada' | 'confirmada'): Promise<Resultado> { if (!this.cliente) { if (estado === 'pagada') this.mock.pagarCuenta(); else this.mock.confirmarPago(); return { ok: true }; } const c = this.cuentaReal; return c ? this.actualizar('cuentas', c.id, { estado, ...(estado === 'pagada' ? { pagada_en: new Date().toISOString() } : { confirmada_en: new Date().toISOString() }) }) : { ok: false, error: 'No hay cuenta activa.' }; }
   private async cargarPedidoYCuenta(): Promise<void> { if (!this.cliente || !this.sesionActiva) return; const q = await this.cliente.from('pedidos').select('*').eq('sesion_mesa_id', this.sesionActiva.id).order('creado_en', { ascending: false }).limit(1).maybeSingle(); if (q.error) { this.registrarError('cargar pedido', q.error); return; } this.pedidoReal = q.data; if (q.data) { const i = await this.cliente.from('pedido_items').select('*').eq('pedido_id', q.data.id); this.pedidoActivo.set(this.aPedido(q.data, i.data ?? [])); } const c = await this.cliente.from('cuentas').select('*').eq('sesion_mesa_id', this.sesionActiva.id).maybeSingle(); this.cuentaReal = c.data; if (!c.error) this.cuenta.set(c.data ? { subtotal: c.data.subtotal, descuento: c.data.descuento_monto, porcentajePropina: c.data.propina_pct ?? 0, propina: c.data.propina_monto, total: c.data.total, estado: c.data.estado === 'pendiente' ? 'pendiente_pago' : c.data.estado } : null); }
   private suscribirRealtime(): void { if (!this.cliente || this.canal) return; this.canal = this.cliente.channel('operacion-compartida').on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'lista_espera' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'mensajes' }, () => void this.cargar()).subscribe(); }
@@ -197,7 +201,7 @@ export class OperacionService {
   private aProducto(p: Producto, fotos: string[]): ProductoDemo { return { id: p.id, nombre: p.nombre, descripcion: p.descripcion, tipo: p.tipo as TipoProducto, sector: p.sector, precio: Number(p.precio), minutos: p.tiempo_elaboracion_min, fotos: fotos.length ? fotos : ['imagenes/logo.png'] }; }
   private aMesa(m: Tablas<'mesas'>): MesaDemo { return { id: m.id, numero: m.numero, comensales: m.cantidad_comensales, tipo: this.tipoDemo(m.tipo), disponible: m.estado === 'libre', qrToken: m.qr_token }; }
   private aUsuario(f: Tablas<'usuarios'>): Usuario { return { id: f.id, nombres: f.nombres, apellidos: f.apellidos ?? '', correo: f.correo ?? '', perfil: f.perfil, etiquetaPerfil: etiquetaDePerfil(f.perfil), estado: f.estado, fotoUrl: f.foto_url }; }
-  private aPedido(p: Pedido, items: Item[]): PedidoDemo { return { id: p.id, mesa: this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0, cliente: 'Cliente de la mesa', creadoEn: new Date(p.creado_en).toLocaleString('es-AR'), items: items.map((i) => ({ productoId: i.producto_id, nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto', cantidad: i.cantidad, precio: Number(i.precio_unitario), sector: i.sector, minutos: this.productosPorId.get(i.producto_id)?.tiempo_elaboracion_min ?? 0 })), estado: p.estado === 'pagado' ? 'recibido' : p.estado as EstadoPedido, motivoRechazo: p.motivo_rechazo ?? '', descuentoPorJuego: this.descuento(), sectoresListos: { cocina: items.filter((i) => i.sector === 'cocina').every((i) => i.estado === 'listo'), bar: items.filter((i) => i.sector === 'bar').every((i) => i.estado === 'listo') } }; }
+  private aPedido(p: Pedido, items: Item[]): PedidoDemo { const estado = p.estado === 'entregado' && p.recibido_en !== null ? 'recibido' : p.estado === 'pagado' ? 'recibido' : p.estado as EstadoPedido; return { id: p.id, mesa: this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0, cliente: 'Cliente de la mesa', creadoEn: new Date(p.creado_en).toLocaleString('es-AR'), items: items.map((i) => ({ productoId: i.producto_id, nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto', cantidad: i.cantidad, precio: Number(i.precio_unitario), sector: i.sector, minutos: this.productosPorId.get(i.producto_id)?.tiempo_elaboracion_min ?? 0 })), estado, motivoRechazo: p.motivo_rechazo ?? '', descuentoPorJuego: this.descuento(), sectoresListos: { cocina: items.filter((i) => i.sector === 'cocina').every((i) => i.estado === 'listo'), bar: items.filter((i) => i.sector === 'bar').every((i) => i.estado === 'listo') } }; }
   private aMensaje(m: Tablas<'mensajes'>, id: string): MensajeDemo { return { id: m.id, autor: m.autor_id === id ? 'Vos' : 'Equipo TUMBO', texto: m.cuerpo, fecha: new Date(m.enviado_en).toLocaleString('es-AR'), esPropio: m.autor_id === id }; }
   private aNotificacion = (n: Tablas<'notificaciones'>): NotificacionDemo => ({ id: n.id, mensaje: n.cuerpo, fecha: new Date(n.enviada_en).toLocaleString('es-AR'), destinatarios: [] });
   private tipoMesa(t: TipoMesa): Tablas<'mesas'>['tipo'] { return t === 'VIP' ? 'vip' : t === 'estándar' ? 'estandar' : 'movilidad_reducida'; }
