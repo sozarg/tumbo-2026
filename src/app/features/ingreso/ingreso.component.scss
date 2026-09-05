@@ -6,7 +6,6 @@
 .login-brand { display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
 .login-brand__lockup { width: min(82%, 270px); height: auto; object-fit: contain; }
 .login-intro h1 { margin: 0; color: var(--tumbo-azul-sombra); font-size: clamp(32px, 8vw, 36px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; }
-.login-intro__subtitle { margin: 10px 0 0; color: var(--tumbo-azul-texto-62); font-size: 14px; }
 
 /* Superficie principal: vidrio translúcido, borde luminoso y profundidad suave. */
 .login-card, .quick-access { width: 100%; border: 1px solid var(--tumbo-blanco-85); border-radius: 24px; background: var(--tumbo-blanco-40); backdrop-filter: blur(14px) saturate(135%); -webkit-backdrop-filter: blur(14px) saturate(135%); }

@@ -1,4 +1,4 @@
-# TUMBO — Trabajo Final Integrador 2026
+# Tumbito — Trabajo Final Integrador 2026
 
 Aplicación móvil de gestión de restaurante para la Tecnicatura Universitaria en Programación (UTN Avellaneda).
 
@@ -78,7 +78,7 @@ Se usa #003592 para texto corriente por contraste, #006AE7 para acciones y títu
 
 ### Identidad y presentación
 
-![Ícono TUMBO](docs/imagenes/logo.png)
+![Ícono Tumbito](docs/imagenes/logo.png)
 
 ![Logo con nombre](docs/imagenes/logo-nombre.png)
 

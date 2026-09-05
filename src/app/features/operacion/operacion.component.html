@@ -1,5 +1,6 @@
 <ion-content [fullscreen]="true" class="operation-page">
   @if (usuario(); as usuarioActual) {
+    <tumbo-fondo-decorativo />
     <main class="operation-layout">
       <header class="operation-header">
         <ion-button class="back-button" fill="clear" aria-label="Volver al inicio" (click)="volver()">
@@ -7,11 +8,15 @@
         </ion-button>
 
         <div class="operation-brand">
-        <img ngSrc="imagenes/logo.png" width="48" height="48" priority alt="" />
-          <div>
-            <span>Centro de operación</span>
-            <strong>TUMBO</strong>
-          </div>
+          <img
+            class="operation-brand__lockup"
+            ngSrc="imagenes/logo-nombre.png"
+            width="2168"
+            height="725"
+            priority
+            alt="Tumbito"
+          />
+          <span>Centro de operación</span>
         </div>
 
         <ion-button class="logout-button" fill="outline" aria-label="Cerrar sesión" (click)="cerrarSesion()">
@@ -20,42 +25,22 @@
         </ion-button>
       </header>
 
-      <nav class="operation-tabs" aria-label="Secciones de la demostración">
-        <button
-          class="operation-tab"
-          [class.operation-tab--active]="segmento() === 'resumen'"
-          (click)="cambiarSegmento('resumen')"
-        >
-          Resumen
-        </button>
-        <button
-          class="operation-tab"
-          [class.operation-tab--active]="segmento() === 'gestion'"
-          (click)="cambiarSegmento('gestion')"
-        >
-          Gestión
-        </button>
-        <button
-          class="operation-tab"
-          [class.operation-tab--active]="segmento() === 'pedido'"
-          (click)="cambiarSegmento('pedido')"
-        >
-          Pedido
-        </button>
-        <button
-          class="operation-tab"
-          [class.operation-tab--active]="segmento() === 'experiencia'"
-          (click)="cambiarSegmento('experiencia')"
-        >
-          Experiencia
-        </button>
-        <button
-          class="operation-tab"
-          [class.operation-tab--active]="segmento() === 'cuenta'"
-          (click)="cambiarSegmento('cuenta')"
-        >
-          Cuenta
-        </button>
+      <!--
+        Las etiquetas salen de `pestanas()` porque cambian según el
+        perfil: donde el dueño lee "Gestión", el cocinero lee "Cocina" y
+        el cliente lee "Entrada". Los identificadores internos no
+        cambian, así que los @if de más abajo siguen igual.
+      -->
+      <nav class="operation-tabs" aria-label="Secciones">
+        @for (pestana of pestanas(); track pestana.id) {
+          <button
+            class="operation-tab"
+            [class.operation-tab--active]="segmento() === pestana.id"
+            (click)="cambiarSegmento(pestana.id)"
+          >
+            {{ pestana.etiqueta }}
+          </button>
+        }
       </nav>
 
       @if (mensaje()) {
@@ -66,41 +51,32 @@
       }
 
       @if (segmento() === 'resumen') {
-        <section class="operation-hero">
-          <div>
-            <p class="section-kicker">Primera entrega · flujo funcional</p>
-            <h1>Todo listo, {{ usuarioActual.nombres.split(' ')[0] }}.</h1>
-            <p>
-              Este espacio conecta los roles del restaurante con la operación del salón.
-              Cada acción actualiza el recorrido para poder demostrarlo en clase.
-            </p>
-          </div>
-          <ion-chip class="profile-chip">{{ usuarioActual.etiquetaPerfil }}</ion-chip>
-        </section>
-
-        <section class="metric-grid" aria-label="Resumen del restaurante">
-          <div class="metric-card">
-            <span class="metric-card__number">{{ demo.empleados().length }}</span>
-            <span class="metric-card__label">Personal activo</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-card__number">{{ demo.productos().length }}</span>
-            <span class="metric-card__label">Productos en carta</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-card__number">{{ demo.mesas().length }}</span>
-            <span class="metric-card__label">Mesas registradas</span>
-          </div>
-          <div class="metric-card metric-card--accent">
-            <span class="metric-card__number">{{ demo.clientesPendientes().length }}</span>
-            <span class="metric-card__label">Clientes pendientes</span>
-          </div>
-        </section>
+        <!-- Personal, carta, mesas y clientes pendientes son datos de
+             gerencia: un cliente no tiene por qué verlos. -->
+        @if (perfilEsGestion()) {
+          <section class="metric-grid" aria-label="Resumen del restaurante">
+            <div class="metric-card">
+              <span class="metric-card__number">{{ demo.empleados().length }}</span>
+              <span class="metric-card__label">Personal activo</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__number">{{ demo.productos().length }}</span>
+              <span class="metric-card__label">Productos en carta</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__number">{{ demo.mesas().length }}</span>
+              <span class="metric-card__label">Mesas registradas</span>
+            </div>
+            <div class="metric-card metric-card--accent">
+              <span class="metric-card__number">{{ demo.clientesPendientes().length }}</span>
+              <span class="metric-card__label">Clientes pendientes</span>
+            </div>
+          </section>
+        }
 
         <section class="section-block" aria-labelledby="estado-title">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">Seguimiento en tiempo real</p>
               <h2 id="estado-title">Estado del pedido</h2>
             </div>
             <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
@@ -135,21 +111,6 @@
           </ion-card>
         </section>
 
-        <section class="section-block" aria-labelledby="scope-title">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Alcance documentado</p>
-              <h2 id="scope-title">Recorrido de la primera fecha</h2>
-            </div>
-          </div>
-          <div class="scope-grid">
-            <div><span>01–05</span><strong>Altas y catálogo</strong><p>Empleados, platos, bebidas, mesas y clientes.</p></div>
-            <div><span>06–10</span><strong>Acceso y espera</strong><p>Aprobaciones, notificaciones y asignación.</p></div>
-            <div><span>11–19</span><strong>Servicio completo</strong><p>Menú, pedido, cocina, bar y entrega.</p></div>
-            <div><span>20–22</span><strong>Cierre y análisis</strong><p>Encuesta, gráficos, cuenta, propina y pago.</p></div>
-          </div>
-        </section>
-
         @if (demo.notificaciones()[0]; as notificacion) {
           <section class="notice-card" aria-label="Última notificación">
             <ion-icon name="sparkles-outline" />
@@ -166,7 +127,6 @@
           <section class="section-block">
             <div class="section-heading">
               <div>
-                <p class="section-kicker">Puntos 1, 2, 3, 4, 5</p>
                 <h2>Altas y configuración</h2>
               </div>
             </div>
@@ -177,10 +137,6 @@
                   <ion-icon name="people-outline" />
                   <div><h3>Alta de empleado</h3><p>Incluye perfil, DNI y CUIL.</p></div>
                 </div>
-                <ion-button class="secondary-action" fill="outline" type="button" (click)="simularDniEmpleado()">
-                  <ion-icon slot="start" name="qr-code-outline" />
-                  Simular lector de DNI
-                </ion-button>
                 <ion-input label="Nombres" label-placement="stacked" formControlName="nombres" fill="outline" />
                 @if (campoInvalido(empleadoForm.controls.nombres)) { <small>Ingresá los nombres.</small> }
                 <ion-input label="Apellidos" label-placement="stacked" formControlName="apellidos" fill="outline" />
@@ -193,7 +149,6 @@
                   <ion-select-option value="cantinero">Cantinero</ion-select-option>
                   <ion-select-option value="mozo">Mozo</ion-select-option>
                 </ion-select>
-                <ion-note>La foto personal queda preparada para captura con cámara en Capacitor.</ion-note>
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon slot="start" name="add-circle-outline" />Registrar empleado
                 </ion-button>
@@ -214,7 +169,6 @@
                   <ion-select-option value="plato">Plato · cocina</ion-select-option>
                   <ion-select-option value="bebida">Bebida · bar</ion-select-option>
                 </ion-select>
-                <ion-note><ion-icon name="image-outline" /> Se guardan tres fotos y el carrusel las muestra una por vez.</ion-note>
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon slot="start" name="add-circle-outline" />Agregar a la carta
                 </ion-button>
@@ -223,7 +177,7 @@
               <form class="demo-form" [formGroup]="mesaForm" (ngSubmit)="registrarMesa()">
                 <div class="form-title">
                   <ion-icon name="qr-code-outline" />
-                  <div><h3>Alta de mesa</h3><p>El QR se genera automáticamente.</p></div>
+                  <div><h3>Alta de mesa</h3><p>Número, comensales y tipo.</p></div>
                 </div>
                 <div class="form-row">
                   <ion-input label="Número" label-placement="stacked" formControlName="numero" fill="outline" type="number" />
@@ -234,14 +188,6 @@
                   <ion-select-option value="VIP">VIP</ion-select-option>
                   <ion-select-option value="movilidad_reducida">Movilidad reducida</ion-select-option>
                 </ion-select>
-                <div class="qr-preview qr-preview--small">
-                  @if (qrImagen('mesa-' + mesaForm.controls.numero.value); as qr) {
-                    <img [src]="qr" alt="" />
-                  } @else {
-                    <span>QR</span>
-                  }
-                  <small>tumbo://mesa/</small>
-                </div>
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon slot="start" name="add-circle-outline" />Crear mesa
                 </ion-button>
@@ -252,15 +198,10 @@
                   <ion-icon name="happy-outline" />
                   <div><h3>Alta de cliente</h3><p>Queda pendiente de aprobación.</p></div>
                 </div>
-                <ion-button class="secondary-action" fill="outline" type="button" (click)="simularDniCliente()">
-                  <ion-icon slot="start" name="qr-code-outline" />
-                  Simular lector de DNI
-                </ion-button>
                 <ion-input label="Nombres" label-placement="stacked" formControlName="nombres" fill="outline" />
                 <ion-input label="Apellidos" label-placement="stacked" formControlName="apellidos" fill="outline" />
                 <ion-input label="DNI" label-placement="stacked" formControlName="dni" fill="outline" inputmode="numeric" />
                 <ion-input label="Correo" label-placement="stacked" formControlName="correo" fill="outline" type="email" />
-                <ion-note>El alta se simula hasta conectar una Edge Function segura con service_role para crear la cuenta en Supabase.</ion-note>
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon slot="start" name="add-circle-outline" />Registrar cliente
                 </ion-button>
@@ -269,7 +210,7 @@
           </section>
 
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Puntos 6, 7 y 8</p><h2>Clientes pendientes</h2></div><ion-badge>{{ demo.clientesPendientes().length }}</ion-badge></div>
+            <div class="section-heading"><div><h2>Clientes pendientes</h2></div><ion-badge>{{ demo.clientesPendientes().length }}</ion-badge></div>
             <div class="client-list">
               @for (cliente of demo.clientesPendientes(); track cliente.id) {
                 <article class="client-row">
@@ -287,7 +228,7 @@
           </section>
 
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Punto 4</p><h2>Gestión de mesas</h2></div></div>
+            <div class="section-heading"><div><h2>Gestión de mesas</h2></div></div>
             <div class="table-grid">
               @for (mesa of demo.mesas(); track mesa.id) {
                 <button class="table-tile" [class.table-tile--free]="mesa.disponible" (click)="cambiarDisponibilidadMesa(mesa.numero)">
@@ -301,7 +242,7 @@
           </section>
         } @else if (usuarioActual.perfil === 'metre') {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Puntos 9 y 10</p><h2>Lista de espera</h2></div><ion-badge>{{ demo.espera().length }}</ion-badge></div>
+            <div class="section-heading"><div><h2>Lista de espera</h2></div><ion-badge>{{ demo.espera().length }}</ion-badge></div>
             <div class="wait-list">
               @for (persona of demo.espera(); track persona.id) {
                 <article class="wait-row">
@@ -330,7 +271,7 @@
         } @else if (usuarioActual.perfil === 'cocinero' || usuarioActual.perfil === 'cantinero') {
           <section class="section-block">
             <div class="section-heading">
-              <div><p class="section-kicker">Puntos 16 y 17</p><h2>Sector {{ usuarioActual.perfil === 'cocinero' ? 'cocina' : 'bar' }}</h2></div>
+              <div><h2>Sector {{ usuarioActual.perfil === 'cocinero' ? 'cocina' : 'bar' }}</h2></div>
               <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
             </div>
             <ion-card class="sector-card">
@@ -351,7 +292,7 @@
           </section>
         } @else if (usuarioActual.perfil === 'mozo') {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Puntos 11, 13, 14, 18, 19 y 22</p><h2>Pedidos y atención</h2></div><span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span></div>
+            <div class="section-heading"><div><h2>Pedidos y atención</h2></div><span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span></div>
             <ion-card class="staff-order-card">
               <ion-card-content>
                 <div class="staff-order-card__header"><div><span>Mesa {{ demo.pedidoActivo().mesa }}</span><h3>{{ demo.pedidoActivo().cliente }}</h3></div><ion-icon name="restaurant-outline" /></div>
@@ -371,7 +312,7 @@
           </section>
         } @else {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Punto 9</p><h2>Entrada al restaurante</h2></div></div>
+            <div class="section-heading"><div><h2>Entrada al restaurante</h2></div></div>
             <div class="anonymous-entry">
               <div class="qr-preview">
                 @if (qrImagen('entrada'); as qr) {
@@ -394,7 +335,7 @@
       @if (segmento() === 'pedido') {
         @if (perfilEsCliente()) {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Puntos 11 y 12</p><h2>Menú TUMBO</h2></div><ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 2 }}</ion-chip></div>
+            <div class="section-heading"><div><h2>Menú Tumbito</h2></div><ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 2 }}</ion-chip></div>
             <div class="menu-grid">
               @for (producto of demo.productos(); track producto.id) {
                 <article class="product-card">
@@ -423,7 +364,7 @@
           </section>
         } @else {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Puntos 13, 14, 16, 17 y 18</p><h2>Seguimiento operativo</h2></div><span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span></div>
+            <div class="section-heading"><div><h2>Seguimiento operativo</h2></div><span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span></div>
             <div class="operational-grid">
               <ion-card class="operational-card"><ion-card-content><span>Cocina</span><strong>{{ demo.pedidoActivo().sectoresListos.cocina ? 'Listo' : 'En preparación' }}</strong><small>{{ demo.productosCocina().length }} productos disponibles</small></ion-card-content></ion-card>
               <ion-card class="operational-card"><ion-card-content><span>Bar</span><strong>{{ demo.pedidoActivo().sectoresListos.bar ? 'Listo' : 'En preparación' }}</strong><small>{{ demo.productosBar().length }} bebidas disponibles</small></ion-card-content></ion-card>
@@ -436,12 +377,12 @@
       @if (segmento() === 'experiencia') {
         @if (perfilEsCliente()) {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Punto 15</p><h2>Juegos y descuentos</h2></div><ion-chip class="discount-chip">{{ demo.descuento() }}% ganado</ion-chip></div>
+            <div class="section-heading"><div><h2>Juegos y descuentos</h2></div><ion-chip class="discount-chip">{{ demo.descuento() }}% ganado</ion-chip></div>
             @if (usuarioActual.perfil === 'cliente_anonimo') {
               <div class="locked-card"><ion-icon name="close-circle-outline" /><div><strong>Función exclusiva para clientes registrados</strong><p>El cliente anónimo puede pedir, responder la encuesta y pagar, pero no accede a juegos ni descuentos.</p></div></div>
             } @else {
               <div class="games-grid">
-                <article class="game-card"><span>01</span><h3>Memoria TUMBO</h3><p>Encontrá la pareja en tu primer intento.</p><div><ion-button size="small" (click)="jugar('memoria', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('memoria', false)">Probar</ion-button></div></article>
+                <article class="game-card"><span>01</span><h3>Memoria Tumbito</h3><p>Encontrá la pareja en tu primer intento.</p><div><ion-button size="small" (click)="jugar('memoria', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('memoria', false)">Probar</ion-button></div></article>
                 <article class="game-card"><span>02</span><h3>Palabras rápidas</h3><p>Completá la palabra antes de que termine.</p><div><ion-button size="small" (click)="jugar('palabras', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('palabras', false)">Probar</ion-button></div></article>
                 <article class="game-card"><span>03</span><h3>Desafío de rapidez</h3><p>Elegí la respuesta correcta.</p><div><ion-button size="small" (click)="jugar('rapidez', true)">Ganar primer intento</ion-button><ion-button fill="outline" size="small" (click)="jugar('rapidez', false)">Probar</ion-button></div></article>
               </div>
@@ -450,11 +391,11 @@
         }
 
         <section class="section-block">
-          <div class="section-heading"><div><p class="section-kicker">Punto 20</p><h2>Encuesta de satisfacción</h2></div><span class="status-pill">{{ demo.encuestaRespondida() ? 'Respondida' : 'Pendiente' }}</span></div>
+          <div class="section-heading"><div><h2>Encuesta de satisfacción</h2></div><span class="status-pill">{{ demo.encuestaRespondida() ? 'Respondida' : 'Pendiente' }}</span></div>
           <form class="survey-card" [formGroup]="encuestaForm" (ngSubmit)="registrarEncuesta()">
             <div class="survey-question"><strong>¿Cómo fue tu experiencia?</strong><ion-range formControlName="satisfaccion" min="1" max="5" pin="true"><ion-label slot="start">1</ion-label><ion-label slot="end">5</ion-label></ion-range></div>
             <ion-textarea label="Contanos un poco más" label-placement="stacked" formControlName="comentario" fill="outline" auto-grow="true" placeholder="Tu opinión nos ayuda a mejorar." />
-            <ion-item lines="none"><ion-label>¿Recomendarías TUMBO?</ion-label><ion-toggle slot="end" formControlName="recomendaria" /></ion-item>
+            <ion-item lines="none"><ion-label>¿Recomendarías Tumbito?</ion-label><ion-toggle slot="end" formControlName="recomendaria" /></ion-item>
             <ion-button class="primary-action" type="submit" [disabled]="demo.encuestaRespondida()"><ion-icon slot="start" name="document-text-outline" />Guardar encuesta</ion-button>
           </form>
         </section>
@@ -477,7 +418,7 @@
 
         @if (usuarioActual.perfil === 'cliente_registrado' || usuarioActual.perfil === 'cliente_anonimo' || usuarioActual.perfil === 'mozo') {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Punto 11</p><h2>Sala de consulta al mozo</h2></div></div>
+            <div class="section-heading"><div><h2>Sala de consulta al mozo</h2></div></div>
             <div class="chat-card">
               <div class="chat-messages">
                 @for (mensajeChat of demo.mensajes(); track mensajeChat.id) {
@@ -493,7 +434,7 @@
       @if (segmento() === 'cuenta') {
         @if (perfilEsCliente()) {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Punto 21</p><h2>Cuenta y propina</h2></div><ion-icon class="section-icon" name="wallet-outline" /></div>
+            <div class="section-heading"><div><h2>Cuenta y propina</h2></div><ion-icon class="section-icon" name="wallet-outline" /></div>
             <div class="tip-card">
               <div><h3>Elegí el QR de propina</h3><p>La cuenta se habilita después de seleccionar uno de los cinco niveles.</p></div>
               <div class="tip-grid">
@@ -515,7 +456,7 @@
           @if (demo.cuenta(); as cuenta) {
             <section class="section-block">
               <div class="bill-card">
-                <div class="bill-card__header"><div><span>Detalle de consumo</span><h2>Total TUMBO</h2></div><strong>{{ formatearPrecio(cuenta.total) }}</strong></div>
+                <div class="bill-card__header"><div><span>Detalle de consumo</span><h2>Total Tumbito</h2></div><strong>{{ formatearPrecio(cuenta.total) }}</strong></div>
                 <ul class="bill-lines">
                   @for (item of demo.pedidoActivo().items; track item.productoId) { <li><span>{{ item.cantidad }} × {{ item.nombre }}<small>{{ formatearPrecio(item.precio) }} unidad</small></span><strong>{{ formatearPrecio(item.precio * item.cantidad) }}</strong></li> }
                   @if (cuenta.descuento > 0) { <li class="bill-line--discount"><span>Descuento de juego<small>{{ demo.pedidoActivo().descuentoPorJuego }}% · primer intento</small></span><strong>-{{ formatearPrecio(cuenta.descuento) }}</strong></li> }
@@ -534,7 +475,7 @@
           }
         } @else {
           <section class="section-block">
-            <div class="section-heading"><div><p class="section-kicker">Punto 22</p><h2>Confirmación del pago</h2></div></div>
+            <div class="section-heading"><div><h2>Confirmación del pago</h2></div></div>
             <div class="payment-staff-card">
               <ion-icon name="wallet-outline" />
               <div><strong>{{ demo.cuenta()?.estado === 'pagada' ? 'Pago recibido' : 'Esperando el pago del cliente' }}</strong><p>El mozo confirma el pago y la mesa vuelve a quedar disponible.</p></div>
