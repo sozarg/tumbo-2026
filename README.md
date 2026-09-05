@@ -149,27 +149,27 @@ Ningún punto está cerrado todavía. **En curso** significa que la pantalla y e
 | # | Funcionalidad | Estado | Quién viene trabajando |
 |---|---|---|---|
 | 1 | Agregar un empleado | En curso (avanzado) | Ferrari |
-| 2 | Agregar un nuevo plato | En curso | Cruz |
-| 3 | Agregar una nueva bebida | En curso | Cruz |
-| 4 | Agregar una nueva mesa | En curso | Cruz |
-| 5 | Crear un cliente registrado | En curso | Cruz |
+| 2 | Agregar un nuevo plato | En curso | Ferrari |
+| 3 | Agregar una nueva bebida | En curso | Ferrari |
+| 4 | Agregar una nueva mesa | En curso | Ferrari |
+| 5 | Crear un cliente registrado | En curso | Ferrari |
 | 6 | Verificar el ingreso del cliente registrado | En curso | Cruz |
 | 7 | El dueño o supervisor rechaza a un cliente | En curso | Cruz |
 | 8 | El dueño o supervisor acepta a un cliente | En curso | Cruz |
 | 9 | Cliente anónimo y lista de espera | En curso | Cruz |
 | 10 | El metre asigna una mesa a un cliente | En curso | Cruz |
 | 11 | Menú por QR de mesa y consulta al mozo | En curso | Cruz |
-| 12 | El cliente realiza el pedido para toda la mesa | En curso | Cruz |
-| 13 | El mozo rechaza el pedido | En curso | Cruz |
-| 14 | El mozo confirma el pedido y lo deriva a los sectores | En curso | Cruz |
+| 12 | El cliente realiza el pedido para toda la mesa | En curso | Terrile |
+| 13 | El mozo rechaza el pedido | En curso | Terrile |
+| 14 | El mozo confirma el pedido y lo deriva a los sectores | En curso | Terrile |
 | 15 | Los tres juegos y los descuentos (excluyente) | Por hacer | — |
-| 16 | El sector cocina recibe sus productos | En curso | Cruz |
-| 17 | El sector bar recibe sus productos | En curso | Cruz |
-| 18 | Los sectores avisan que el pedido está completo | En curso | Cruz |
-| 19 | El mozo entrega el pedido completo | En curso | Cruz |
-| 20 | Encuesta y gráficos de resultados (excluyente) | En curso | Cruz |
-| 21 | El cliente pide la cuenta y elige la propina | En curso | Cruz |
-| 22 | El mozo confirma el pago y se libera la mesa | En curso | Cruz |
+| 16 | El sector cocina recibe sus productos | En curso | Terrile |
+| 17 | El sector bar recibe sus productos | En curso | Bianucci |
+| 18 | Los sectores avisan que el pedido está completo | En curso | Bianucci |
+| 19 | El mozo entrega el pedido completo | En curso | Bianucci |
+| 20 | Encuesta y gráficos de resultados (excluyente) | En curso | Bianucci |
+| 21 | El cliente pide la cuenta y elige la propina | En curso | Bianucci |
+| 22 | El mozo confirma el pago y se libera la mesa | En curso | Bianucci |
 
 ### Lo que destraba al resto
 
