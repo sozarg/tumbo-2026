@@ -141,11 +141,6 @@ export class Inicio implements OnInit {
     return esPersonal(perfil) ? ACCIONES_PERSONAL : ACCIONES_CLIENTE;
   });
 
-  /** El contador del encabezado sigue a la lista, no es un número fijo. */
-  protected readonly cantidadDeAcciones = computed(() =>
-    String(this.acciones().length).padStart(2, '0'),
-  );
-
   constructor() {
     addIcons({
       barChartOutline,

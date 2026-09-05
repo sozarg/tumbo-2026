@@ -14,7 +14,9 @@
      neutro al pie. */
   position: relative;
   z-index: 1;
-  width: min(100%, 76rem);
+  /* Misma decision que en inicio: una sola columna con ancho de
+     telefono, para que escritorio y celular sean identicos. */
+  width: min(100%, 30rem);
   min-height: 100dvh;
   margin: 0 auto;
   padding: 0.7rem 1rem 3rem;
@@ -51,7 +53,7 @@
   /* Logotipo apaisado (2168x725): se limita por alto para no empujar
      los botones de volver y salir. */
   width: auto;
-  height: clamp(1.5rem, 5.5vw, 2rem);
+  height: clamp(1.8rem, 6vw, 2.4rem);
   max-width: 42vw;
   object-fit: contain;
 }
@@ -1256,49 +1258,4 @@ img.qr-art {
 .section-icon {
   color: #006ae7;
   font-size: 1.8rem;
-}
-
-@media (min-width: 38rem) {
-  .operation-layout {
-    padding: 1rem 1.5rem 4rem;
-  }
-
-  .form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .menu-grid,
-  .games-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .client-row {
-    grid-template-columns: auto 1fr auto;
-  }
-
-  .client-row .row-actions {
-    grid-column: auto;
-  }
-}
-
-@media (min-width: 60rem) {
-  .operation-layout {
-    padding: 1.25rem 2.5rem 4rem;
-  }
-
-  .metric-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .menu-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .games-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
