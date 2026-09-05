@@ -191,3 +191,44 @@ button,
 ion-button {
   text-transform: none;
 }
+
+/* ───────────────────────────────────────────────────────────────────
+   El toast de éxito
+
+   POR QUÉ ESTÁ ACÁ Y NO EN EL SCSS DEL COMPONENTE
+   `ion-toast` no se dibuja adentro del componente que lo declara:
+   Ionic lo saca a la raíz de la aplicación, por encima de todo. Los
+   estilos de un componente están encapsulados y no llegan hasta ahí,
+   así que tienen que ser globales.
+
+   POR QUÉ CON VARIABLES Y NO CON SELECTORES
+   El toast vive en un shadow DOM. Sus partes internas no se pueden
+   alcanzar con CSS común; Ionic expone estas variables justamente para
+   eso. Es la manera soportada y no se rompe cuando actualicen Ionic.
+
+   Venía gris oscuro, que es el estilo de fábrica de Ionic y no se
+   parece en nada al resto de TUMBO.
+   ─────────────────────────────────────────────────────────────────── */
+.toast-tumbo {
+  --background: var(--tumbo-crema-brillante);
+  --color: var(--tumbo-azul-sombra);
+  --border-color: rgb(0 106 231 / 30%);
+  --border-radius: 0.7rem;
+  --border-style: solid;
+  --border-width: 0.1rem;
+  --box-shadow: 0 0.6rem 1.6rem rgb(0 53 146 / 18%);
+  --min-height: 3rem;
+
+  font-weight: 750;
+}
+
+/* El icono hereda el color del texto salvo que se le diga otra cosa;
+   en naranja se lee como "listo" de un vistazo, sin depender de leer. */
+.toast-tumbo::part(icon) {
+  color: var(--tumbo-naranja-marca);
+}
+
+.toast-tumbo::part(message) {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}

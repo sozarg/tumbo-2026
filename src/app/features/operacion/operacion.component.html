@@ -43,12 +43,37 @@
         }
       </nav>
 
-      @if (mensaje()) {
-        <div class="feedback" role="status">
-          <ion-icon name="checkmark-circle-outline" />
-          <span>{{ mensaje() }}</span>
+      <!--
+        Dos controles distintos a propósito (requisito excluyente: «Todo
+        error o información debe ser mostrada con distintos tipos de
+        controles»).
+
+        El ERROR es un cartel fijo, rojo, con `role="alert"`: no se va
+        solo, porque hay algo que corregir, y el lector de pantalla lo
+        interrumpe para leerlo.
+
+        El ÉXITO es un toast: aparece, se lee y se va. No hay nada que
+        hacer con él.
+
+        Antes los dos compartían este mismo cartel verde con una tilde,
+        así que un error se mostraba con cara de éxito.
+      -->
+      @if (error()) {
+        <div #carteldeError class="feedback feedback--error" role="alert" tabindex="-1">
+          <ion-icon name="alert-circle-outline" />
+          <span>{{ error() }}</span>
         </div>
       }
+
+      <ion-toast
+        [isOpen]="mensaje() !== ''"
+        [message]="mensaje()"
+        [duration]="3200"
+        position="top"
+        icon="checkmark-circle-outline"
+        cssClass="toast-tumbo"
+        (didDismiss)="cerrarAviso()"
+      />
 
       @if (segmento() === 'resumen') {
         <!-- Personal, carta, mesas y clientes pendientes son datos de
@@ -137,17 +162,73 @@
                   <ion-icon name="people-outline" />
                   <div><h3>Alta de empleado</h3><p>Incluye perfil, DNI y CUIL.</p></div>
                 </div>
-                <ion-input label="Nombres" label-placement="stacked" formControlName="nombres" fill="outline" />
-                @if (campoInvalido(empleadoForm.controls.nombres)) { <small>Ingresá los nombres.</small> }
-                <ion-input label="Apellidos" label-placement="stacked" formControlName="apellidos" fill="outline" />
-                @if (campoInvalido(empleadoForm.controls.apellidos)) { <small>Ingresá los apellidos.</small> }
-                <ion-input label="DNI" label-placement="stacked" formControlName="dni" fill="outline" inputmode="numeric" />
-                <ion-input label="CUIL" label-placement="stacked" formControlName="cuil" fill="outline" inputmode="numeric" />
-                <ion-input label="Correo" label-placement="stacked" formControlName="correo" fill="outline" type="email" />
+                <ion-button class="secondary-action" fill="outline" type="button" (click)="simularDniEmpleado()">
+                  <ion-icon slot="start" name="qr-code-outline" />
+                  Simular lector de DNI
+                </ion-button>
+                <!--
+                  Cada campo muestra su propio error abajo, con el texto
+                  que arma core/validacion/mensajes.ts. Antes había tres
+                  textos escritos a mano ("Ingresá los nombres") y los
+                  demás campos no avisaban nada.
+
+                  El DNI y el CUIL además FILTRAN lo que se tipea: no
+                  dejan meter una letra. Es comodidad, no seguridad —se
+                  saltea pegando— pero evita escribir ocho caracteres
+                  para que después se pongan todos en rojo.
+
+                  El `maxlength` sale de LIMITES, que son los mismos
+                  números que los CHECK de la base.
+                -->
+                <ion-input
+                  label="Nombres" label-placement="stacked" formControlName="nombres"
+                  fill="outline" [maxlength]="limites.nombres.max" autocomplete="given-name" />
+                @if (campoInvalido(empleadoForm.controls.nombres)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.nombres, 'nombre') }}</small>
+                }
+
+                <ion-input
+                  label="Apellidos" label-placement="stacked" formControlName="apellidos"
+                  fill="outline" [maxlength]="limites.apellidos.max" autocomplete="family-name" />
+                @if (campoInvalido(empleadoForm.controls.apellidos)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.apellidos, 'apellido') }}</small>
+                }
+
+                <ion-input
+                  label="DNI" label-placement="stacked" formControlName="dni"
+                  fill="outline" inputmode="numeric" [maxlength]="10"
+                  (ionInput)="filtrarTipeo(empleadoForm.controls.dni, $event, sobraEnDni)" />
+                @if (campoInvalido(empleadoForm.controls.dni)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.dni, 'DNI') }}</small>
+                }
+
+                <ion-input
+                  label="CUIL" label-placement="stacked" formControlName="cuil"
+                  fill="outline" inputmode="numeric" [maxlength]="limites.cuil.max"
+                  (ionInput)="filtrarTipeo(empleadoForm.controls.cuil, $event, sobraEnCuil)" />
+                @if (campoInvalido(empleadoForm.controls.cuil)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.cuil, 'CUIL') }}</small>
+                }
+
+                <ion-input
+                  label="Correo" label-placement="stacked" formControlName="correo"
+                  fill="outline" type="email" [maxlength]="limites.correo.max" autocomplete="email" />
+                @if (campoInvalido(empleadoForm.controls.correo)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.correo, 'correo') }}</small>
+                }
+
+                <ion-input
+                  label="Contraseña" label-placement="stacked" formControlName="clave"
+                  fill="outline" type="password" [maxlength]="limites.clave.max"
+                  autocomplete="new-password" />
+                @if (campoInvalido(empleadoForm.controls.clave)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.clave, 'contraseña') }}</small>
+                }
                 <ion-select label="Perfil" label-placement="stacked" formControlName="perfil" fill="outline">
+                  <ion-select-option value="metre">Metre</ion-select-option>
+                  <ion-select-option value="mozo">Mozo</ion-select-option>
                   <ion-select-option value="cocinero">Cocinero</ion-select-option>
                   <ion-select-option value="cantinero">Cantinero</ion-select-option>
-                  <ion-select-option value="mozo">Mozo</ion-select-option>
                 </ion-select>
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon slot="start" name="add-circle-outline" />Registrar empleado

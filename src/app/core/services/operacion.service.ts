@@ -18,6 +18,33 @@ type Producto = Tablas<'productos'>;
 type Resultado = { ok: boolean; error?: string };
 
 /** Persistencia de la pantalla Operaciones. El mock se conserva solo para el modo sin configuración. */
+/**
+ * Saca los puntos y los espacios del DNI: 43.210.987 → 43210987
+ *
+ * POR QUÉ
+ * El constraint de la base es `dni ~ '^[0-9]{7,8}$'`: solo dígitos. Y
+ * en Argentina el DNI se escribe con puntos, así que cualquiera lo va a
+ * cargar así. Sin esto, la persona ve «El DNI tiene que ser de 7 u 8
+ * dígitos, sin puntos» por haber escrito el número de la manera normal.
+ *
+ * POR QUÉ SOLO PUNTOS Y ESPACIOS, Y NO TODO LO QUE NO SEA UN DÍGITO
+ * La primera versión de esto hacía `replace(/\D/g, '')`, que borra
+ * cualquier cosa que no sea un número. Parece más prolijo y es peor:
+ * `4321O987` —con la letra O en lugar del cero, un error de tipeo muy
+ * común— se convertía en `4321987`, siete dígitos, un DNI VÁLIDO PERO
+ * DE OTRA PERSONA. Se guardaba sin decir nada.
+ *
+ * Sacar solo lo que es separador visual deja que la letra sobreviva,
+ * el CHECK de la base la rechace y la persona vea el error.
+ *
+ * El CUIL NO pasa por acá: su constraint sí acepta los guiones
+ * (`^[0-9]{2}-?[0-9]{7,8}-?[0-9]$`), y sacárselos lo haría menos legible
+ * en la base sin ganar nada.
+ */
+function normalizarDni(valor: string): string {
+  return (valor ?? '').replace(/[.\s]/g, '');
+}
+
 @Injectable({ providedIn: 'root' })
 export class OperacionService {
   private readonly mock = inject(DemoRestauranteService);
@@ -91,11 +118,71 @@ export class OperacionService {
     } catch (error) { this.registrarError('cargar Operaciones', error); }
   }
 
+  /**
+   * Alta de empleado (punto 1).
+   *
+   * Pasa por la Edge Function `crear-empleado` en vez de escribir
+   * directo en la base. Crear una cuenta con contraseña necesita la
+   * clave `service_role`, y esa clave no puede viajar dentro del APK:
+   * puede leer cualquier tabla y saltear RLS. El razonamiento completo
+   * está en `supabase/functions/crear-empleado/index.ts`.
+   *
+   * Esta función reemplaza al mock que había acá. Si Supabase no está
+   * configurado —modo demostración— se sigue usando el mock, igual que
+   * el resto del servicio.
+   */
   async registrarEmpleado(d: AltaEmpleadoDemo): Promise<Resultado> {
-    // La creación de auth.users requiere service_role, que nunca se expone al navegador.
-    // Hasta contar con una Edge Function, las altas siguen siendo explícitamente mock.
-    this.mock.registrarEmpleado(d);
+    if (!this.cliente) {
+      this.mock.registrarEmpleado(d);
+      return { ok: true };
+    }
+
+    const { error } = await this.cliente.functions.invoke('crear-empleado', {
+      body: {
+        nombres: d.nombres,
+        apellidos: d.apellidos,
+        dni: normalizarDni(d.dni),
+        cuil: d.cuil,
+        correo: d.correo,
+        clave: d.clave,
+        perfil: d.perfil,
+      },
+    });
+
+    if (error) {
+      return { ok: false, error: await this.mensajeDeLaFuncion(error) };
+    }
+
+    // La lista de usuarios no la refresca realtime: `usuarios` no está
+    // entre las tablas suscriptas, así que se recarga a mano.
+    await this.cargar();
     return { ok: true };
+  }
+
+  /**
+   * Saca el mensaje que devolvió la Edge Function.
+   *
+   * `functions.invoke` no rechaza cuando la función responde 4xx: mete
+   * un `FunctionsHttpError` cuyo cuerpo hay que leer aparte. Si no se
+   * hace esto, el usuario ve "Edge Function returned a non-2xx status
+   * code" en lugar de "Ya existe una cuenta con ese correo".
+   */
+  private async mensajeDeLaFuncion(error: unknown): Promise<string> {
+    const contexto = (error as { context?: Response }).context;
+
+    if (contexto && typeof contexto.json === 'function') {
+      try {
+        const cuerpo = await contexto.json();
+        if (cuerpo?.error) {
+          return String(cuerpo.error);
+        }
+      } catch {
+        // Sin cuerpo legible; se cae al mensaje genérico de abajo.
+      }
+    }
+
+    this.registrarError('crear el empleado', error);
+    return 'No se pudo crear el empleado. Revisá la conexión e intentá nuevamente.';
   }
   async registrarProducto(d: AltaProductoDemo): Promise<Resultado> {
     if (!this.cliente) { this.mock.registrarProducto(d); return { ok: true }; }

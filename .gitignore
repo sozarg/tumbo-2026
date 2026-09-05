@@ -51,3 +51,7 @@ Thumbs.db
 /supabase/.env
 .env
 .env.local
+
+# Carpeta que crea la aplicación de escritorio de Claude al entregar
+# archivos. No es del proyecto y reaparece sola.
+/Claude outputs/

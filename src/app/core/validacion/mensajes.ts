@@ -43,6 +43,38 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
     return `${El} solo puede tener letras y espacios.`;
   }
 
+  if (errores['dniValido']) {
+    return 'El DNI tiene que ser de 7 u 8 números. Los puntos se pueden poner o no.';
+  }
+
+  /*
+   * EL ORDEN DE ESTOS DOS IMPORTA.
+   *
+   * Si alguien cambia un dígito del MEDIO del CUIL, se rompen las dos
+   * cosas al mismo tiempo: deja de coincidir con el DNI y además el
+   * dígito verificador ya no cierra, porque se calcula sobre esos
+   * mismos números.
+   *
+   * Con el otro orden ganaba «ese CUIL no existe», que manda a la
+   * persona a corregir el último número —y eso no arregla nada—. Que
+   * los dos campos no se correspondan es el problema de fondo y es lo
+   * que hay que decir.
+   *
+   * «Ese CUIL no existe» queda para cuando el DNI sí está adentro y lo
+   * único mal es el verificador.
+   */
+  if (errores['cuilCoincide']) {
+    return 'El CUIL no contiene el DNI que cargaste. Revisá los dos.';
+  }
+
+  if (errores['cuilDigito']) {
+    return 'Ese CUIL no existe: el último número no se corresponde con los demás.';
+  }
+
+  if (errores['cuilValido']) {
+    return 'El CUIL tiene que ser de 11 números, con guiones o sin ellos.';
+  }
+
   if (errores['soloNumeros']) {
     return `${El} solo puede tener números.`;
   }

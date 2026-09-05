@@ -123,6 +123,22 @@
   font-weight: 750;
 }
 
+/* El cartel de error NO se parece al de éxito: rojo, no crema, y con
+   su propio icono. Antes los dos usaban .feedback a secas y un tilde
+   verde, así que un fallo se leía como un "listo". */
+.feedback--error {
+  border-color: rgb(176 0 32 / 45%);
+  color: #7a0016;
+  background: #fde8e8;
+}
+
+/* Recibe el foco por programa para que el lector de pantalla lo lea,
+   pero no es un control: el anillo del navegador confundiría. El borde
+   rojo y el icono ya lo distinguen de sobra. */
+.feedback--error:focus {
+  outline: none;
+}
+
 .feedback ion-icon {
   flex-shrink: 0;
   color: #006ae7;

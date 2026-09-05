@@ -102,7 +102,16 @@ export interface AltaEmpleadoDemo {
   readonly dni: string;
   readonly cuil: string;
   readonly correo: string;
-  readonly perfil: Extract<PerfilUsuario, 'cocinero' | 'cantinero' | 'mozo'>;
+  /**
+   * La contraseña con la que el empleado va a ingresar.
+   *
+   * La pide el punto 1 del enunciado y hasta ahora faltaba: sin ella el
+   * alta no podía crear una cuenta de verdad. Nunca se guarda en
+   * `public.usuarios` —la maneja Supabase Auth, cifrada— y viaja una
+   * sola vez, hacia la Edge Function `crear-empleado`.
+   */
+  readonly clave: string;
+  readonly perfil: Extract<PerfilUsuario, 'metre' | 'mozo' | 'cocinero' | 'cantinero'>;
 }
 
 export interface AltaProductoDemo {
