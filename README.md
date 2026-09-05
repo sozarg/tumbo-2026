@@ -218,8 +218,6 @@ Se usa #003592 para texto corriente por contraste, #006AE7 para acciones y títu
 
 ![Logo con nombre](docs/imagenes/logo-nombre.png)
 
-![Splash estática](docs/imagenes/splash-estatica.svg)
-
 ### Códigos QR
 
 - [QR de ingreso](docs/imagenes/qr-entrada.png)
