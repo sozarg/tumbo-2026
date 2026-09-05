@@ -1,0 +1,195 @@
+{
+  "proyecto": "TFI · Primera fecha (17-10-2026)",
+  "columnas": ["Por hacer", "En curso", "Hecho"],
+  "tarjetas": [
+    {
+      "id": "P01",
+      "titulo": "Punto 1 · Agregar un empleado",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "alta", "dispositivo-1"],
+      "cuerpo": "**Perfiles habilitados:** dueño o supervisor. Dispositivo 1.\n\n### Lo que pide el enunciado\n- [ ] Campos: nombres, apellidos, DNI, CUIL, correo, **contraseña** y perfil cocinero\n- [ ] Foto personal **tomada con la cámara** (no elegida de la galería)\n- [ ] Lector de QR del DNI que complete los campos solos\n- [ ] Validar TODOS los campos: formatos, vacíos, tipos de dato\n- [ ] Verificar la lectura del QR del DNI\n\n### Estado actual\n`empleadoForm` existe en `operacion.component.ts:126` y `registrarEmpleado()` ya escribe en Supabase (`operacion.service.ts`).\n\nFalta:\n- El campo **contraseña** no está en el formulario\n- No hay foto (no existe cámara en el proyecto)\n- No hay lector de QR\n- Las validaciones son `Validators.required` y `minLength` sueltos; no usan `core/validacion`, que es donde están los límites que coinciden con la base\n\n### Depende de\nE1 (cámara) y E2 (lector de QR)"
+    },
+    {
+      "id": "P02",
+      "titulo": "Punto 2 · Agregar un nuevo plato",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "alta", "dispositivo-2"],
+      "cuerpo": "**Perfil:** cocinero. Dispositivo 2.\n\n### Lo que pide el enunciado\n- [ ] Campos: nombre, descripción, tiempo de elaboración en minutos, precio\n- [ ] **Tres (3) fotos** tomadas del dispositivo (acá sí se admite la galería)\n- [ ] Las fotos en contenedores individuales, con buen tamaño, centradas, sin mostrar partes de otras, con posibilidad de elegir otra\n- [ ] Validar TODOS los campos\n- [ ] Verificar que el plato aparece en la carta\n\n### Estado actual\n`productoForm` (`operacion.component.ts:134`) tiene nombre, descripción, minutos, precio y tipo. `registrarProducto()` escribe en Supabase y existe la tabla `producto_fotos`.\n\nFalta: las tres fotos (no hay cámara ni carga de imágenes) y las validaciones completas.\n\n### Depende de\nE1 (cámara)"
+    },
+    {
+      "id": "P03",
+      "titulo": "Punto 3 · Agregar una nueva bebida",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "alta", "dispositivo-3"],
+      "cuerpo": "**Perfil:** cantinero. Dispositivo 3.\n\n### Lo que pide el enunciado\n- [ ] Mismos campos que el plato: nombre, descripción, minutos, precio\n- [ ] **Tres (3) fotos** con las mismas reglas de presentación\n- [ ] Validar TODOS los campos\n- [ ] Verificar que la bebida aparece en la carta\n\n### Estado actual\nComparte `productoForm` y `registrarProducto()` con el punto 2 (el campo `tipo` distingue plato de bebida). Le falta exactamente lo mismo: las tres fotos y las validaciones.\n\n### Depende de\nE1 (cámara)"
+    },
+    {
+      "id": "P04",
+      "titulo": "Punto 4 · Agregar una nueva mesa",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "alta", "dispositivo-4"],
+      "cuerpo": "**Perfiles habilitados:** dueño o supervisor. Dispositivo 4.\n\n### Lo que pide el enunciado\n- [ ] Campos: número, cantidad de comensales, tipo (VIP / estándar / movilidad reducida), disponibilidad (vacía por defecto)\n- [ ] Foto **tomada del dispositivo**, en contenedor individual, buen tamaño y centrada\n- [ ] Validar TODOS los campos\n- [ ] Verificar que la mesa aparece en el listado\n- [ ] **Generar el código QR de la mesa de forma automática**\n- [ ] Permitir gestionar mesas: modificar la disponibilidad\n\n### Estado actual\n`mesaForm` y `registrarMesa()` andan contra Supabase. `cambiarDisponibilidadMesa()` existe, así que la gestión está. El componente ya avisa «Mesa creada: el QR se generó automáticamente» (`operacion.component.ts:240`).\n\nFalta: la foto de la mesa, y verificar que el QR que se genera sea real y no el mensaje solo.\n\n### Depende de\nE1 (cámara)"
+    },
+    {
+      "id": "P05",
+      "titulo": "Punto 5 · Crear un cliente registrado",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "alta", "dispositivo-2"],
+      "cuerpo": "**Perfiles habilitados:** cliente o metre. Dispositivo 2.\n\n### Lo que pide el enunciado\n- [ ] Campos: nombres, apellidos, DNI, correo, contraseña, foto personal\n- [ ] Foto **tomada con la cámara** (no de la galería)\n- [ ] Lector de QR del DNI que complete los campos\n- [ ] Validar TODOS los campos\n- [ ] El registro queda en estado **pendiente de aprobación**\n- [ ] Se envía un correo automático informando la situación\n- [ ] El cliente NO puede ingresar hasta ser aceptado\n- [ ] Verificar la lectura del QR del DNI\n\n### Estado actual\n`clienteForm` y `registrarCliente()` existen. El estado `pendiente` ya está en la base y el ingreso lo frena (`autenticacion-supabase.service.ts`).\n\nFalta: foto, lector de QR, correo automático y las validaciones completas.\n\n### Depende de\nE1 (cámara), E2 (lector de QR), E4 (correos)"
+    },
+    {
+      "id": "P06",
+      "titulo": "Punto 6 · Verificar el ingreso del cliente registrado",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "dispositivo-1"],
+      "cuerpo": "**Perfiles habilitados:** dueño o supervisor. Dispositivo 1.\n\n### Lo que pide el enunciado\n- [ ] El registro aparece en el listado de clientes pendientes de aprobación\n- [ ] **Push notification** al dueño y al supervisor\n- [ ] El listado muestra al menos apellidos, nombres y **la foto** del cliente\n- [ ] Cada foto con buen tamaño y relacionada con su nombre\n- [ ] Aceptar o rechazar mediante algún control\n\n### Estado actual\n`resolverCliente()` acepta y rechaza contra Supabase, y el listado se actualiza solo por realtime.\n\nFalta: la push notification y la foto en el listado (que depende de que el alta la guarde).\n\n### Depende de\nE1 (cámara), E3 (push)"
+    },
+    {
+      "id": "P07",
+      "titulo": "Punto 7 · El dueño o supervisor rechaza a un cliente",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "correo", "dispositivo-1"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El cliente recibe un correo informando la situación\n- [ ] El correo lleva **logo de la empresa, mensaje personalizado, fuentes, colores y tamaños distintos a los de fábrica**\n- [ ] El correo sale de una cuenta **automática/empresarial**, nunca de la cuenta personal de un integrante\n- [ ] Verificar que el cliente rechazado NO pueda ingresar\n- [ ] Informarlo con un mensaje alusivo\n\n### Estado actual\nEl rechazo funciona y el bloqueo de ingreso también (hay un mensaje que explica que está pendiente o rechazado).\n\nFalta todo el correo: existe la tabla `correos_enviados` pero **no hay nada que envíe**.\n\n### Depende de\nE4 (correos)"
+    },
+    {
+      "id": "P08",
+      "titulo": "Punto 8 · El dueño o supervisor acepta a un cliente",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "correo", "dispositivo-1"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El cliente recibe un correo de confirmación\n- [ ] Mismo nivel de diseño que el correo de rechazo (logo, fuentes, colores, tamaños propios)\n- [ ] Correo automático, nunca desde una cuenta personal\n- [ ] Verificar que el cliente ya pueda ingresar a la aplicación\n\n### Estado actual\nLa aceptación funciona y el cliente aceptado entra.\n\nFalta el correo.\n\n### Depende de\nE4 (correos)"
+    },
+    {
+      "id": "P09",
+      "titulo": "Punto 9 · Ingresar como cliente anónimo y anotarse en la lista de espera",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "qr", "dispositivo-3"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El cliente anónimo se registra con **nombre y foto** (no requiere aprobación)\n- [ ] **Escanear el QR de entrada** para pedir mesa\n- [ ] Aparece en la lista de espera del metre + **push notification**\n- [ ] Cada cliente puede ser eliminado del listado\n- [ ] No se puede tomar una mesa sin estar antes en la lista de espera\n- [ ] Puede ver los resultados de las encuestas previas\n\n### Estado actual\n`anotarEnEspera()` y `eliminarDeEspera()` funcionan contra Supabase, con realtime.\n\nFalta: la foto del anónimo, escanear el QR de entrada (hoy se entra por botón), la push, y los resultados de encuestas previas (ver P20).\n\n### Depende de\nE1 (cámara), E2 (lector de QR), E3 (push)"
+    },
+    {
+      "id": "P10",
+      "titulo": "Punto 10 · El metre asigna una mesa a un cliente",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "qr", "dispositivo-4"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El metre asigna la mesa + **push notification** al cliente\n- [ ] El cliente no puede vincularse con otra mesa (hay que indicarle cuál es la suya)\n- [ ] El cliente **escanea el QR de la mesa asignada**\n- [ ] Con la mesa asignada, no se le puede asignar esa misma mesa a otro cliente\n\n### Estado actual\n`asignarMesa()` y `vincularMesa()` existen y la mesa queda ocupada.\n\nFalta: escanear el QR de la mesa y la push.\n\n### Depende de\nE2 (lector de QR), E3 (push)"
+    },
+    {
+      "id": "P11",
+      "titulo": "Punto 11 · Menú por QR de mesa y sala de consulta al mozo",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "qr", "chat"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] Al leer el QR de la mesa, ver el listado de productos con **tres imágenes por producto**, nombre, precio, descripción y tiempo estimado\n- [ ] Imágenes en contenedores individuales, buen tamaño, centradas, sin mostrar partes de otras, con posibilidad de ver otra\n- [ ] Botón de «consulta al mozo» con **número de mesa y fecha con hora y minutos**\n- [ ] **Sala de conversación estilo WhatsApp** entre todos los mozos y todos los clientes\n- [ ] La consulta llega a todos los mozos + **push**\n- [ ] El mozo responde con nombre y fecha (hora y minutos); se verifica en el cliente + **push**\n\n### Estado actual\nLa sala de chat está hecha con la tabla `mensajes` y realtime (`operacion.component.html:463`). Se ve el autor, la fecha y el texto.\n\nFalta: las tres imágenes por producto, entrar por QR, y las push.\n\n### Depende de\nE1 (cámara), E2 (lector de QR), E3 (push)"
+    },
+    {
+      "id": "P12",
+      "titulo": "Punto 12 · El cliente realiza el pedido para toda la mesa",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "pedido"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] Elegir productos con cantidades para todos los comensales\n- [ ] **El importe acumulado siempre visible y con buen tamaño**\n- [ ] Mostrar el tiempo total estimado del pedido completo\n- [ ] El cliente termina el pedido y espera confirmación del mozo + **push**\n- [ ] El pedido NO se deriva a los sectores hasta que el mozo lo confirme\n- [ ] El cliente puede ver el estado de su pedido\n\n### Estado actual\n`agregarAlCarrito()`, `quitarDelCarrito()` y `enviarPedido()` funcionan contra Supabase con realtime. El importe y el tiempo estimado se muestran.\n\nFalta: la push al mozo.\n\n### Depende de\nE3 (push)"
+    },
+    {
+      "id": "P13",
+      "titulo": "Punto 13 · El mozo rechaza el pedido",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "pedido", "dispositivo-4"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El mozo rechaza el pedido para que el cliente lo modifique + **push**\n- [ ] El cliente puede modificar productos y cantidades\n- [ ] El cliente puede agregar, modificar y quitar productos\n- [ ] El cliente vuelve a terminar el pedido + **push**\n\n### Estado actual\n`rechazarPedido()` existe y el carrito se puede volver a editar.\n\nFalta: las dos push.\n\n### Depende de\nE3 (push)"
+    },
+    {
+      "id": "P14",
+      "titulo": "Punto 14 · El mozo confirma el pedido y se deriva a los sectores",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "pedido", "dispositivo-4"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] Al confirmar, el pedido se deriva a cocina y bar\n- [ ] Cada parte se visualiza en su sector + **push**\n- [ ] El cliente puede acceder a los **juegos** y al estado de su pedido\n\n### Estado actual\n`confirmarPedido()` funciona y los ítems se reparten por sector.\n\nFalta: la push y los juegos de verdad (ver P15).\n\n### Depende de\nE3 (push), P15"
+    },
+    {
+      "id": "P15",
+      "titulo": "Punto 15 · Los tres juegos y los descuentos",
+      "estado": "Por hacer",
+      "etiquetas": ["punto-funcional", "juegos", "excluyente"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] **Tres juegos simples, completamente funcionales** (requisito excluyente)\n- [ ] Solo para **cliente registrado** (el anónimo no accede)\n- [ ] Descuentos de 10%, 15% y 20%\n- [ ] El descuento se aplica **solo si gana en el primer intento**\n- [ ] Se aplica **un solo descuento**, el primero conseguido, y no son acumulativos\n- [ ] Una vez obtenido el beneficio, se puede seguir jugando libremente las veces que se quiera\n- [ ] El descuento se resta de la cuenta final\n\n### Estado actual\n**No hay juegos.** La firma del servicio es `jugar(idJuego, gano)` (`operacion.service.ts:172`): recibe **como parámetro** si ganaste. O sea que hoy hay un botón que declara el resultado, no un juego.\n\nLa contabilidad sí está: tablas `juegos` y `partidas_juego`, el control del primer intento y el descuento aplicado a la cuenta (`operacion.component.html:521`).\n\nLo que falta es lo más grande de este punto: **programar los tres juegos**.\n\n### Sugerencia\nTres juegos chicos y distintos entre sí, cada uno resolviéndose en menos de 30 segundos. La cátedra los quiere «completamente funcionales», no maquetas."
+    },
+    {
+      "id": "P16",
+      "titulo": "Punto 16 · El sector cocina recibe sus productos",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "sectores", "dispositivo-1"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] Listado de pedidos pendientes con: **número de mesa**, **fecha con hora y minutos**, e ítems a elaborar (nombre y cantidad)\n- [ ] Los listados **agrupados por número de mesa**, visibles, con espacio entre pedidos distintos\n- [ ] El cliente verifica el cambio de estado en su pedido\n\n### Estado actual\n`marcarSectorListo()` existe y el listado por sector se arma con realtime.\n\nRevisar: que el agrupado por mesa y la separación entre pedidos cumplan con la maqueta del enunciado (que no se corten los elementos del listado)."
+    },
+    {
+      "id": "P17",
+      "titulo": "Punto 17 · El sector bar recibe sus productos",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "sectores", "dispositivo-3"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] Mismo listado que cocina: número de mesa, fecha con hora y minutos, ítems del sector\n- [ ] Agrupado por número de mesa, con espacio entre pedidos\n- [ ] El cliente verifica el cambio de estado\n\n### Estado actual\nComparte implementación con el punto 16. Mismas verificaciones de presentación."
+    },
+    {
+      "id": "P18",
+      "titulo": "Punto 18 · Los sectores avisan que el pedido está completo",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "sectores"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] Cada parte del pedido se ve en el listado del mozo\n- [ ] Se avisa cuando el pedido está completo, y **solo cuando TODOS los sectores terminaron** + **push**\n- [ ] El cliente verifica el cambio de estado\n\n### Estado actual\nLa lógica de «listo por sector» está. Hay que verificar que el aviso salga **una sola vez y recién cuando los dos sectores terminaron**, que es el detalle fino de este punto.\n\nFalta: la push.\n\n### Depende de\nE3 (push)"
+    },
+    {
+      "id": "P19",
+      "titulo": "Punto 19 · El mozo entrega el pedido completo",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "pedido", "dispositivo-4"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El mozo entrega comidas, bebidas y postres\n- [ ] El cliente **confirma la recepción**\n- [ ] El cliente verifica el cambio de estado\n- [ ] Se habilitan los juegos, la encuesta y la opción de **pedir la cuenta**\n\n### Estado actual\n`marcarEntregado()` y `confirmarRecepcion()` funcionan, y al confirmar se habilitan encuesta y cuenta (`operacion.component.ts:361`).\n\nEste es de los más completos. Falta que los juegos sean juegos (P15).\n\n### Depende de\nP15"
+    },
+    {
+      "id": "P20",
+      "titulo": "Punto 20 · Encuesta y gráficos de resultados",
+      "estado": "Por hacer",
+      "etiquetas": ["punto-funcional", "encuestas", "graficos", "excluyente"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El cliente responde una encuesta sobre diversos temas\n- [ ] Solo se puede agregar **una encuesta por estadía**\n- [ ] **Variedad de controles** para recolectar información (no siempre los mismos)\n- [ ] Ver los resultados en **distintos tipos de gráficos** (torta, barra, lineal…)\n- [ ] **Un gráfico por pantalla** (requisito excluyente)\n- [ ] Los gráficos reflejan **los datos realmente recolectados**\n\n### Estado actual\nDos problemas de fondo:\n\n**1. La encuesta no guarda las respuestas.** `registrarEncuesta()` (`operacion.service.ts:183`) inserta en `encuestas` solamente `sesion_mesa_id` y `cliente_id`. Los tres campos del formulario —satisfacción, comentario, recomendaría— **se pierden**. Las tablas `preguntas_encuesta` y `respuestas_encuesta` existen en la base y no las usa nadie.\n\n**2. Los gráficos son dibujos.** Son CSS con números escritos a mano en el HTML («Excelente 62% · Muy buena 25% · Buena 13%», `operacion.component.html:472`). No leen nada de la base. Y los tres están en la **misma pantalla** con pestañas, cuando el enunciado pide uno por pantalla.\n\nEl control de «una por estadía» sí está resuelto.\n\n### Ojo\nEste punto toca dos requisitos excluyentes a la vez. Conviene no dejarlo para el final."
+    },
+    {
+      "id": "P21",
+      "titulo": "Punto 21 · El cliente pide la cuenta y elige la propina",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "qr", "cuenta"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El cliente solicita la cuenta al mozo + **push**\n- [ ] La propina se ingresa **leyendo el código QR** correspondiente\n- [ ] No se puede generar la cuenta sin antes elegir el porcentaje\n- [ ] El detalle debe tener: pedidos con precios unitarios e importe, descuentos de juegos, grado de satisfacción (propina) y **el TOTAL grande y claro**\n- [ ] Tomar como modelo a Mercado Pago\n\n### Estado actual\n`generarCuenta()`, `seleccionarPropina()` y `pagarCuenta()` funcionan. Están los cinco niveles (0/5/10/15/20%) y el detalle de la cuenta con descuentos.\n\nFalta: que la propina se elija **escaneando el QR**. Hoy se toca una imagen de QR en pantalla (`seleccionarQr()`, `operacion.component.ts:423`), que no es lo mismo que leerlo. Y falta la push.\n\n### Depende de\nE2 (lector de QR), E3 (push)"
+    },
+    {
+      "id": "P22",
+      "titulo": "Punto 22 · El mozo confirma el pago y se libera la mesa",
+      "estado": "En curso",
+      "etiquetas": ["punto-funcional", "cuenta", "dispositivo-4"],
+      "cuerpo": "### Lo que pide el enunciado\n- [ ] El cliente paga (simulado) y espera la confirmación del mozo + **push**\n- [ ] La push la reciben el **mozo, el dueño y el supervisor**\n- [ ] Al confirmarse el pago, la notificación llega al dueño y al supervisor\n- [ ] La mesa queda libre otra vez (el cliente vuelve a escanear el QR para verificarlo)\n- [ ] Escaneando el QR de la lista de espera se ven los resultados de las encuestas en gráficos\n\n### Estado actual\n`confirmarPago()` libera la mesa y la sesión se cierra.\n\nFalta: las push a los tres perfiles, y los gráficos reales del final (ver P20).\n\n### Depende de\nE2 (lector de QR), E3 (push), P20"
+    },
+    {
+      "id": "E1",
+      "titulo": "Habilitador · Cámara del dispositivo",
+      "estado": "Por hacer",
+      "etiquetas": ["habilitador", "excluyente", "bloqueante"],
+      "cuerpo": "### Por qué es una tarjeta aparte\nCinco puntos distintos piden sacar fotos con la cámara, y hoy **no hay una sola referencia a cámara en todo el proyecto**. Busqué `Camera`, `getUserMedia`, `@capacitor/camera`: cero resultados.\n\nSi no lo toma alguien como tarea propia, cada punto va a decir «falta la foto» y nadie lo va a hacer.\n\n### Qué hay que resolver\n- [ ] Instalar y configurar `@capacitor/camera`\n- [ ] Permisos de cámara en `AndroidManifest.xml`\n- [ ] Un servicio único que devuelva la foto lista para subir\n- [ ] Distinguir **cámara obligatoria** (puntos 1, 4, 5) de **cámara o galería** (puntos 2, 3)\n- [ ] Subir las fotos a Supabase Storage y guardar la URL\n- [ ] Que funcione en el APK, no solo en el navegador\n\n### Bloquea a\nP01, P02, P03, P04, P05, P06, P09, P11"
+    },
+    {
+      "id": "E2",
+      "titulo": "Habilitador · Lector de códigos QR",
+      "estado": "Por hacer",
+      "etiquetas": ["habilitador", "excluyente", "bloqueante"],
+      "cuerpo": "### Por qué es una tarjeta aparte\nEl enunciado pide **lectura y generación** de códigos QR como requisito excluyente. Hoy el proyecto **genera y muestra** imágenes de QR (`public/imagenes/qr-*.png`, `qrImagen()`), pero **no lee ninguno**.\n\nEn el punto 21 se nota claro: el cliente elige la propina **tocando** la imagen del QR en pantalla. Eso no es leer un QR.\n\n### Qué hay que resolver\n- [ ] Elegir e instalar un lector (por ejemplo `@capacitor-mlkit/barcode-scanning`)\n- [ ] Permisos y prueba en el APK\n- [ ] QR de DNI → completar los campos del alta (puntos 1 y 5)\n- [ ] QR de entrada al local → lista de espera (punto 9)\n- [ ] QR de mesa → vincular y ver el menú (puntos 10 y 11)\n- [ ] QR de propina → los cinco niveles (punto 21)\n- [ ] Que TODOS los QR estén disponibles en el README y en pantalla (es excluyente)\n\n### Bloquea a\nP01, P05, P09, P10, P11, P21, P22"
+    },
+    {
+      "id": "E3",
+      "titulo": "Habilitador · Notificaciones push",
+      "estado": "Por hacer",
+      "etiquetas": ["habilitador", "excluyente", "bloqueante"],
+      "cuerpo": "### Por qué es una tarjeta aparte\nEs el habilitador que más puntos toca: **once**. Y es requisito excluyente que funcionen con la aplicación **abierta o cerrada**.\n\n### Estado actual\nA medio camino, y de una forma que engaña:\n- La tabla `dispositivos_push` existe\n- El cierre de sesión ya borra el token de este dispositivo (`autenticacion-supabase.service.ts:227`)\n- Pero **nada escribe tokens**. El propio código lo dice: «*Hoy todavía no hay nada que escriba en `dispositivos_push` —falta el alta con Firebase—*»\n\nO sea: la plomería de salida está, falta la de entrada y el envío.\n\n### Qué hay que resolver\n- [ ] Proyecto de Firebase y `google-services.json`\n- [ ] `@capacitor/push-notifications`: pedir permiso y registrar el token en `dispositivos_push`\n- [ ] Una Edge Function de Supabase que mande la push cuando cambia lo que corresponde\n- [ ] Probar con la app **cerrada** (es lo que pide el enunciado y lo que más se olvida)\n- [ ] Dirigir cada aviso al perfil correcto (mozo, dueño, supervisor, cliente, sectores)\n\n### Bloquea a\nP06, P09, P10, P11, P12, P13, P14, P18, P21, P22"
+    },
+    {
+      "id": "E4",
+      "titulo": "Habilitador · Correos electrónicos automáticos",
+      "estado": "Por hacer",
+      "etiquetas": ["habilitador", "excluyente", "bloqueante"],
+      "cuerpo": "### Por qué es una tarjeta aparte\nLos puntos 5, 7 y 8 dependen de esto y ninguno puede cerrarse sin él. Hoy existe la tabla `correos_enviados` y **nada más**: no hay ni una línea que envíe un correo.\n\n### Qué hay que resolver\n- [ ] Elegir el proveedor y conectarlo desde una Edge Function de Supabase\n- [ ] **Cuenta empresarial**, no la personal de ninguno de nosotros (el enunciado es explícito)\n- [ ] Plantilla HTML con **logo, colores, fuentes y tamaños propios** — que no parezca el mail por defecto del proveedor\n- [ ] Correo de registro pendiente (punto 5)\n- [ ] Correo de rechazo, con el motivo (punto 7)\n- [ ] Correo de aceptación (punto 8)\n- [ ] Registrar cada envío en `correos_enviados`\n\n### Ojo con la seguridad\nLa clave del proveedor de correo va en las variables de entorno de Supabase, **nunca en el repositorio**.\n\n### Bloquea a\nP05, P07, P08"
+    },
+    {
+      "id": "E5",
+      "titulo": "Habilitador · Unificar los dos sistemas de sonido",
+      "estado": "Por hacer",
+      "etiquetas": ["habilitador", "excluyente", "deuda-tecnica"],
+      "cuerpo": "### El problema\nDespués del merge quedaron **dos implementaciones de sonido que no se hablan**:\n\n| | apunta a | archivos |\n|---|---|---|\n| `core/services/sonidos.service.ts` | `sonidos/apertura.mp3`, `sonidos/cierre.mp3` | **no existen** |\n| `services/app-audio.service.ts` | `assets/sounds/…` | `inicio_app_audio.mp3`, `cerrando_app_sonido.mp3` ✅ |\n\nEl primero está escrito para tolerar que falten los archivos, así que **no tira error: simplemente no suena**. Es el peor caso posible, porque parece que anda.\n\n### Qué hay que resolver\n- [ ] Decidir cuál de los dos queda (el que tiene los archivos es el de ellos)\n- [ ] Borrar el otro y actualizar quien lo llame\n- [ ] Borrar `public/sonidos/LEEME.md` si queda huérfano\n- [ ] Verificar que suena **al iniciar y al cerrar**, y que el de inicio suena **solo la primera vez** (es requisito excluyente)\n- [ ] Probarlo en el APK: los navegadores bloquean el audio hasta que hubo interacción"
+    }
+  ]
+}
