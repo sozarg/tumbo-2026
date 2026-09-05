@@ -1,9 +1,12 @@
-import { FormControl, Validators } from '@angular/forms';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { LIMITES } from './limites';
 import { mensajeDeError } from './mensajes';
 import {
   conLimite,
   correoValido,
+  cuilCoincideConDni,
+  cuilValido,
+  dniValido,
   sinEspaciosSolos,
   soloLetras,
   soloNumeros,
@@ -181,12 +184,162 @@ describe('mensajeDeError', () => {
   });
 });
 
+describe('dniValido', () => {
+  const probar = (valor: string) => dniValido(new FormControl(valor)) === null;
+
+  it('acepta 7 y 8 dígitos, con puntos o sin ellos', () => {
+    expect(probar('43210987')).toBe(true);
+    expect(probar('43.210.987')).toBe(true);
+    expect(probar('43 210 987')).toBe(true);
+    expect(probar('4321098')).toBe(true);
+  });
+
+  it('rechaza los largos que la base no acepta', () => {
+    expect(probar('123456')).toBe(false);
+    expect(probar('123456789')).toBe(false);
+  });
+
+  /**
+   * El caso que importa. `4321O987` tiene la letra O donde va un cero:
+   * un error de tipeo muy común. Una versión anterior del normalizador
+   * borraba todo lo que no fuera un dígito, así que esto se convertía
+   * en `4321987` —siete dígitos, un DNI válido de OTRA persona— y se
+   * guardaba sin decir nada.
+   */
+  it('rechaza una letra en lugar de un cero, en vez de borrarla', () => {
+    expect(probar('4321O987')).toBe(false);
+    expect(probar('abcdefgh')).toBe(false);
+  });
+
+  it('deja pasar el vacío, que es trabajo de required', () => {
+    expect(probar('')).toBe(true);
+  });
+});
+
+describe('cuilValido', () => {
+  const probar = (valor: string) => cuilValido(new FormControl(valor)) === null;
+
+  it('acepta con guiones y sin guiones', () => {
+    expect(probar('27-43210987-6')).toBe(true);
+    expect(probar('27432109876')).toBe(true);
+  });
+
+  it('rechaza letras y largos que no cierran', () => {
+    expect(probar('27-4321O987-6')).toBe(false);
+    expect(probar('abc')).toBe(false);
+    expect(probar('27-432-6')).toBe(false);
+  });
+});
+
+describe('cuilCoincideConDni', () => {
+  /** Un grupo de verdad: el validador necesita ver los dos campos. */
+  function grupoCon(dni: string, cuil: string) {
+    const grupo = new FormGroup(
+      { dni: new FormControl(dni), cuil: new FormControl(cuil) },
+      { validators: cuilCoincideConDni() },
+    );
+    grupo.updateValueAndValidity();
+    return grupo;
+  }
+
+  const marcado = (dni: string, cuil: string) =>
+    grupoCon(dni, cuil).get('cuil')?.hasError('cuilCoincide') ?? false;
+
+  it('acepta el CUIL que contiene ese DNI', () => {
+    expect(marcado('43210987', '27-43210987-6')).toBe(false);
+    expect(marcado('43210987', '27432109876')).toBe(false);
+    expect(marcado('43.210.987', '27-43210987-6')).toBe(false);
+  });
+
+  it('marca el CUIL cuando adentro hay otro DNI', () => {
+    expect(marcado('43210987', '27-99999999-6')).toBe(true);
+    expect(marcado('43210987', '27-43210986-6')).toBe(true);
+  });
+
+  /** Un DNI de 7 dígitos viaja dentro del CUIL con un cero adelante. */
+  it('entiende el cero de relleno de los DNI de 7 dígitos', () => {
+    expect(marcado('4321098', '20-04321098-7')).toBe(false);
+  });
+
+  it('no opina mientras la persona todavía está escribiendo', () => {
+    expect(marcado('432', '27-43210987-6')).toBe(false);
+    expect(marcado('43210987', '27')).toBe(false);
+  });
+
+  /**
+   * El validador cuelga su error en el control del CUIL. Si lo hiciera
+   * a lo bruto con `setErrors`, borraría los errores que ese control ya
+   * tenía y el formulario diría que un CUIL inválido está bien.
+   */
+  it('no pisa los errores que el CUIL ya tenía', () => {
+    const grupo = new FormGroup(
+      {
+        dni: new FormControl('43210987'),
+        cuil: new FormControl('abc', [cuilValido]),
+      },
+      { validators: cuilCoincideConDni() },
+    );
+    grupo.updateValueAndValidity();
+
+    expect(grupo.get('cuil')?.hasError('cuilValido')).toBe(true);
+  });
+});
+
+describe('prioridad de los mensajes del CUIL', () => {
+  /**
+   * Cambiar un dígito del MEDIO del CUIL rompe las dos validaciones a
+   * la vez: deja de coincidir con el DNI y el verificador tampoco
+   * cierra. Cuál de los dos mensajes se muestra no es un detalle —uno
+   * manda a la persona a corregir el campo equivocado—.
+   */
+  it('cuando fallan las dos, habla de la coincidencia y no del dígito', () => {
+    const control = new FormControl('27-43210988-4');
+    control.setErrors({ cuilCoincide: true, cuilDigito: true });
+
+    expect(mensajeDeError(control, 'CUIL')).toContain('no contiene el DNI');
+  });
+
+  it('cuando solo falla el verificador, lo dice', () => {
+    const control = new FormControl('27-43210987-9');
+    control.setErrors({ cuilDigito: true });
+
+    expect(mensajeDeError(control, 'CUIL')).toContain('no existe');
+  });
+});
+
 describe('coherencia con la base de datos', () => {
   /**
    * Espejo de las migraciones 20260901000600 y 20260901000700.
    * Si alguien cambia un número de un lado y se olvida del otro, este
    * test lo detecta antes de que lo detecte la demostración.
    */
+  /**
+   * Estos dos regex están copiados TAL CUAL de los CHECK de
+   * `20260901000100_tablas_base.sql`. Si alguien afloja el validador
+   * del formulario, el usuario pasa y la base lo rechaza igual: un
+   * error del servidor en vez de uno en rojo abajo del campo. Este
+   * test compara los dos lados con los mismos casos.
+   */
+  it('el validador de DNI acepta exactamente lo que acepta el CHECK', () => {
+    const CHECK_DNI = /^[0-9]{7,8}$/;
+    const casos = ['43210987', '4321098', '123456', '123456789', '4321O987', 'abcdefgh'];
+
+    for (const caso of casos) {
+      const laBase = CHECK_DNI.test(caso.replace(/[.\s]/g, ''));
+      const elFormulario = dniValido(new FormControl(caso)) === null;
+      expect(elFormulario).toBe(laBase);
+    }
+  });
+
+  it('el validador de CUIL acepta exactamente lo que acepta el CHECK', () => {
+    const CHECK_CUIL = /^[0-9]{2}-?[0-9]{7,8}-?[0-9]$/;
+    const casos = ['27-43210987-6', '27432109876', '20-3877766-1', 'abc', '27-432-6'];
+
+    for (const caso of casos) {
+      expect(cuilValido(new FormControl(caso)) === null).toBe(CHECK_CUIL.test(caso));
+    }
+  });
+
   it('mantiene los rangos que declara la migración', () => {
     expect(LIMITES.nombres).toEqual({ min: 2, max: 50 });
     expect(LIMITES.apellidos).toEqual({ min: 2, max: 50 });
