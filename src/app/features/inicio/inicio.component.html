@@ -1,13 +1,17 @@
 <ion-content [fullscreen]="true" class="home-page">
   @if (usuario(); as usuarioActual) {
+    <tumbo-fondo-decorativo />
     <main class="home-layout">
       <header class="home-header">
         <div class="brand-lockup">
-          <img ngSrc="imagenes/logo.png" width="62" height="62" priority alt="" />
-          <div>
-            <span class="brand-lockup__overline">Panel TUMBO</span>
-            <strong>TUMBO</strong>
-          </div>
+          <img
+            class="brand-lockup__lockup"
+            ngSrc="imagenes/logo-nombre.png"
+            width="2168"
+            height="725"
+            priority
+            alt="Tumbito"
+          />
         </div>
 
         <ion-button
@@ -22,37 +26,21 @@
       </header>
       <section class="welcome" aria-labelledby="welcome-title">
         <div>
-          <p class="section-kicker">Sesión activa</p>
           <h1 id="welcome-title">Hola, {{ usuarioActual.nombres.split(' ')[0] }}.</h1>
-          <p>Este es el punto de partida para organizar la experiencia TUMBO.</p>
-        </div>
-        <ion-chip class="profile-chip">{{ usuarioActual.etiquetaPerfil }}</ion-chip>
-      </section>
-
-      <section class="demo-banner" aria-label="Datos de la sesión">
-        <div class="demo-banner__icon">
-          <ion-icon name="sparkles-outline" />
-        </div>
-        <div>
-          <strong>Sesión iniciada</strong>
-          <p>
-            Hola, {{ usuarioActual.nombres }} {{ usuarioActual.apellidos }} ·
-            {{ usuarioActual.correo }}
-          </p>
+          <p>¿Por dónde querés empezar?</p>
         </div>
       </section>
 
       <section class="panel-section" aria-labelledby="actions-title">
         <div class="section-heading">
           <div>
-            <p class="section-kicker">{{ modo === 'supabase' ? 'Conectado a Supabase' : 'Datos de demostración' }}</p>
-            <h2 id="actions-title">Tu panel de trabajo</h2>
+            <h2 id="actions-title">¿Qué querés hacer?</h2>
           </div>
-          <span class="section-heading__count">04</span>
+          <span class="section-heading__count">{{ cantidadDeAcciones() }}</span>
         </div>
 
         <div class="action-grid" role="list" aria-label="Áreas del panel">
-          @for (accion of acciones; track accion.titulo) {
+          @for (accion of acciones(); track accion.titulo) {
             <ion-card class="action-card" role="listitem">
               <ion-card-content>
                 <div class="action-card__icon">
@@ -60,7 +48,6 @@
                 </div>
                 <h3>{{ accion.titulo }}</h3>
                 <p>{{ accion.descripcion }}</p>
-                <span class="action-card__status">Se gestiona desde el centro de operación</span>
               </ion-card-content>
             </ion-card>
           }
@@ -69,21 +56,6 @@
           <ion-icon slot="start" name="sparkles-outline" />
           Abrir el centro de operación
         </ion-button>
-      </section>
-
-      <section class="delivery-section" aria-labelledby="delivery-title">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">Revisión del equipo</p>
-            <h2 id="delivery-title">Primera entrega</h2>
-          </div>
-        </div>
-        <ul class="delivery-list">
-          <li>Ícono de la aplicación y paleta de marca</li>
-          <li>Presentación estática y animada con los cuatro integrantes</li>
-          <li>Ingreso con validaciones y accesos rápidos desde la base</li>
-          <li>Cierre de sesión con borrado de credenciales</li>
-        </ul>
       </section>
     </main>
   }

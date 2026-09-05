@@ -15,7 +15,6 @@ import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
 import { IonItem } from '@ionic/angular/ion-item';
 import { IonLabel } from '@ionic/angular/ion-label';
-import { IonNote } from '@ionic/angular/ion-note';
 import { IonRange } from '@ionic/angular/ion-range';
 import { IonSelect } from '@ionic/angular/ion-select';
 import { IonSelectOption } from '@ionic/angular/ion-select-option';
@@ -23,6 +22,7 @@ import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
 import { Espera } from '../../shared/components/espera/espera.component';
+import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 import {
   addCircleOutline,
   arrowBackOutline,
@@ -34,7 +34,6 @@ import {
   cubeOutline,
   documentTextOutline,
   happyOutline,
-  imageOutline,
   logOutOutline,
   peopleOutline,
   qrCodeOutline,
@@ -58,10 +57,36 @@ import {
 } from '../../core/models/demo-restaurante';
 import { OperacionService } from '../../core/services/operacion.service';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
+import { PerfilUsuario } from '../../core/models/usuario';
 import { SesionService } from '../../core/services/sesion.service';
 
 type SegmentoDemo = 'resumen' | 'gestion' | 'pedido' | 'experiencia' | 'cuenta';
 type GraficoDemo = 'torta' | 'barras' | 'linea';
+
+interface Pestana {
+  readonly id: SegmentoDemo;
+  readonly etiqueta: string;
+}
+
+/**
+ * Cómo se llama cada pestaña según el perfil.
+ *
+ * Las secciones son las mismas para todos —dentro de cada una ya hay un
+ * `@if` que decide qué mostrar—, pero las etiquetas estaban escritas
+ * pensando solo en el personal: un cliente leía "Gestión" y "Pedido"
+ * cuando lo que tiene ahí es la entrada al local y el menú. Los
+ * identificadores no cambian, así que la navegación queda igual.
+ */
+const ETIQUETAS_SEGUNDA: Record<PerfilUsuario, string> = {
+  dueno: 'Gestión',
+  supervisor: 'Gestión',
+  metre: 'Lista de espera',
+  mozo: 'Pedidos',
+  cocinero: 'Cocina',
+  cantinero: 'Barra',
+  cliente_registrado: 'Entrada',
+  cliente_anonimo: 'Entrada',
+};
 
 @Component({
   imports: [
@@ -78,13 +103,13 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonInput,
     IonItem,
     IonLabel,
-    IonNote,
     IonRange,
     IonSelect,
     IonSelectOption,
     IonTextarea,
     IonToggle,
     Espera,
+    FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
@@ -114,6 +139,17 @@ export class Operacion implements OnInit {
   protected readonly perfilEsGestion = computed(() => {
     const perfil = this.usuario()?.perfil;
     return perfil === 'dueno' || perfil === 'supervisor';
+  });
+  protected readonly pestanas = computed<readonly Pestana[]>(() => {
+    const perfil = this.usuario()?.perfil;
+    const esCliente = this.perfilEsCliente();
+    return [
+      { id: 'resumen', etiqueta: 'Resumen' },
+      { id: 'gestion', etiqueta: perfil ? ETIQUETAS_SEGUNDA[perfil] : 'Entrada' },
+      { id: 'pedido', etiqueta: esCliente ? 'Menú' : 'Seguimiento' },
+      { id: 'experiencia', etiqueta: 'Experiencia' },
+      { id: 'cuenta', etiqueta: 'Cuenta' },
+    ];
   });
   protected readonly integrantes = [
     'Mateo Terrile',
@@ -170,7 +206,6 @@ export class Operacion implements OnInit {
       cubeOutline,
       documentTextOutline,
       happyOutline,
-      imageOutline,
       logOutOutline,
       peopleOutline,
       qrCodeOutline,
@@ -274,25 +309,6 @@ export class Operacion implements OnInit {
 
   protected actualizarNombreAnonimo(evento: CustomEvent<{ value?: string | null }>): void {
     this.nombreAnonimo.set(evento.detail.value ?? '');
-  }
-
-  protected simularDniEmpleado(): void {
-    this.empleadoForm.patchValue({
-      nombres: 'Valentina',
-      apellidos: 'Molina',
-      dni: '43.210.987',
-      cuil: '27-43210987-6',
-    });
-    this.mensaje.set('Lectura PDF417 simulada: datos del DNI autocompletados.');
-  }
-
-  protected simularDniCliente(): void {
-    this.clienteForm.patchValue({
-      nombres: 'Sofía',
-      apellidos: 'Ramírez',
-      dni: '44.987.321',
-    });
-    this.mensaje.set('Lectura PDF417 simulada: datos del DNI autocompletados.');
   }
 
   protected alternarImagen(producto: ProductoDemo): void {

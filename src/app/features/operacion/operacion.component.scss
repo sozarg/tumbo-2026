@@ -8,7 +8,14 @@
 }
 
 .operation-layout {
+  /* Igual que en inicio: el contenido va por encima del fondo
+     decorativo y ocupa el alto de la pantalla, para que los paneles
+     cortos (cocina, barra, cuenta del personal) no dejen un espacio
+     neutro al pie. */
+  position: relative;
+  z-index: 1;
   width: min(100%, 76rem);
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 0.7rem 1rem 3rem;
   color: #003592;
@@ -33,38 +40,29 @@
 
 .operation-brand {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-self: center;
-  gap: 0.45rem;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.operation-brand img {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  background: #fbb103;
-}
-
-.operation-brand span,
-.operation-brand strong {
-  display: block;
+.operation-brand__lockup {
+  /* Logotipo apaisado (2168x725): se limita por alto para no empujar
+     los botones de volver y salir. */
+  width: auto;
+  height: clamp(1.5rem, 5.5vw, 2rem);
+  max-width: 42vw;
+  object-fit: contain;
 }
 
 .operation-brand span {
+  display: block;
   color: #dc5b02;
   font-size: 0.56rem;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-
-.operation-brand strong {
-  color: #006ae7;
-  font-size: 1.08rem;
-  font-weight: 950;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-shadow: 0.04rem 0.05rem 0 #f8fbfd;
 }
 
 .logout-button {
@@ -129,18 +127,6 @@
   font-size: 1.2rem;
 }
 
-.operation-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  border-radius: 1.15rem;
-  padding: 1.4rem;
-  background:
-    radial-gradient(circle at 90% 0%, rgb(252 237 187 / 80%), transparent 35%),
-    linear-gradient(135deg, #fbb103, #fcedbb);
-}
-
 .section-kicker {
   margin: 0 0 0.3rem;
   color: #dc5b02;
@@ -150,25 +136,6 @@
   text-transform: uppercase;
 }
 
-.operation-hero h1 {
-  max-width: 42rem;
-  margin: 0;
-  color: #003592;
-  font-size: clamp(1.8rem, 8vw, 3.6rem);
-  font-weight: 950;
-  line-height: 1;
-}
-
-.operation-hero p:last-child {
-  max-width: 37rem;
-  margin: 0.7rem 0 0;
-  color: #003592;
-  font-size: 0.86rem;
-  font-weight: 650;
-  line-height: 1.45;
-}
-
-.profile-chip,
 .table-chip,
 .discount-chip {
   flex-shrink: 0;
@@ -180,7 +147,6 @@
 }
 
 .metric-grid,
-.scope-grid,
 .operational-grid,
 .form-grid,
 .menu-grid,
@@ -339,42 +305,6 @@
   color: #003592;
   font-size: 0.7rem;
   opacity: 0.75;
-}
-
-.scope-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.scope-grid > div {
-  border-left: 0.22rem solid #006ae7;
-  border-radius: 0.65rem;
-  padding: 0.8rem;
-  background: #fcedbb;
-}
-
-.scope-grid span {
-  color: #dc5b02;
-  font-size: 0.65rem;
-  font-weight: 950;
-}
-
-.scope-grid strong,
-.scope-grid p {
-  display: block;
-}
-
-.scope-grid strong {
-  margin-top: 0.2rem;
-  color: #003592;
-  font-size: 0.8rem;
-}
-
-.scope-grid p {
-  margin: 0.35rem 0 0;
-  color: #003592;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  opacity: 0.78;
 }
 
 .notice-card,
@@ -770,13 +700,6 @@
 
 .qr-preview small {
   font-size: 0.45rem;
-}
-
-.qr-preview--small {
-  width: 4.5rem;
-  min-width: 4.5rem;
-  height: 4.5rem;
-  align-self: center;
 }
 
 .operational-grid {

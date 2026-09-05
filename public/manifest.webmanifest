@@ -1,7 +1,7 @@
 {
-  "name": "TUMBO · Una experiencia que se comparte",
-  "short_name": "TUMBO",
-  "description": "TUMBO: gestión y experiencia digital para restaurantes.",
+  "name": "Tumbito · Una experiencia que se comparte",
+  "short_name": "Tumbito",
+  "description": "Tumbito: gestión y experiencia digital para restaurantes.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FBF1D5",
