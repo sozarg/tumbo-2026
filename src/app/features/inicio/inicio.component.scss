@@ -14,7 +14,11 @@
      corto: el enunciado no admite espacios neutros. */
   position: relative;
   z-index: 1;
-  width: min(100%, 74rem);
+  /* Ancho de telefono, tambien en escritorio: el TFI se presenta y se
+     evalua en cuatro celulares (28 referencias a "dispositivo N" en la
+     consigna). Manteniendo una sola columna, lo que se ve en la compu
+     es exactamente lo que va a estar en el telefono. */
+  width: min(100%, 30rem);
   min-height: 100dvh;
   margin: 0 auto;
   padding: 1rem 1rem 2.5rem;
@@ -39,7 +43,7 @@
   /* El logotipo es apaisado (2168x725). Se limita por alto para que no
      empuje al boton "Salir" en pantallas angostas. */
   width: auto;
-  height: clamp(2rem, 7vw, 2.6rem);
+  height: clamp(2.4rem, 8vw, 3.4rem);
   max-width: 60vw;
   object-fit: contain;
 }
@@ -111,12 +115,6 @@
   font-weight: 950;
 }
 
-.section-heading__count {
-  color: #006ae7;
-  font-size: 1.6rem;
-  font-weight: 950;
-}
-
 .action-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -172,24 +170,4 @@
   --border-radius: 0.8rem;
   --color: #f8fbfd;
   font-weight: 900;
-}
-
-@media (min-width: 35rem) {
-  .home-layout {
-    padding: 1.5rem 1.5rem 3rem;
-  }
-
-  .action-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 60rem) {
-  .home-layout {
-    padding: 2rem 2.5rem 4rem;
-  }
-
-  .action-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
