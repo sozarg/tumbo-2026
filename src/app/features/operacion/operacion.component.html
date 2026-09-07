@@ -1,6 +1,6 @@
 <ion-header class="operation-top">
   @if (usuario(); as usuarioActual) {
-    <div class="operation-header">
+    <div class="operation-header" [class.operation-header--detail]="seccion()">
       @if (seccion()) {
         <ion-button
           class="back-button"
@@ -9,14 +9,13 @@
           (click)="volver()"
           ><ion-icon aria-hidden="true" slot="icon-only" name="arrow-back-outline"
         /></ion-button>
-      } @else {
-        <span class="profile-mark" aria-hidden="true">{{ usuarioActual.nombres.charAt(0) }}</span>
       }
       <div class="operation-brand">
         <img
-          ngSrc="imagenes/logo-nombre-mobile.webp"
-          width="480"
-          height="161"
+          ngSrc="imagenes/logo-splash.webp"
+          width="768"
+          height="768"
+          disableOptimizedSrcset
           priority
           alt="Tumbito"
           class="operation-brand__lockup"
@@ -34,16 +33,12 @@
 </ion-header>
 <ion-content class="operation-page" [scrollY]="false">
   @if (usuario(); as usuarioActual) {
-    <tumbo-fondo-decorativo />
+    @if (seccion()) {
+      <tumbo-fondo-decorativo />
+    }
     <div class="operation-layout">
       @if (!seccion()) {
-        <div class="hub-heading">
-          <div>
-            <p>TU RESTAURANTE, A MANO</p>
-            <h1 #encabezado tabindex="-1">Todo desde acá.</h1>
-          </div>
-          <span class="hub-name">{{ usuarioActual.nombres }}</span>
-        </div>
+        <h1 #encabezado class="hub-title" tabindex="-1">Secciones del restaurante</h1>
         <nav
           class="hub-grid"
           [class.hub-grid--single]="accesos().length === 1"
@@ -56,10 +51,6 @@
             </button>
           }
         </nav>
-        <div class="hub-footer">
-          <span>Tumbito · {{ modo === 'demo' ? 'Demostración' : 'Restaurante' }}</span
-          ><span>Buen servicio, en equipo.</span>
-        </div>
       } @else {
         <div class="view-heading">
           <h1 #encabezado tabindex="-1">{{ titulo() }}</h1>

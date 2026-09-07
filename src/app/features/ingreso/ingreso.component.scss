@@ -1,460 +1,277 @@
 :host {
   display: block;
-  min-height: 100%;
+  height: 100%;
   color: var(--tumbo-azul-sombra);
 }
+
 .login-page {
   --background: var(--tumbo-crema-fondo);
 }
+
 .login-layout {
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  align-items: center;
-  justify-content: center;
-  background: var(--tumbo-crema-fondo);
+  display: grid;
+  min-height: 100%;
+  padding: max(1rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+  place-items: center;
 }
+
 .login-panel {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  width: min(100%, 420px);
-  flex-direction: column;
-  align-items: stretch;
+  width: min(100%, 24rem);
+  min-width: 0;
 }
+
 .login-intro {
-  margin-bottom: 24px;
-  text-align: center;
+  margin-bottom: 1.25rem;
 }
 .login-brand {
   display: flex;
-  align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 1.5rem;
 }
 .login-brand__lockup {
+  width: 13.5rem;
+  max-width: 85%;
   height: auto;
   object-fit: contain;
 }
 .login-intro h1 {
   margin: 0;
-  color: var(--tumbo-azul-sombra);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
+  font-size: clamp(1.375rem, 5vw, 1.625rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.3;
 }
 
-/* Superficie principal: vidrio translúcido, borde luminoso y profundidad suave. */
-.login-card,
-.quick-access {
-  width: 100%;
-  border: 1px solid var(--tumbo-blanco-85);
-  border-radius: 24px;
-}
-.login-card {
-  margin: 0;
-}
-.login-card-wrapper {
-  position: relative;
-  width: 100%;
-  overflow: visible;
-}
-.login-cow {
-  position: absolute;
-  z-index: 3;
-  top: -75px;
-  left: -132px;
-  width: 240px;
-  height: auto;
-  pointer-events: none;
-  user-select: none;
-}
-.login-card {
-  position: relative;
-  z-index: 2;
+.field {
+  margin-bottom: 0.375rem;
 }
 .field label {
   display: block;
-  margin: 0 0 8px;
-  color: var(--tumbo-azul-sombra);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 .field ion-input {
-  --border-radius: 14px;
+  --background: var(--tumbo-azul-brillante);
   --color: var(--tumbo-azul-sombra);
-  --highlight-color-focused: var(--tumbo-azul-accion);
-  --placeholder-color: var(--tumbo-azul-sombra);
-  --placeholder-opacity: 0.58;
+  --border-color: #7386a2;
+  --border-radius: 10px;
+  --highlight-color-focused: var(--tumbo-azul-sombra);
+  --placeholder-color: #526582;
+  --placeholder-opacity: 1;
+  --padding-start: 14px;
   min-height: 52px;
-  border-radius: 14px;
-  transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-.field ion-input::part(native) {
-  border-radius: 14px;
+  font-size: 0.9375rem;
 }
 .field ion-input:focus-within {
-  --background: rgb(0 53 146 / 14%);
-  --border-color: var(--tumbo-azul-accion);
-  box-shadow: 0 0 0 3px var(--tumbo-azul-22);
+  outline: 2px solid var(--tumbo-azul-sombra);
+  outline-offset: 3px;
+  border-radius: 10px;
 }
 .field--invalid ion-input {
-  --border-color: var(--tumbo-naranja-marca);
-  --highlight-color-focused: var(--tumbo-naranja-marca);
+  --border-color: var(--tumbo-naranja-profundo);
+}
+// Dos líneas reservadas desde el primer render, incluso sin errores.
+.field__feedback {
+  min-block-size: calc(3em + 0.375rem);
+  padding-top: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 .field__error {
   display: block;
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 .password-field {
   position: relative;
 }
 .password-field ion-input {
-  padding-right: 48px;
+  --padding-end: 52px;
 }
 .password-field__toggle {
   position: absolute;
+  top: 3px;
+  right: 4px;
   z-index: 2;
-  top: 4px;
-  right: 0;
-  --color: var(--tumbo-azul-accion);
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  --color: var(--tumbo-azul-sombra);
+  --border-radius: 8px;
+}
+.login-card__submit {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  margin: 0.5rem 0 0;
+  --background: var(--tumbo-azul-sombra);
+  --background-hover: #002a75;
+  --background-focused: #002a75;
+  --background-activated: #002a75;
+  --color: var(--tumbo-azul-brillante);
+  --border-radius: 10px;
+  --box-shadow: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .form-message {
-  margin: 0 0 16px;
-  border: 1px solid var(--tumbo-ambar);
-  border-radius: 12px;
-  padding: 12px;
+  padding: 0.75rem;
+  border-left: 3px solid var(--tumbo-naranja-profundo);
   color: var(--tumbo-naranja-profundo);
-  background: var(--tumbo-ambar-8);
-  font-size: 12px;
-  line-height: 1.4;
-}
-.login-card__submit {
-  width: 100%;
-  margin: 0;
-  --background: var(--tumbo-ambar);
-  --background-hover: var(--tumbo-ambar-hover);
-  --border-radius: 15px;
-  --box-shadow: none;
-  --color: var(--tumbo-azul-sombra);
-  font-weight: 800;
-  letter-spacing: 0.015em;
-  transition: transform 180ms ease;
-}
-.login-card__submit:hover {
-  --box-shadow: none;
-  transform: translateY(-1px);
-}
-.login-card__submit ion-spinner {
-  margin-right: 8px;
+  background: var(--tumbo-crema-brillante);
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
 .quick-access {
-  margin-top: 32px;
-  background: var(--tumbo-blanco-40);
-  backdrop-filter: blur(14px) saturate(135%);
-  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d8c99e;
 }
 .quick-access__heading h2 {
-  margin: 0;
-  color: var(--tumbo-azul-accion);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-align: center;
-  text-transform: uppercase;
-}
-.quick-access__hint {
-  color: var(--tumbo-azul-texto-62);
-  line-height: 1.45;
-  text-align: center;
-}
-.quick-user {
-  margin: 0;
-  --border-radius: 14px;
-  --color: var(--tumbo-azul-sombra);
-  transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
-}
-.quick-user::part(native) {
-  text-align: left;
-}
-.quick-user:hover {
-  --background: var(--tumbo-blanco-80);
-  --border-color: var(--tumbo-azul-accion-55);
-  --box-shadow: none;
-  transform: translateY(-1px);
-}
-.quick-user__texto {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 4px;
-}
-/* R5: el nombre del usuario es contenido informativo y no se puede
-   cortar. Antes se truncaba con puntos suspensivos; ahora se parte en
-   dos líneas y el botón crece, que es lo que pide el enunciado. */
-.quick-user__name {
-  width: 100%;
-  color: var(--tumbo-azul-sombra);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-.quick-user__role {
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.welcome-footer {
-  width: 100%;
-  margin-top: 48px;
-  padding-bottom: max(0px, env(safe-area-inset-bottom));
-  text-align: center;
-}
-.welcome-footer__rule {
-  height: 1px;
-  margin-bottom: 16px;
-  background: var(--tumbo-azul-texto-12);
-}
-.welcome-footer p {
-  margin: 0;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.welcome-footer__team {
-  margin-top: 8px !important;
-  font-size: 12px !important;
-  letter-spacing: normal !important;
-  line-height: 1.4;
-  text-transform: none !important;
-}
-@media (max-width: 767px) {
-  .login-cow {
-    display: none;
-  }
-}
-@media (max-width: 399px) {
-  .login-card ion-card-content,
-  .quick-access {
-    padding: 20px;
-  }
-  .login-brand__lockup {
-    width: min(88%, 250px);
-  }
-}
-@media (min-width: 768px) {
-  .login-layout {
-    padding: 48px 32px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .field ion-input,
-  .login-card__submit,
-  .quick-user {
-    transition: none;
-  }
-  .login-card__submit:hover,
-  .quick-user:hover {
-    transform: none;
-  }
-}
-@supports not (
-  (
-    backdrop-filter: blur(1px),
-  )
-) {
-  .login-card {
-    background: var(--tumbo-blanco-95);
-  }
-  .quick-access {
-    background: var(--tumbo-blanco-80);
-  }
-}
-
-/* La altura disponible se reparte entre marca, formulario y carrusel. */
-.login-layout {
-  height: 100%;
-  min-height: 0;
-  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
-}
-.login-panel {
-  height: 100%;
-  max-width: 480px;
-  gap: clamp(8px, 2dvh, 20px);
-  margin: 0;
-}
-.login-intro {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  flex: 1;
-  min-height: 48px;
-}
-.login-brand {
-  margin: 0;
-}
-.login-brand__lockup {
-  width: clamp(120px, 40vw, 200px);
-}
-.login-intro h1 {
-  font-size: clamp(24px, 5vw, 32px);
-}
-.login-cow {
-  display: none;
-}
-.login-card,
-.quick-access {
-  border-color: #e5d59f;
-  background: #fcedbb;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-.login-card ion-card-content {
-  padding: clamp(12px, 2dvh, 22px);
-}
-.field {
-  margin-bottom: 12px;
-}
-.field label {
-  margin-bottom: 5px;
-}
-.field ion-input {
-  --background: #fbf1d5;
-  --border-color: #7892b0;
-}
-.login-card__submit {
-  height: 64px;
-}
-.quick-access {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 2;
-  min-height: 180px;
-  margin: 0;
-  padding: 12px;
-}
-.quick-access__heading h2,
-.quick-access__hint {
-  color: #003592;
-}
-.quick-access__hint {
-  margin: 6px 0;
-  font-size: 12px;
+  margin: 0 0 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 .quick-carousel {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
-  gap: 8px;
-  flex: 1;
+  gap: 0.5rem;
+  align-items: center;
   touch-action: pan-y;
 }
 .carousel-arrow {
-  align-self: center;
-  min-height: 52px;
-  border: 1px solid #003592;
-  border-radius: 16px;
-  color: #003592;
-  background: #fbf1d5;
-  font-size: 32px;
+  width: 44px;
+  height: 48px;
+  border: 1px solid #a59b7f;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--tumbo-azul-sombra);
+  font-size: 1.625rem;
   cursor: pointer;
 }
+.carousel-arrow:hover {
+  background: var(--tumbo-crema-brillante);
+}
+.carousel-arrow:active {
+  background: var(--tumbo-amarillo-marca);
+}
 .carousel-arrow:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 .carousel-arrow:focus-visible {
-  outline: 3px solid #003592;
-  outline-offset: 2px;
+  outline: 2px solid var(--tumbo-azul-sombra);
+  outline-offset: 3px;
 }
 .quick-user {
-  min-height: 90px;
-  --background: #fbb103;
-  --border-color: #fbb103;
+  width: 100%;
+  margin: 0;
+  min-height: 80px;
+  --background: var(--tumbo-crema-brillante);
+  --background-hover: var(--tumbo-crema-brillante);
+  --background-activated: var(--tumbo-amarillo-marca);
+  --border-color: #a59b7f;
+  --border-width: 1px;
+  --border-radius: 10px;
+  --color: var(--tumbo-azul-sombra);
+  --box-shadow: none;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .quick-user::part(native) {
-  min-height: 90px;
-  justify-content: center;
-  padding: 12px 8px;
+  min-height: 80px;
+  padding: 12px;
   white-space: normal;
 }
 .quick-user__texto {
-  align-items: center;
-  text-align: center;
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  text-align: left;
 }
 .quick-user__role {
-  color: #003592;
-  font-size: 14px;
-  font-weight: 850;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+.quick-user__name {
+  grid-column: 1;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 .quick-user__enter {
-  color: #003592;
-  font-size: 12px;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  font-size: 1.125rem;
 }
-.carousel-position {
-  margin: 6px 0 0;
-  text-align: center;
-  font-size: 11px;
-  color: #003592;
-}
+// El pie forma parte del mismo bloque, sin ocupar el espacio sobrante.
 .welcome-footer {
-  margin: 0;
-  padding: 0;
-  color: #003592;
-}
-.welcome-footer__rule {
-  display: none;
-}
-.welcome-footer__team {
-  color: #003592;
-  font-size: 10px !important;
-  margin-top: 3px !important;
+  margin-top: 0.875rem;
+  text-align: center;
+  color: #526582;
+  font-size: 0.6875rem;
 }
 .welcome-footer p {
-  font-size: 9px;
+  margin: 0;
+  line-height: 1.5;
 }
-@media (max-height: 650px) {
-  .login-panel {
-    gap: 8px;
+
+@media (max-height: 700px) {
+  .login-layout {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .login-brand {
+    margin-bottom: 0.75rem;
+  }
+  .login-brand__lockup {
+    width: 9rem;
   }
   .login-intro {
-    flex: 0;
-  }
-  .login-card ion-card-content {
-    padding: 10px 12px;
+    margin-bottom: 0.75rem;
   }
   .field {
-    margin-bottom: 8px;
+    margin-bottom: 0;
+  }
+  .field label {
+    margin-bottom: 0.375rem;
   }
   .field ion-input {
-    min-height: 46px;
+    min-height: 48px;
   }
-  .quick-access {
-    min-height: 160px;
-    padding: 8px;
+  .password-field__toggle {
+    top: 2px;
   }
   .login-card__submit {
-    height: 56px;
+    min-height: 48px;
+    margin-top: 0;
   }
-}
-.field__error {
-  color: #8a2c00;
-}
-.login-card__submit {
-  --background-activated: #e7a000;
-  --background-focused: #fbb103;
+  .quick-access {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+  }
+  .quick-access__heading h2 {
+    margin-bottom: 0.5rem;
+  }
+  .quick-user,
+  .quick-user::part(native) {
+    min-height: 64px;
+  }
+  .quick-user::part(native) {
+    padding-block: 8px;
+  }
+  .welcome-footer {
+    margin-top: 0.75rem;
+  }
 }

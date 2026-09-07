@@ -1,6 +1,5 @@
-<ion-content class="login-page" [scrollY]="false">
+<ion-content class="login-page" [fullscreen]="true" [scrollY]="false">
   <div class="login-layout">
-    <tumbo-fondo-decorativo />
     <section class="login-panel" aria-labelledby="login-title">
       <header class="login-intro">
         <div class="login-brand" aria-label="Tumbito">
@@ -13,20 +12,12 @@
             alt="Tumbito"
           />
         </div>
-        <h1 id="login-title">Ingresar</h1>
+        <h1 id="login-title">Ingresá a tu cuenta</h1>
       </header>
 
       <div class="login-card-wrapper">
-        <img
-          class="login-cow"
-          ngSrc="imagenes/vaquita.webp"
-          width="720"
-          height="540"
-          alt=""
-          aria-hidden="true"
-        />
-        <ion-card class="login-card" aria-label="Formulario de ingreso">
-          <ion-card-content>
+        <div class="login-card">
+          <div class="login-card__content">
             <form [formGroup]="formulario" (ngSubmit)="ingresar()" novalidate>
               <div class="field" [class.field--invalid]="campoInvalido('correo')">
                 <label for="correo">Correo electrónico</label>
@@ -36,17 +27,19 @@
                   fill="outline"
                   formControlName="correo"
                   inputmode="email"
-                  placeholder="nombre@tumbito.demo"
+                  placeholder="nombre@correo.com"
                   type="email"
                   [maxlength]="limites.correo.max"
                   [attr.aria-invalid]="campoInvalido('correo')"
                   [attr.aria-describedby]="campoInvalido('correo') ? 'correo-error' : null"
                 />
-                @if (campoInvalido('correo')) {
-                  <ion-note id="correo-error" class="field__error" role="alert">{{
-                    mensajeCampo('correo')
-                  }}</ion-note>
-                }
+                <div class="field__feedback">
+                  @if (campoInvalido('correo')) {
+                    <ion-note id="correo-error" class="field__error" role="alert">{{
+                      mensajeCampo('correo')
+                    }}</ion-note>
+                  }
+                </div>
               </div>
               <div class="field" [class.field--invalid]="campoInvalido('clave')">
                 <label for="clave">Clave</label>
@@ -74,11 +67,13 @@
                       [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"
                   /></ion-button>
                 </div>
-                @if (campoInvalido('clave')) {
-                  <ion-note id="clave-error" class="field__error" role="alert">{{
-                    mensajeCampo('clave')
-                  }}</ion-note>
-                }
+                <div class="field__feedback">
+                  @if (campoInvalido('clave')) {
+                    <ion-note id="clave-error" class="field__error" role="alert">{{
+                      mensajeCampo('clave')
+                    }}</ion-note>
+                  }
+                </div>
               </div>
               @if (errorMensaje()) {
                 <p class="form-message form-message--error" role="alert">{{ errorMensaje() }}</p>
@@ -93,25 +88,22 @@
                   <tumbo-espera etiqueta="Ingresando" /><span>Ingresando...</span>
                 } @else {
                   <ion-icon aria-hidden="true" slot="start" name="log-in-outline" /><span
-                    >Ingresar a Tumbito</span
+                    >Ingresar</span
                   >
                 }
               </ion-button>
             </form>
-          </ion-card-content>
-        </ion-card>
+          </div>
+        </div>
       </div>
 
       <section class="quick-access" aria-labelledby="quick-access-title">
-        <div class="quick-access__heading"><h2 id="quick-access-title">Accesos rápidos</h2></div>
-        <p class="quick-access__hint">
-          {{ modo === 'demo' ? 'Demostración · elegí un perfil' : 'Elegí tu perfil' }}
-        </p>
+        <div class="quick-access__heading"><h2 id="quick-access-title">Acceso rápido</h2></div>
         <div
           class="quick-carousel"
           role="group"
           aria-roledescription="carrusel"
-          aria-label="Perfiles de acceso rápido"
+          aria-label="Acceso rápido"
           (touchstart)="iniciarGesto($event)"
           (touchend)="terminarGesto($event)"
         >
@@ -131,10 +123,10 @@
               [disabled]="enviando()"
               (click)="ingresarRapido(usuario)"
             >
-              <span class="quick-user__texto"
+              <span class="quick-user__texto" aria-live="polite" aria-atomic="true"
                 ><span class="quick-user__role">{{ usuario.etiquetaPerfil }}</span
                 ><span class="quick-user__name">{{ usuario.nombres }} {{ usuario.apellidos }}</span
-                ><span class="quick-user__enter">Entrar →</span></span
+                ><span class="quick-user__enter" aria-hidden="true">→</span></span
               >
             </ion-button>
           } @else {
@@ -150,18 +142,10 @@
             ›
           </button>
         </div>
-        <p class="carousel-position" aria-live="polite" aria-atomic="true">
-          {{ accesoActual()?.etiquetaPerfil }} ·
-          {{ usuariosRapidos().length ? indiceRapido() + 1 : 0 }} de {{ usuariosRapidos().length }}
-        </p>
       </section>
 
-      <footer class="welcome-footer" aria-label="Información institucional">
-        <div class="welcome-footer__rule" aria-hidden="true"></div>
-        <p>Trabajo final integrador · 2026</p>
-        <p class="welcome-footer__team">
-          Mateo Terrile · Ramiro Bianucci · Ignacio Agustín Cruz · Matías Gabriel Ferrari
-        </p>
+      <footer class="welcome-footer">
+        <p>Tumbito · 2026</p>
       </footer>
     </section>
   </div>
