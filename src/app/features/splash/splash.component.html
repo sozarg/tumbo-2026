@@ -1,45 +1,34 @@
-<div
-  class="splash-page"
-  [class.splash-page--lista]="lista()"
-  (animationend)="finalizarTransicion($event)"
->
-  <main class="splash-page__sheet" aria-labelledby="splash-title">
-    <div class="splash-page__orbit splash-page__orbit--outer" aria-hidden="true"></div>
-    <div class="splash-page__orbit splash-page__orbit--inner" aria-hidden="true"></div>
-
-    <section class="splash-page__content">
-      <div class="splash-page__logo-wrap">
+<ion-content [fullscreen]="true" [scrollY]="false">
+  <section class="splash-page" [class.splash-page--lista]="lista()" aria-labelledby="splash-title">
+    <div class="splash-page__brand">
+      <div class="splash-page__logo-wrap" [class.splash-page__logo-wrap--empty]="sinImagen()">
         <img
           class="splash-page__logo"
-          ngSrc="imagenes/logo.png"
-          width="1280"
-          height="1280"
+          ngSrc="imagenes/logo-splash.webp"
+          width="768"
+          height="768"
           priority
-          alt="Tumbito"
+          disableOptimizedSrcset
+          alt="Tumbito, nuestra vaquita con su bandeja"
+          (load)="imagenCargada($event)"
+          (error)="imagenFallida()"
         />
       </div>
-
-      <p class="splash-page__eyebrow">Grupo Tumbito</p>
-      <h1 id="splash-title">TUMBITO</h1>
-      <p class="splash-page__tagline">Una experiencia que se comparte</p>
-
-      <!--
-        Requisito excluyente R14: la pantalla de presentación tiene que
-        mostrar el ícono, el nombre del grupo y los apellidos y nombres
-        de cada integrante. Los estilos .splash-page__eyebrow y
-        .splash-page__team ya estaban en el SCSS, solo faltaba usarlos.
-      -->
-      <p class="splash-page__team">
-        <span>Terrile, Mateo</span>
-        <span>Bianucci, Ramiro</span>
-        <span>Cruz, Ignacio Agustín</span>
-        <span>Ferrari, Matías Gabriel</span>
-      </p>
-
-      <div class="splash-page__loading" role="status" aria-label="Cargando aplicación">
-        <span class="splash-page__loading-dot" aria-hidden="true"></span>
-        <span>Preparando tu experiencia</span>
-      </div>
-    </section>
-  </main>
-</div>
+      <h1 id="splash-title">TUMBITO<span aria-hidden="true">.</span></h1>
+      @if (error()) {
+        <div class="splash-page__error">
+          <p role="alert">No pudimos abrir la aplicación.</p>
+          <ion-button (click)="continuar()">Reintentar</ion-button>
+        </div>
+      } @else {
+        <!-- Secuencia de bienvenida, no un porcentaje ficticio de descarga. -->
+        <div class="splash-page__loader" role="progressbar" aria-label="Abriendo Tumbito">
+          <div class="splash-page__track" aria-hidden="true">
+            <span class="splash-page__fill"></span>
+            <span class="splash-page__glint"></span>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+</ion-content>

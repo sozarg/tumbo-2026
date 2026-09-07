@@ -1,29 +1,18 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { SesionService } from '../../core/services/sesion.service';
 import { Router } from '@angular/router';
+import { IonButton } from '@ionic/angular/ion-button';
+import { IonContent } from '@ionic/angular/ion-content';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
+import { SesionService } from '../../core/services/sesion.service';
 import { SonidosService } from '../../core/services/sonidos.service';
 
-/**
- * Un cuadro a 60 Hz dura 16,7 ms. Le damos margen: cualquier cosa por
- * debajo de esto significa que el hilo principal está atendiendo el
- * dibujado y no una tarea de arranque.
- */
-const CUADRO_HOLGADO = 24;
-
-/** Dos cuadros seguidos en hora alcanzan para saber que se liberó. */
-const CUADROS_SEGUIDOS = 2;
-
-/**
- * Tope duro. Si el hilo nunca se libera —un celular muy lento— o si no
- * hay cuadros porque la pestaña está en segundo plano, arrancamos igual:
- * más vale una splash con un tirón que una que no arranca nunca.
- */
-const ESPERA_MAXIMA = 600;
+const DURACION = 3_000;
+const DURACION_REDUCIDA = 600;
+const ESPERA_IMAGEN = 1_500;
 
 @Component({
-  imports: [NgOptimizedImage],
+  imports: [NgOptimizedImage, IonContent, IonButton],
   selector: 'tumbo-splash',
   styleUrl: './splash.component.scss',
   templateUrl: './splash.component.html',
@@ -36,106 +25,76 @@ export class Splash implements OnInit, OnDestroy {
   private temporizador?: ReturnType<typeof setTimeout>;
   private respaldo?: ReturnType<typeof setTimeout>;
   private cuadro?: number;
-  private cuadrosBuenos = 0;
-  private marca = 0;
-  private transicionFinalizada = false;
+  private destruida = false;
+  private navegando = false;
 
-  /**
-   * Mientras esté en false el SCSS mantiene TODAS las animaciones
-   * congeladas en su fotograma cero.
-   */
   protected readonly lista = signal(false);
+  protected readonly sinImagen = signal(false);
+  protected readonly error = signal(false);
 
   ngOnInit(): void {
-    this.esperarHiloLibre();
-    this.respaldo = setTimeout(() => this.arrancar(), ESPERA_MAXIMA);
+    // Una imagen que no responde nunca debe impedir entrar a la aplicación.
+    this.respaldo = setTimeout(() => this.arrancar(), ESPERA_IMAGEN);
   }
 
-  /**
-   * Mide cuánto tarda cada cuadro hasta encontrar dos seguidos en hora.
-   *
-   * No alcanza con esperar un `requestAnimationFrame` o dos a ciegas: en
-   * un celular lento el arranque de Angular sigue ocupando el hilo
-   * varios cuadros después del primer dibujado, y la animación
-   * empezaría igual de entrecortada. Lo que hace falta saber no es
-   * "¿ya se pintó algo?" sino "¿el hilo ya está libre?", y eso se
-   * responde midiendo.
-   */
-  private esperarHiloLibre(): void {
-    this.marca = performance.now();
-
-    const mirar = (ahora: number): void => {
-      const duracion = ahora - this.marca;
-      this.marca = ahora;
-      this.cuadrosBuenos = duracion <= CUADRO_HOLGADO ? this.cuadrosBuenos + 1 : 0;
-
-      if (this.cuadrosBuenos >= CUADROS_SEGUIDOS) {
-        this.arrancar();
-        return;
+  protected async imagenCargada(event: Event): Promise<void> {
+    // decode() espera los píxeles antes de animar, sin modificar el DOM.
+    const imagen = event.target;
+    if (imagen instanceof HTMLImageElement) {
+      try {
+        await imagen.decode();
+      } catch {
+        // El evento load ya confirmó la descarga; usamos el recurso disponible.
       }
-
-      this.cuadro = requestAnimationFrame(mirar);
-    };
-
-    this.cuadro = requestAnimationFrame(mirar);
+    }
+    this.arrancar();
   }
 
-  /**
-   * Suelta las animaciones y recién ahí empieza a contar el reloj de la
-   * navegación. Los 2,42 s son la duración de la splash: si arrancaran
-   * en `ngOnInit` como antes, la espera del hilo se los comería y la
-   * navegación caería en medio de la animación de salida.
-   */
+  protected imagenFallida(): void {
+    this.sinImagen.set(true);
+    this.arrancar();
+  }
+
   private arrancar(): void {
-    if (this.lista()) {
-      return;
-    }
-
-    this.lista.set(true);
-    this.cancelarEspera();
-    this.temporizador = setTimeout(() => this.continuar(), 2_420);
+    if (this.lista() || this.destruida || this.cuadro !== undefined) return;
+    clearTimeout(this.respaldo);
+    // Permite pintar el estado inicial antes de iniciar la secuencia.
+    this.cuadro = requestAnimationFrame(() => {
+      this.cuadro = undefined;
+      if (this.destruida) return;
+      this.lista.set(true);
+      const reducida = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.temporizador = setTimeout(
+        () => void this.continuar(),
+        reducida ? DURACION_REDUCIDA : DURACION,
+      );
+    });
   }
 
-  private cancelarEspera(): void {
-    if (this.cuadro !== undefined) {
-      cancelAnimationFrame(this.cuadro);
-      this.cuadro = undefined;
-    }
-    if (this.respaldo) {
-      clearTimeout(this.respaldo);
-      this.respaldo = undefined;
+  protected async continuar(): Promise<void> {
+    if (this.navegando || this.destruida) return;
+    this.navegando = true;
+    this.error.set(false);
+    try {
+      const destino = this.sesion.estaAutenticado() ? '/operacion' : '/ingreso';
+      const completo = await this.router.navigate([destino], { replaceUrl: true });
+      if (completo) {
+        this.precarga.liberar();
+        this.sonidos.sonarApertura();
+      } else {
+        this.error.set(true);
+      }
+    } catch {
+      this.error.set(true);
+    } finally {
+      this.navegando = false;
     }
   }
 
   ngOnDestroy(): void {
-    this.cancelarEspera();
-    if (this.temporizador) {
-      clearTimeout(this.temporizador);
-    }
-  }
-
-  finalizarTransicion(event: AnimationEvent): void {
-    if (!event.animationName.includes('splash-exit')) {
-      return;
-    }
-
-    this.continuar();
-  }
-
-  private continuar(): void {
-    if (this.transicionFinalizada) {
-      return;
-    }
-
-    this.transicionFinalizada = true;
-    // Recién ahora: el hilo queda libre y la precarga de las rutas
-    // puede trabajar tranquila mientras el usuario ingresa.
-    this.precarga.liberar();
-    // R11: el sonido de apertura va acá y no en el arranque porque los
-    // navegadores bloquean el audio hasta que hubo interacción.
-    this.sonidos.sonarApertura();
-    void this.router.navigate([this.sesion.estaAutenticado() ? '/operacion' : '/ingreso'], {
-      replaceUrl: true,
-    });
+    this.destruida = true;
+    clearTimeout(this.temporizador);
+    clearTimeout(this.respaldo);
+    if (this.cuadro !== undefined) cancelAnimationFrame(this.cuadro);
   }
 }
