@@ -1,5 +1,5 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonButton } from '@ionic/angular/ion-button';
@@ -59,6 +59,26 @@ export class Ingreso {
   protected readonly claveDemostracion = this.autenticacion.claveDemostracion;
   protected readonly modo = this.autenticacion.modo;
 
+  protected readonly indiceRapido = signal(0);
+  protected readonly accesoActual = computed(
+    () => this.usuariosRapidos()[this.indiceRapido() % (this.usuariosRapidos().length || 1)],
+  );
+  private inicioGesto = 0;
+
+  protected moverAcceso(delta: number): void {
+    const total = this.usuariosRapidos().length;
+    if (total) this.indiceRapido.update((indice) => (indice + delta + total) % total);
+  }
+
+  protected iniciarGesto(evento: TouchEvent): void {
+    this.inicioGesto = evento.changedTouches[0].clientX;
+  }
+
+  protected terminarGesto(evento: TouchEvent): void {
+    const distancia = evento.changedTouches[0].clientX - this.inicioGesto;
+    if (Math.abs(distancia) > 45) this.moverAcceso(distancia < 0 ? 1 : -1);
+  }
+
   constructor() {
     addIcons({ eyeOffOutline, eyeOutline, logInOutline });
   }
@@ -116,7 +136,7 @@ export class Ingreso {
         this.formulario.controls.correo.value,
         this.formulario.controls.clave.value,
       );
-      await this.router.navigate(['/inicio']);
+      await this.router.navigate(['/operacion']);
     } catch (error: unknown) {
       // R9: todo error pasa por ErroresService, que además vibra.
       this.errorMensaje.set(await this.errores.desdeExcepcion(error, 'No se pudo iniciar sesión.'));
@@ -132,7 +152,7 @@ export class Ingreso {
 
     try {
       await this.autenticacion.ingresarRapido(acceso.id);
-      await this.router.navigate(['/inicio']);
+      await this.router.navigate(['/operacion']);
     } catch (error: unknown) {
       // R9: todo error pasa por ErroresService, que además vibra.
       this.errorMensaje.set(await this.errores.desdeExcepcion(error, 'No se pudo iniciar sesión.'));

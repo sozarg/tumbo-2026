@@ -1,5 +1,6 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { SesionService } from '../../core/services/sesion.service';
 import { Router } from '@angular/router';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
 import { SonidosService } from '../../core/services/sonidos.service';
@@ -29,6 +30,7 @@ const ESPERA_MAXIMA = 600;
 })
 export class Splash implements OnInit, OnDestroy {
   private readonly router = inject(Router);
+  private readonly sesion = inject(SesionService);
   private readonly sonidos = inject(SonidosService);
   private readonly precarga = inject(PrecargaDiferida);
   private temporizador?: ReturnType<typeof setTimeout>;
@@ -44,17 +46,6 @@ export class Splash implements OnInit, OnDestroy {
    */
   protected readonly lista = signal(false);
 
-  /**
-   * Acá hubo una precarga de las imágenes de la presentación y se sacó.
-   *
-   * La idea era aprovechar los 2,4 segundos de la splash para adelantar
-   * la decodificación. Medido, no cambió nada: el tirón no venía de que
-   * las imágenes llegaran tarde sino de su tamaño, que era el del
-   * original de diseño. Eso se arregló con `srcset`
-   * (`tools/generar-ilustraciones.mjs`). Peor todavía: la precarga
-   * pedía los originales por su nombre, así que ahora bajaría los
-   * archivos grandes que la presentación ya no usa.
-   */
   ngOnInit(): void {
     this.esperarHiloLibre();
     this.respaldo = setTimeout(() => this.arrancar(), ESPERA_MAXIMA);
@@ -102,7 +93,7 @@ export class Splash implements OnInit, OnDestroy {
 
     this.lista.set(true);
     this.cancelarEspera();
-    this.temporizador = setTimeout(() => this.navegarAPresentacion(), 2_420);
+    this.temporizador = setTimeout(() => this.continuar(), 2_420);
   }
 
   private cancelarEspera(): void {
@@ -128,21 +119,23 @@ export class Splash implements OnInit, OnDestroy {
       return;
     }
 
-    this.navegarAPresentacion();
+    this.continuar();
   }
 
-  private navegarAPresentacion(): void {
+  private continuar(): void {
     if (this.transicionFinalizada) {
       return;
     }
 
     this.transicionFinalizada = true;
     // Recién ahora: el hilo queda libre y la precarga de las rutas
-    // puede trabajar tranquila mientras el usuario lee la presentación.
+    // puede trabajar tranquila mientras el usuario ingresa.
     this.precarga.liberar();
     // R11: el sonido de apertura va acá y no en el arranque porque los
     // navegadores bloquean el audio hasta que hubo interacción.
     this.sonidos.sonarApertura();
-    void this.router.navigate(['/presentacion'], { replaceUrl: true });
+    void this.router.navigate([this.sesion.estaAutenticado() ? '/operacion' : '/ingreso'], {
+      replaceUrl: true,
+    });
   }
 }

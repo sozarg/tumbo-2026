@@ -1,5 +1,4 @@
 :host {
-  display: block;
   height: 100%;
 }
 
@@ -8,18 +7,9 @@
 }
 
 .operation-layout {
-  /* Igual que en inicio: el contenido va por encima del fondo
-     decorativo y ocupa el alto de la pantalla, para que los paneles
-     cortos (cocina, barra, cuenta del personal) no dejen un espacio
-     neutro al pie. */
   position: relative;
   z-index: 1;
-  /* Misma decision que en inicio: una sola columna con ancho de
-     telefono, para que escritorio y celular sean identicos. */
-  width: min(100%, 30rem);
-  min-height: 100dvh;
   margin: 0 auto;
-  padding: 0.7rem 1rem 3rem;
   color: #003592;
 }
 
@@ -28,7 +18,6 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.3rem;
-  min-height: 3.5rem;
 }
 
 .back-button,
@@ -50,8 +39,6 @@
 }
 
 .operation-brand__lockup {
-  /* Logotipo apaisado (2168x725): se limita por alto para no empujar
-     los botones de volver y salir. */
   width: auto;
   height: clamp(1.8rem, 6vw, 2.4rem);
   max-width: 42vw;
@@ -60,9 +47,6 @@
 
 .operation-brand span {
   display: block;
-  color: #dc5b02;
-  font-size: 0.56rem;
-  font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -72,23 +56,8 @@
   --border-radius: 999px;
   --color: #003592;
   font-size: 0.7rem;
-  font-weight: 800;
 }
 
-.operation-tabs {
-  display: flex;
-  overflow-x: auto;
-  gap: 0.35rem;
-  margin: 0.7rem 0 1rem;
-  padding-bottom: 0.25rem;
-  scrollbar-width: none;
-}
-
-.operation-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.operation-tab,
 .chart-tabs button {
   border: 0.1rem solid rgb(0 106 231 / 22%);
   border-radius: 999px;
@@ -97,61 +66,20 @@
   background: #fcedbb;
   font: inherit;
   font-size: 0.74rem;
-  font-weight: 850;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.operation-tab--active,
 .chart-tab--active {
   border-color: #006ae7;
   color: #f8fbfd;
   background: #006ae7;
 }
 
-.feedback {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0 0 1rem;
-  border: 0.1rem solid rgb(0 106 231 / 30%);
-  border-radius: 0.7rem;
-  padding: 0.7rem 0.85rem;
-  color: #003592;
-  background: #fcedbb;
-  font-size: 0.78rem;
-  font-weight: 750;
-}
-
-/* El cartel de error NO se parece al de éxito: rojo, no crema, y con
-   su propio icono. Antes los dos usaban .feedback a secas y un tilde
-   verde, así que un fallo se leía como un "listo". */
-.feedback--error {
-  border-color: rgb(176 0 32 / 45%);
-  color: #7a0016;
-  background: #fde8e8;
-}
-
-/* Recibe el foco por programa para que el lector de pantalla lo lea,
-   pero no es un control: el anillo del navegador confundiría. El borde
-   rojo y el icono ya lo distinguen de sobra. */
-.feedback--error:focus {
-  outline: none;
-}
-
-.feedback ion-icon {
-  flex-shrink: 0;
-  color: #006ae7;
-  font-size: 1.2rem;
-}
-
 .section-kicker {
   margin: 0 0 0.3rem;
-  color: #dc5b02;
   font-size: 0.67rem;
-  font-weight: 900;
   letter-spacing: 0.13em;
-  text-transform: uppercase;
 }
 
 .table-chip,
@@ -161,52 +89,12 @@
   --background: #006ae7;
   --color: #f8fbfd;
   font-size: 0.68rem;
-  font-weight: 850;
 }
 
-.metric-grid,
-.operational-grid,
-.form-grid,
 .menu-grid,
 .games-grid {
   display: grid;
-  grid-template-columns: 1fr;
   gap: 0.7rem;
-}
-
-.metric-grid {
-  margin-top: 0.8rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.metric-card {
-  display: flex;
-  min-height: 5.6rem;
-  flex-direction: column;
-  justify-content: center;
-  border: 0.1rem solid rgb(252 237 187 / 90%);
-  border-radius: 0.9rem;
-  padding: 0.85rem;
-  background: #fcedbb;
-  box-shadow: 0 0.4rem 1rem rgb(0 53 146 / 7%);
-}
-
-.metric-card--accent {
-  background: #fbb103;
-}
-
-.metric-card__number {
-  color: #006ae7;
-  font-size: 1.9rem;
-  font-weight: 950;
-  line-height: 1;
-}
-
-.metric-card__label {
-  margin-top: 0.3rem;
-  color: #003592;
-  font-size: 0.68rem;
-  font-weight: 800;
 }
 
 .section-block {
@@ -218,14 +106,11 @@
   align-items: end;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.8rem;
 }
 
 .section-heading h2 {
   margin: 0;
   color: #003592;
-  font-size: clamp(1.25rem, 5vw, 1.8rem);
-  font-weight: 950;
 }
 
 .status-pill {
@@ -234,17 +119,14 @@
   border: 0.1rem solid rgb(220 91 2 / 38%);
   border-radius: 999px;
   padding: 0.35rem 0.55rem;
-  color: #dc5b02;
   background: rgb(220 91 2 / 10%);
   font-size: 0.65rem;
-  font-weight: 900;
   text-align: center;
 }
 
 .order-summary-card,
 .sector-card,
-.staff-order-card,
-.action-card {
+.staff-order-card {
   margin: 0;
   border: 0.1rem solid rgb(252 237 187 / 95%);
   border-radius: 1rem;
@@ -264,16 +146,6 @@
 .staff-order-card__header span {
   color: #dc5b02;
   font-size: 0.7rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.order-summary-card h3,
-.staff-order-card h3 {
-  margin: 0.25rem 0 0;
-  color: #003592;
-  font-size: 1.05rem;
-  font-weight: 900;
 }
 
 .order-summary-card__top ion-icon,
@@ -312,7 +184,6 @@
   justify-content: space-between;
   color: #003592;
   font-size: 0.62rem;
-  font-weight: 800;
 }
 
 .order-summary-card__date {
@@ -322,13 +193,9 @@
   margin: 1rem 0 0;
   color: #003592;
   font-size: 0.7rem;
-  opacity: 0.75;
 }
 
-.notice-card,
-.locked-card,
-.anonymous-entry,
-.payment-staff-card {
+.locked-card {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -338,11 +205,22 @@
   background: #fcedbb;
 }
 
-.notice-card {
-  margin-top: 1rem;
+.anonymous-entry {
+  display: flex;
+  gap: 0.75rem;
+  border: 0.1rem solid rgb(0 106 231 / 24%);
+  border-radius: 0.9rem;
+  padding: 0.85rem;
+  background: #fcedbb;
 }
 
-.notice-card > ion-icon,
+.payment-staff-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0.1rem solid rgb(0 106 231 / 24%);
+}
+
 .locked-card > ion-icon,
 .payment-staff-card > ion-icon {
   flex-shrink: 0;
@@ -350,34 +228,25 @@
   font-size: 1.5rem;
 }
 
-.notice-card strong,
 .locked-card strong,
 .payment-staff-card strong {
   color: #003592;
   font-size: 0.8rem;
 }
 
-.notice-card p,
 .locked-card p,
 .payment-staff-card p {
   margin: 0.25rem 0 0;
   color: #003592;
   font-size: 0.72rem;
   line-height: 1.4;
-  opacity: 0.78;
-}
-
-.form-grid {
-  grid-template-columns: 1fr;
 }
 
 .demo-form {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
   border: 0.1rem solid rgb(252 237 187 / 95%);
   border-radius: 1rem;
-  padding: 1rem;
   background: #fcedbb;
 }
 
@@ -392,20 +261,17 @@
   font-size: 1.5rem;
 }
 
-.form-title h3 {
-  margin: 0;
+.form-title p {
+  margin: 0.2rem 0 0;
   color: #003592;
-  font-size: 1rem;
-  font-weight: 900;
+  line-height: 1.35;
 }
 
-.form-title p,
 .demo-form ion-note {
   margin: 0.2rem 0 0;
   color: #003592;
   font-size: 0.7rem;
   line-height: 1.35;
-  opacity: 0.78;
 }
 
 .demo-form ion-input,
@@ -440,28 +306,19 @@
   flex: 1 1 8rem;
 }
 
-.primary-action,
+.primary-action {
+  --border-radius: 0.7rem;
+}
+
 .approve-button {
   --background: #006ae7;
   --background-hover: #003592;
   --border-radius: 0.7rem;
   --color: #f8fbfd;
-  font-weight: 850;
-}
-
-.secondary-action {
-  --border-color: #006ae7;
-  --border-radius: 0.7rem;
-  --color: #006ae7;
-  font-size: 0.72rem;
-  font-weight: 800;
 }
 
 .reject-button {
-  --border-color: #dc5b02;
   --border-radius: 0.7rem;
-  --color: #dc5b02;
-  font-weight: 800;
 }
 
 .client-list,
@@ -478,7 +335,6 @@
   gap: 0.7rem;
   border: 0.1rem solid rgb(252 237 187 / 90%);
   border-radius: 0.9rem;
-  padding: 0.7rem;
   background: #fcedbb;
 }
 
@@ -504,7 +360,6 @@
 .wait-row strong {
   color: #003592;
   font-size: 0.82rem;
-  font-weight: 900;
 }
 
 .client-row span,
@@ -513,15 +368,12 @@
   color: #003592;
   font-size: 0.69rem;
   line-height: 1.3;
-  opacity: 0.75;
 }
 
 .client-row em {
   margin-top: 0.25rem;
-  color: #dc5b02;
   font-size: 0.65rem;
   font-style: normal;
-  font-weight: 850;
 }
 
 .row-actions,
@@ -544,7 +396,6 @@
 
 .table-tile {
   display: flex;
-  min-height: 7rem;
   flex-direction: column;
   align-items: flex-start;
   border: 0.1rem solid rgb(220 91 2 / 36%);
@@ -565,7 +416,6 @@
 .table-tile__number {
   color: #006ae7;
   font-size: 1.8rem;
-  font-weight: 950;
   line-height: 1;
 }
 
@@ -576,20 +426,11 @@
   font-size: 0.68rem;
 }
 
-.table-tile strong {
-  color: #dc5b02;
-}
-
-.table-tile small {
-  opacity: 0.75;
-}
-
 .assigned-chip {
   margin: 0;
   --background: #006ae7;
   --color: #f8fbfd;
   font-size: 0.68rem;
-  font-weight: 850;
 }
 
 .icon-danger {
@@ -602,20 +443,24 @@
 .sector-card ion-card-title {
   color: #003592;
   font-size: 1.25rem;
-  font-weight: 950;
 }
 
 .sector-card ion-card-subtitle {
   color: #003592;
-  opacity: 0.75;
 }
 
 .sector-items,
-.compact-list,
-.bill-lines {
+.compact-list {
   display: grid;
   gap: 0.55rem;
   margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.bill-lines {
+  display: grid;
+  gap: 0.55rem;
   padding: 0;
   list-style: none;
 }
@@ -633,11 +478,13 @@
   font-size: 0.78rem;
 }
 
-.sector-items li small,
+.sector-items li small {
+  font-size: 0.65rem;
+}
+
 .bill-lines small {
   color: #dc5b02;
   font-size: 0.65rem;
-  font-weight: 800;
 }
 
 .staff-order-card__header {
@@ -655,23 +502,12 @@
 }
 
 .empty-state {
-  border-radius: 0.8rem;
-  padding: 1rem;
   color: #003592;
-  background: #fcedbb;
   font-size: 0.8rem;
-  font-weight: 700;
 }
 
 .anonymous-entry {
   align-items: center;
-}
-
-.anonymous-entry h3 {
-  margin: 0;
-  color: #003592;
-  font-size: 0.9rem;
-  font-weight: 900;
 }
 
 .anonymous-entry p {
@@ -679,7 +515,6 @@
   color: #003592;
   font-size: 0.74rem;
   line-height: 1.4;
-  opacity: 0.78;
 }
 
 .anonymous-form {
@@ -702,12 +537,15 @@
   border-radius: 0.3rem;
   color: #003592;
   background-color: #f8fbfd;
-  background-image: repeating-linear-gradient(45deg, transparent 0 0.3rem, rgb(0 53 146 / 20%) 0.3rem 0.42rem);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 0.3rem,
+    rgb(0 53 146 / 20%) 0.3rem 0.42rem
+  );
 }
 
 .qr-preview span {
   font-size: 1.4rem;
-  font-weight: 950;
 }
 
 .qr-preview img {
@@ -718,51 +556,6 @@
 
 .qr-preview small {
   font-size: 0.45rem;
-}
-
-.operational-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.operational-card {
-  margin: 0;
-  border-radius: 0.9rem;
-  background: #fcedbb;
-}
-
-.operational-card--wide {
-  grid-column: 1 / -1;
-}
-
-.operational-card ion-card-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.operational-card span,
-.operational-card strong,
-.operational-card small {
-  display: block;
-}
-
-.operational-card span {
-  color: #dc5b02;
-  font-size: 0.67rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.operational-card strong {
-  margin-top: 0.35rem;
-  color: #003592;
-  font-size: 0.95rem;
-}
-
-.operational-card small {
-  margin-top: 0.25rem;
-  color: #003592;
-  font-size: 0.67rem;
-  opacity: 0.75;
 }
 
 .menu-grid {
@@ -778,7 +571,6 @@
 
 .product-card__image {
   position: relative;
-  height: 9rem;
   overflow: hidden;
   background: #fbb103;
 }
@@ -794,8 +586,6 @@
   right: 0.6rem;
   bottom: 0.6rem;
   display: grid;
-  width: 2rem;
-  height: 2rem;
   place-items: center;
   border: 0;
   border-radius: 50%;
@@ -813,38 +603,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  color: #dc5b02;
   font-size: 0.62rem;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 .product-card__meta strong {
-  color: #006ae7;
   font-size: 0.82rem;
 }
 
-.product-card h3 {
-  margin: 0.3rem 0 0;
-  color: #003592;
-  font-size: 0.98rem;
-  font-weight: 950;
-}
-
 .product-card p {
-  min-height: 2.4rem;
   margin: 0.35rem 0 0.7rem;
   color: #003592;
   font-size: 0.73rem;
   line-height: 1.4;
-  opacity: 0.8;
 }
 
 .product-card__actions {
   display: flex;
   align-items: center;
   justify-content: end;
-  gap: 0.6rem;
 }
 
 .product-card__actions strong {
@@ -854,7 +630,6 @@
 }
 
 .quantity-button {
-  min-width: 2.1rem;
   margin: 0;
   --border-color: #006ae7;
   --border-radius: 50%;
@@ -862,7 +637,6 @@
 }
 
 .cart-bar {
-  position: sticky;
   z-index: 5;
   bottom: 0.7rem;
   display: flex;
@@ -886,15 +660,11 @@
 .cart-bar span {
   color: #dc5b02;
   font-size: 0.62rem;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 .cart-bar strong {
   margin-top: 0.15rem;
-  color: #006ae7;
   font-size: 1.3rem;
-  font-weight: 950;
 }
 
 .cart-bar small {
@@ -920,16 +690,7 @@
 }
 
 .game-card > span {
-  color: #dc5b02;
   font-size: 0.68rem;
-  font-weight: 950;
-}
-
-.game-card h3 {
-  margin: 0.35rem 0 0;
-  color: #003592;
-  font-size: 0.95rem;
-  font-weight: 900;
 }
 
 .game-card p {
@@ -938,7 +699,6 @@
   color: #003592;
   font-size: 0.72rem;
   line-height: 1.35;
-  opacity: 0.8;
 }
 
 .game-card ion-button {
@@ -959,7 +719,6 @@
 .chart-card {
   display: flex;
   min-height: 10rem;
-  align-items: center;
   gap: 1rem;
   border-radius: 1rem;
   padding: 1rem;
@@ -975,7 +734,6 @@
 .chart-card strong {
   color: #003592;
   font-size: 0.9rem;
-  font-weight: 900;
 }
 
 .chart-card p {
@@ -986,9 +744,7 @@
 }
 
 .chart-card span {
-  color: #dc5b02;
   font-size: 0.62rem;
-  font-weight: 800;
 }
 
 .pie-chart {
@@ -1000,7 +756,21 @@
   box-shadow: inset 0 0 0 1.7rem #fcedbb;
 }
 
-.bar-chart,
+.bar-chart {
+  display: flex;
+  width: 7rem;
+  height: 7rem;
+  flex-shrink: 0;
+  align-items: end;
+  justify-content: space-around;
+  border-bottom: 0.15rem solid #003592;
+  background: repeating-linear-gradient(
+    to top,
+    transparent 0 1.4rem,
+    rgb(0 53 146 / 13%) 1.4rem 1.48rem
+  );
+}
+
 .line-chart {
   display: flex;
   width: 7rem;
@@ -1009,7 +779,6 @@
   align-items: end;
   justify-content: space-around;
   border-bottom: 0.15rem solid #003592;
-  background: repeating-linear-gradient(to top, transparent 0 1.4rem, rgb(0 53 146 / 13%) 1.4rem 1.48rem);
 }
 
 .bar-chart span {
@@ -1055,14 +824,11 @@
 
 .chat-messages {
   display: grid;
-  max-height: 18rem;
   gap: 0.55rem;
-  overflow-y: auto;
   padding: 0.25rem;
 }
 
 .chat-message {
-  width: min(88%, 22rem);
   border-radius: 0.75rem 0.75rem 0.75rem 0.15rem;
   padding: 0.55rem 0.7rem;
   color: #003592;
@@ -1077,9 +843,7 @@
 
 .chat-message span {
   display: block;
-  color: #dc5b02;
   font-size: 0.58rem;
-  font-weight: 850;
 }
 
 .chat-message p {
@@ -1114,25 +878,16 @@
   background: #fcedbb;
 }
 
-.tip-card h3 {
-  margin: 0;
-  color: #003592;
-  font-size: 1rem;
-  font-weight: 900;
-}
-
 .tip-card > div:first-child p {
   margin: 0.3rem 0 1rem;
   color: #003592;
   font-size: 0.74rem;
   line-height: 1.4;
-  opacity: 0.8;
 }
 
 .tip-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.35rem;
   margin-bottom: 1rem;
 }
 
@@ -1143,7 +898,6 @@
   align-items: center;
   border: 0.1rem solid rgb(0 106 231 / 28%);
   border-radius: 0.65rem;
-  padding: 0.35rem;
   color: #003592;
   background: #fbf1d5;
   font: inherit;
@@ -1161,18 +915,27 @@
   font-size: 0.74rem;
 }
 
-.tip-option small {
-  font-size: 0.51rem;
-}
-
 .qr-art {
   display: block;
   width: 2.2rem;
   height: 2.2rem;
   border: 0.15rem solid #003592;
   background:
-    linear-gradient(90deg, #003592 20%, transparent 20% 40%, #003592 40% 60%, transparent 60% 80%, #003592 80%),
-    linear-gradient(#003592 20%, transparent 20% 40%, #003592 40% 60%, transparent 60% 80%, #003592 80%);
+    linear-gradient(
+      90deg,
+      #003592 20%,
+      transparent 20% 40%,
+      #003592 40% 60%,
+      transparent 60% 80%,
+      #003592 80%
+    ),
+    linear-gradient(
+      #003592 20%,
+      transparent 20% 40%,
+      #003592 40% 60%,
+      transparent 60% 80%,
+      #003592 80%
+    );
   background-blend-mode: multiply;
 }
 
@@ -1194,21 +957,17 @@ img.qr-art {
 .bill-card__header span {
   color: #dc5b02;
   font-size: 0.65rem;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 .bill-card__header h2 {
   margin: 0.2rem 0 0;
   color: #003592;
   font-size: 1.25rem;
-  font-weight: 950;
 }
 
 .bill-card__header > strong {
   color: #006ae7;
   font-size: 1.5rem;
-  font-weight: 950;
 }
 
 .bill-lines {
@@ -1232,7 +991,6 @@ img.qr-art {
   border-top: 0.15rem solid #006ae7;
   padding-top: 0.8rem;
   color: #003592;
-  font-weight: 900;
 }
 
 .bill-total strong {
@@ -1240,8 +998,7 @@ img.qr-art {
   font-size: 1.5rem;
 }
 
-.payment-waiting,
-.payment-success {
+.payment-waiting {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1251,7 +1008,17 @@ img.qr-art {
   color: #003592;
   background: rgb(0 106 231 / 12%);
   font-size: 0.75rem;
-  font-weight: 800;
+}
+
+.payment-success {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  border-radius: 0.65rem;
+  padding: 0.75rem;
+  background: rgb(0 106 231 / 12%);
+  font-size: 0.75rem;
 }
 
 .payment-success {
@@ -1274,4 +1041,491 @@ img.qr-art {
 .section-icon {
   color: #006ae7;
   font-size: 1.8rem;
+}
+
+.operation-layout {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 44rem);
+  height: 100%;
+  min-height: 0;
+  padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
+  gap: 10px;
+}
+.operation-header {
+  flex: 0 0 48px;
+  min-height: 48px;
+}
+.operation-brand span {
+  color: #003592;
+  font-size: 10px;
+}
+.profile-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #003592;
+  border-radius: 16px;
+  background: #fbb103;
+  font-size: 22px;
+  font-weight: 850;
+}
+.hub-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 8px;
+  padding: 4px 0;
+}
+.hub-heading p {
+  margin: 0 0 4px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+}
+.hub-heading h1 {
+  margin: 0;
+  font-size: clamp(25px, 6vw, 36px);
+  letter-spacing: -0.04em;
+  font-weight: 900;
+}
+.hub-name {
+  font-size: 12px;
+  max-width: 40%;
+  overflow-wrap: anywhere;
+}
+.hub-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 10px;
+}
+.hub-grid--many {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.hub-tile {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(6px, 1.5dvh, 16px);
+  padding: 10px 4px;
+  border: 1px solid #ddcb96;
+  border-radius: 24px;
+  background: #fcedbb;
+  color: #003592;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #ddcb96;
+  transition: transform 120ms ease;
+}
+.hub-tile:nth-child(4n + 1) {
+  background: #fbb103;
+  border-color: #d39100;
+  box-shadow: 0 3px 0 #d39100;
+}
+.hub-tile:nth-child(4n + 2) {
+  background: #e0eafa;
+  border-color: #adc5e4;
+  box-shadow: 0 3px 0 #adc5e4;
+}
+.hub-tile ion-icon {
+  font-size: clamp(26px, 7vw, 44px);
+}
+.hub-tile span {
+  font-size: clamp(12px, 3vw, 16px);
+}
+.hub-tile:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.hub-tile:focus-visible {
+  outline: 3px solid #003592;
+  outline-offset: 2px;
+}
+.hub-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 5px;
+  font-size: 10px;
+}
+.view-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  gap: 10px;
+}
+.view-heading h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+}
+.view-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.section-block {
+  margin: 0;
+}
+.section-heading {
+  margin-bottom: 8px;
+}
+.section-heading h2 {
+  font-size: 18px;
+}
+.demo-form {
+  flex: 1;
+  gap: 12px;
+  padding: 16px;
+}
+.demo-form small,
+.field-error {
+  color: #9d3100;
+  margin: 0;
+  font-size: 12px;
+}
+.form-title p {
+  font-size: 12px;
+}
+ion-button {
+  min-height: 52px;
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: normal;
+}
+ion-button::part(native) {
+  white-space: normal;
+}
+.primary-action {
+  min-height: 60px;
+  --background: #fbb103;
+  --color: #003592;
+  --background-hover: #e7a000;
+}
+.reject-button {
+  --color: #003592;
+  --border-color: #003592;
+}
+.wizard-controls,
+.page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wizard-controls {
+  margin-top: auto;
+  padding-top: 8px;
+}
+.wizard-controls span,
+.page-controls span {
+  font-size: 12px;
+}
+.page-controls {
+  flex: 0 0 52px;
+}
+.page-controls ion-button {
+  min-width: 60px;
+}
+.person-card,
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px solid #ddcb96;
+  border-radius: 24px;
+  padding: 20px;
+  background: #fcedbb;
+  overflow-wrap: anywhere;
+}
+.person-card ion-icon {
+  font-size: 64px;
+}
+.person-card h2 {
+  margin: 20px 0 10px;
+  font-size: 24px;
+}
+.person-card p {
+  margin: 6px 0;
+}
+.menu-grid,
+.product-card {
+  flex: 1;
+  min-height: 0;
+}
+.product-card__image {
+  height: clamp(110px, 24dvh, 250px);
+}
+.product-card__image button {
+  width: 44px;
+  height: 44px;
+}
+.product-card p {
+  min-height: 0;
+}
+.product-card__actions {
+  gap: 12px;
+}
+.quantity-button {
+  min-width: 52px;
+}
+.product-card__meta,
+.section-kicker,
+.status-pill,
+.client-row em,
+.sector-items li small,
+.chat-message span,
+.table-tile strong {
+  color: #984000;
+}
+.cart-bar {
+  position: static;
+  margin: 0;
+}
+.chat-messages {
+  max-height: none;
+  overflow: visible;
+}
+.chat-message {
+  width: 100%;
+}
+.chat-message p {
+  overflow-wrap: anywhere;
+}
+.chart-card {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.survey-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tip-grid {
+  gap: 5px;
+}
+.tip-option {
+  padding: 6px 2px;
+}
+.tip-option small {
+  font-size: 10px;
+}
+@media (max-height: 650px) {
+  .operation-layout {
+    gap: 6px;
+  }
+  .hub-tile {
+    border-radius: 18px;
+    gap: 5px;
+  }
+  .hub-tile ion-icon {
+    font-size: 27px;
+  }
+  .demo-form {
+    padding: 12px;
+    gap: 8px;
+  }
+  .product-card__image {
+    height: 100px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-tile {
+    transition: none;
+  }
+}
+.operation-top {
+  background: #fbf1d5;
+  box-shadow: none;
+  padding: max(8px, env(safe-area-inset-top)) 14px 4px;
+}
+.operation-top .operation-header {
+  max-width: 42rem;
+  margin: auto;
+}
+.operation-layout {
+  padding-top: 6px;
+}
+.operation-header ion-button {
+  min-width: 48px;
+}
+.view-content > .section-block {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.view-content > .section-block > :last-child {
+  flex: 1;
+}
+.client-list,
+.wait-list {
+  align-content: center;
+  flex: 1;
+}
+.client-row,
+.wait-row {
+  padding: 16px;
+}
+.form-title h2,
+.product-card h2,
+.game-card h2,
+.tip-card h2 {
+  margin: 4px 0;
+  font-size: 18px;
+}
+.product-card__meta strong,
+.cart-bar strong {
+  color: #003592;
+}
+.cart-bar > div > span,
+.staff-order-card__header > div > span,
+.game-card > span,
+.chart-card span {
+  color: #984000;
+}
+ion-button[fill='outline'] {
+  --color: #003592;
+  --border-color: #003592;
+}
+.staff-order-card ion-card-content {
+  padding: 12px;
+}
+.staff-order-card .compact-list {
+  margin-bottom: 8px;
+}
+.staff-order-card .button-row {
+  gap: 8px;
+}
+.staff-order-card .button-row ion-button {
+  flex-basis: 40%;
+}
+.table-grid {
+  align-content: center;
+}
+.table-tile {
+  min-height: 120px;
+}
+.sector-card,
+.staff-order-card,
+.order-summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.sector-card ion-card-content,
+.staff-order-card ion-card-content,
+.order-summary-card ion-card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  flex: 1;
+}
+.anonymous-entry,
+.game-card,
+.chat-card,
+.survey-card,
+.chart-card,
+.tip-card,
+.payment-staff-card {
+  align-content: center;
+}
+.game-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+.chat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.survey-card {
+  justify-content: space-evenly;
+}
+.scan-button {
+  margin-left: auto;
+  min-width: 48px;
+  min-height: 48px;
+}
+.form-title {
+  min-height: 48px;
+}
+.demo-form {
+  justify-content: flex-start;
+}
+.demo-form .wizard-controls {
+  flex-shrink: 0;
+}
+.assign-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wait-row tumbo-paginador {
+  grid-column: 1 / -1;
+}
+.bill-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 8px;
+}
+@media (max-height: 650px) {
+  .demo-form {
+    gap: 6px;
+    padding: 10px;
+  }
+  .form-title h2 {
+    font-size: 16px;
+  }
+  .demo-form .wizard-controls {
+    padding-top: 0;
+  }
+}
+/* ion-header y ion-content reparten el alto, sin sumar un viewport extra. */
+:host {
+  display: flex;
+  flex-direction: column;
+}
+.operation-page {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+.hub-grid--single {
+  grid-template-columns: 1fr;
+}
+.hub-grid--single .hub-tile ion-icon {
+  font-size: clamp(80px, 24vw, 140px);
+}
+.hub-grid--single .hub-tile span {
+  font-size: 28px;
+}
+#encabezado:focus,
+h1[tabindex]:focus {
+  outline: none;
+}
+ion-button,
+button,
+h1,
+h2,
+strong {
+  font-weight: 800;
 }

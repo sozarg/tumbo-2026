@@ -210,3 +210,10 @@ export function conLimite(campo: CampoConLimite): ValidatorFn[] {
 export function validadoresDeNombre(campo: 'nombres' | 'apellidos'): ValidatorFn[] {
   return [Validators.required, sinEspaciosSolos, ...conLimite(campo), soloLetras];
 }
+
+/** Compara el valor exacto: una contraseña nunca se recorta ni normaliza. */
+export const clavesCoinciden: ValidatorFn = (grupo) => {
+  const clave = grupo.get('clave')?.value;
+  const repetida = grupo.get('repetirClave')?.value;
+  return clave && repetida && clave !== repetida ? { clavesDistintas: true } : null;
+};

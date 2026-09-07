@@ -216,10 +216,21 @@
    1500 píxeles— hasta después de navegar, compitiendo por el hilo de
    composición justo cuando la presentación se está pintando. */
 @keyframes splash-exit {
-  from { opacity: 1; visibility: visible; }
-  45% { opacity: 1; }
-  99% { opacity: 0; visibility: visible; }
-  to { opacity: 0; visibility: hidden; }
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  45% {
+    opacity: 1;
+  }
+  99% {
+    opacity: 0;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 /* Transición principal tipo "launch": el escenario respira, acerca el
@@ -243,21 +254,42 @@
    compartía los fotogramas clave del zoom y obligaba a que el 12 %
    existiera, que era justo el que partía el movimiento en dos. */
 @keyframes splash-stage-zoom {
-  0% { transform: scale(1.18); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  55% { transform: scale(1); animation-timing-function: ease-in-out; }
-  86% { transform: scale(1.035); animation-timing-function: ease-in-out; }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1.18);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  55% {
+    transform: scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  86% {
+    transform: scale(1.035);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes splash-stage-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Mismo caso que splash-logo-in: el rebote lo hace la curva. */
 @keyframes splash-content-in {
-  from { opacity: 0; transform: translateY(1.8rem) scale(0.82); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(1.8rem) scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Ojo: esta regla estaba declarada dos veces en el archivo. La primera
@@ -277,48 +309,101 @@
    paso se pasan de largo las tres propiedades a la vez, no solo la
    escala, así que el movimiento queda más coherente. */
 @keyframes splash-logo-in {
-  from { opacity: 0; transform: translateY(2rem) scale(0.72) rotate(-3deg); }
-  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+  from {
+    opacity: 0;
+    transform: translateY(2rem) scale(0.72) rotate(-3deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
 }
 
 @keyframes splash-logo-float {
-  from { translate: 0 0; rotate: 0deg; }
-  to { translate: 0 -0.3rem; rotate: 1deg; }
+  from {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  to {
+    translate: 0 -0.3rem;
+    rotate: 1deg;
+  }
 }
 
 @keyframes splash-logo-cover {
-  from { transform: scale(1); }
-  to { transform: scale(6.5); }
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(6.5);
+  }
 }
 
 @keyframes splash-title-in {
-  from { opacity: 0; letter-spacing: 0.42em; transform: scale(0.72); }
-  to { opacity: 1; letter-spacing: 0.08em; transform: scale(1); }
+  from {
+    opacity: 0;
+    letter-spacing: 0.42em;
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 1;
+    letter-spacing: 0.08em;
+    transform: scale(1);
+  }
 }
 
 @keyframes splash-text-in {
-  from { opacity: 0; transform: translateY(0.7rem); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(0.7rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes splash-logo-pulse {
-  0%, 100% { box-shadow: 0 0 0 0.6rem rgb(220 91 2 / 10%); }
-  50% { box-shadow: 0 0 0 0.95rem rgb(220 91 2 / 18%); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0.6rem rgb(220 91 2 / 10%);
+  }
+  50% {
+    box-shadow: 0 0 0 0.95rem rgb(220 91 2 / 18%);
+  }
 }
 
 @keyframes splash-dot {
-  from { opacity: 0.35; transform: scale(0.75); }
-  to { opacity: 1; transform: scale(1.15); }
+  from {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
 @keyframes splash-orbit-in {
-  from { opacity: 0; transform: scale(0.72); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes splash-orbit-drift {
-  from { translate: -1.2% -0.8%; rotate: -2deg; }
-  to { translate: 1.2% 0.8%; rotate: 2deg; }
+  from {
+    translate: -1.2% -0.8%;
+    rotate: -2deg;
+  }
+  to {
+    translate: 1.2% 0.8%;
+    rotate: 2deg;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

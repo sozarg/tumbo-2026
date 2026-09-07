@@ -1,5 +1,15 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonBadge } from '@ionic/angular/ion-badge';
@@ -10,6 +20,7 @@ import { IonCardHeader } from '@ionic/angular/ion-card-header';
 import { IonCardSubtitle } from '@ionic/angular/ion-card-subtitle';
 import { IonCardTitle } from '@ionic/angular/ion-card-title';
 import { IonChip } from '@ionic/angular/ion-chip';
+import { IonHeader } from '@ionic/angular/ion-header';
 import { IonContent } from '@ionic/angular/ion-content';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
@@ -22,9 +33,14 @@ import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToast } from '@ionic/angular/ion-toast';
 import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
+import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 import {
+  wineOutline,
+  receiptOutline,
+  gameControllerOutline,
+  chatbubblesOutline,
   addCircleOutline,
   alertCircleOutline,
   arrowBackOutline,
@@ -63,6 +79,7 @@ import { inventarPersona } from '../../core/demo/generador-de-personas';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
 import {
+  clavesCoinciden,
   conLimite,
   correoValido,
   cuilCoincideConDni,
@@ -73,36 +90,10 @@ import {
   validadoresDeNombre,
 } from '../../core/validacion/validadores';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
-import { PerfilUsuario } from '../../core/models/usuario';
 import { SesionService } from '../../core/services/sesion.service';
 
-type SegmentoDemo = 'resumen' | 'gestion' | 'pedido' | 'experiencia' | 'cuenta';
+import { SECCIONES, Seccion, puedeAcceder } from '../../core/navegacion/secciones';
 type GraficoDemo = 'torta' | 'barras' | 'linea';
-
-interface Pestana {
-  readonly id: SegmentoDemo;
-  readonly etiqueta: string;
-}
-
-/**
- * Cómo se llama cada pestaña según el perfil.
- *
- * Las secciones son las mismas para todos —dentro de cada una ya hay un
- * `@if` que decide qué mostrar—, pero las etiquetas estaban escritas
- * pensando solo en el personal: un cliente leía "Gestión" y "Pedido"
- * cuando lo que tiene ahí es la entrada al local y el menú. Los
- * identificadores no cambian, así que la navegación queda igual.
- */
-const ETIQUETAS_SEGUNDA: Record<PerfilUsuario, string> = {
-  dueno: 'Gestión',
-  supervisor: 'Gestión',
-  metre: 'Lista de espera',
-  mozo: 'Pedidos',
-  cocinero: 'Cocina',
-  cantinero: 'Barra',
-  cliente_registrado: 'Entrada',
-  cliente_anonimo: 'Entrada',
-};
 
 @Component({
   imports: [
@@ -115,6 +106,7 @@ const ETIQUETAS_SEGUNDA: Record<PerfilUsuario, string> = {
     IonCardTitle,
     IonChip,
     IonContent,
+    IonHeader,
     IonIcon,
     IonInput,
     IonItem,
@@ -126,6 +118,7 @@ const ETIQUETAS_SEGUNDA: Record<PerfilUsuario, string> = {
     IonToast,
     IonToggle,
     Espera,
+    Paginador,
     FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
@@ -135,6 +128,8 @@ const ETIQUETAS_SEGUNDA: Record<PerfilUsuario, string> = {
   templateUrl: './operacion.component.html',
 })
 export class Operacion implements OnInit {
+  private readonly injector = inject(Injector);
+  private readonly encabezado = viewChild<ElementRef<HTMLElement>>('encabezado');
   private readonly formularioBuilder = inject(FormBuilder);
   private readonly errores = inject(ErroresService);
   private readonly router = inject(Router);
@@ -143,37 +138,39 @@ export class Operacion implements OnInit {
   protected readonly demo = inject(OperacionService);
 
   protected readonly usuario = this.sesion.usuario;
-  protected readonly segmento = signal<SegmentoDemo>('resumen');
+  protected readonly modo = this.autenticacion.modo;
+  protected readonly seccion = signal<Seccion | null>(null);
+  protected readonly pagina = signal(0);
+  protected readonly anteriorPaso = (paso: number): number => Math.max(0, paso - 1);
+  protected readonly paso = signal(0);
+  protected readonly paginaItems = signal(0);
+  protected readonly mesasDisponibles = computed(() =>
+    this.demo.mesas().filter((mesa) => mesa.disponible),
+  );
+  protected readonly itemsPedido = computed(() => {
+    const sector =
+      this.seccion() === 'cocina' ? 'cocina' : this.seccion() === 'barra' ? 'bar' : null;
+    return this.demo
+      .pedidoActivo()
+      .items.filter((item) => sector === null || item.sector === sector);
+  });
+  protected readonly itemVisible = computed(() =>
+    this.itemsPedido().slice(this.paginaItems(), this.paginaItems() + 1),
+  );
+  protected readonly mesaVisible = computed(() =>
+    this.mesasDisponibles().slice(this.paginaItems(), this.paginaItems() + 1),
+  );
+  protected readonly creando = signal(false);
+  protected readonly accesos = computed(() =>
+    SECCIONES.filter((acceso) => puedeAcceder(this.usuario()?.perfil, acceso.id)),
+  );
+  protected readonly titulo = computed(
+    () => this.accesos().find((acceso) => acceso.id === this.seccion())?.titulo ?? 'Tu restaurante',
+  );
   protected readonly grafico = signal<GraficoDemo>('torta');
-  /**
-   * Avisos que salieron BIEN. Se muestran como `ion-toast`: aparecen,
-   * se leen y se van solos.
-   */
   protected readonly mensaje = signal('');
-
-  /**
-   * Avisos que salieron MAL. Van aparte, y a propósito.
-   *
-   * Antes había una sola señal para las dos cosas, y el cartel siempre
-   * se dibujaba igual: fondo crema, tilde verde, `role="status"`. O sea
-   * que un error se mostraba con cara de éxito. Nos pasó de verdad: el
-   * alta falló, el mensaje correcto apareció en pantalla, y era
-   * indistinguible de un "listo".
-   *
-   * Además el enunciado lo pide explícitamente: «Todo error o
-   * información debe ser mostrada con distintos tipos de controles».
-   * Un error es un cartel rojo fijo con `role="alert"` (el lector de
-   * pantalla lo interrumpe y lo lee); un éxito es un toast que se va.
-   */
   protected readonly error = signal('');
 
-  /**
-   * El cartel de error en el DOM, para poder traerlo a la vista.
-   *
-   * Vive dentro de un `@if`, así que puede no existir: por eso el tipo
-   * admite `undefined` y todo lo que lo usa lo comprueba antes.
-   */
-  private readonly carteldeError = viewChild<ElementRef<HTMLElement>>('carteldeError');
   protected readonly enviando = signal(false);
   protected readonly imagenes = signal<Record<string, number>>({});
   protected readonly nombreAnonimo = signal('');
@@ -182,27 +179,6 @@ export class Operacion implements OnInit {
     const perfil = this.usuario()?.perfil;
     return perfil === 'cliente_registrado' || perfil === 'cliente_anonimo';
   });
-  protected readonly perfilEsGestion = computed(() => {
-    const perfil = this.usuario()?.perfil;
-    return perfil === 'dueno' || perfil === 'supervisor';
-  });
-  protected readonly pestanas = computed<readonly Pestana[]>(() => {
-    const perfil = this.usuario()?.perfil;
-    const esCliente = this.perfilEsCliente();
-    return [
-      { id: 'resumen', etiqueta: 'Resumen' },
-      { id: 'gestion', etiqueta: perfil ? ETIQUETAS_SEGUNDA[perfil] : 'Entrada' },
-      { id: 'pedido', etiqueta: esCliente ? 'Menú' : 'Seguimiento' },
-      { id: 'experiencia', etiqueta: 'Experiencia' },
-      { id: 'cuenta', etiqueta: 'Cuenta' },
-    ];
-  });
-  protected readonly integrantes = [
-    'Mateo Terrile',
-    'Ramiro Bianucci',
-    'Ignacio Agustín Cruz',
-    'Matías Gabriel Ferrari',
-  ] as const;
   protected readonly propinas = [20, 15, 10, 5, 0] as const;
 
   /**
@@ -226,18 +202,22 @@ export class Operacion implements OnInit {
    * La base sigue siendo la última línea de defensa. Esto es la
    * primera: la que le habla a la persona.
    */
-  protected readonly empleadoForm = this.formularioBuilder.nonNullable.group({
-    nombres: ['', validadoresDeNombre('nombres')],
-    apellidos: ['', validadoresDeNombre('apellidos')],
-    dni: ['', [Validators.required, dniValido]],
-    cuil: ['', [Validators.required, cuilValido, cuilConDigitoValido]],
-    correo: ['', [Validators.required, sinEspaciosSolos, correoValido, ...conLimite('correo')]],
-    clave: ['', [Validators.required, ...conLimite('clave')]],
-    perfil: ['cocinero' as Extract<AltaEmpleadoDemo['perfil'], string>, Validators.required],
-  }, {
-    // Cruza DNI y CUIL: los ocho dígitos del medio del CUIL son el DNI.
-    validators: cuilCoincideConDni(),
-  });
+  protected readonly empleadoForm = this.formularioBuilder.nonNullable.group(
+    {
+      nombres: ['', validadoresDeNombre('nombres')],
+      apellidos: ['', validadoresDeNombre('apellidos')],
+      dni: ['', [Validators.required, dniValido]],
+      cuil: ['', [Validators.required, cuilValido, cuilConDigitoValido]],
+      correo: ['', [Validators.required, sinEspaciosSolos, correoValido, ...conLimite('correo')]],
+      clave: ['', [Validators.required, ...conLimite('clave')]],
+      repetirClave: ['', Validators.required],
+      perfil: ['cocinero' as Extract<AltaEmpleadoDemo['perfil'], string>, Validators.required],
+    },
+    {
+      // Cruza DNI y CUIL: los ocho dígitos del medio del CUIL son el DNI.
+      validators: [cuilCoincideConDni(), clavesCoinciden],
+    },
+  );
 
   /** Los topes de la base, para el atributo `maxlength` de los inputs. */
   protected readonly limites = LIMITES;
@@ -270,6 +250,10 @@ export class Operacion implements OnInit {
 
   constructor() {
     addIcons({
+      wineOutline,
+      receiptOutline,
+      gameControllerOutline,
+      chatbubblesOutline,
       addCircleOutline,
       alertCircleOutline,
       arrowBackOutline,
@@ -299,14 +283,75 @@ export class Operacion implements OnInit {
     }
   }
 
-  protected cambiarSegmento(segmento: SegmentoDemo): void {
-    this.segmento.set(segmento);
-    this.mensaje.set('');
+  protected abrir(seccion: Seccion): void {
+    if (!puedeAcceder(this.usuario()?.perfil, seccion)) return;
+    this.seccion.set(seccion);
+    this.enfocarEncabezado();
+    this.pagina.set(0);
+    this.paginaItems.set(0);
+    this.paso.set(0);
+    this.creando.set(false);
+    this.error.set('');
   }
 
   protected volver(): void {
-    void this.router.navigate(['/inicio']);
+    this.seccion.set(null);
+    this.enfocarEncabezado();
+    this.error.set('');
   }
+
+  /** Tras cambiar de vista, el lector de pantalla recibe el nuevo título sin desplazarla. */
+  private enfocarEncabezado(): void {
+    afterNextRender(() => this.encabezado()?.nativeElement.focus({ preventScroll: true }), {
+      injector: this.injector,
+    });
+  }
+
+  ionViewWillEnter(): void {
+    this.volver();
+    this.empleadoForm.reset({ perfil: 'cocinero' });
+    void this.demo.cargar();
+  }
+
+  protected avanzarEmpleado(): void {
+    const campos =
+      this.paso() === 0
+        ? ['nombres', 'apellidos']
+        : this.paso() === 1
+          ? ['dni', 'cuil']
+          : ['correo', 'perfil'];
+    for (const nombre of campos) this.empleadoForm.get(nombre)?.markAsTouched();
+    if (campos.every((nombre) => this.empleadoForm.get(nombre)?.valid))
+      this.paso.update((paso) => paso + 1);
+  }
+
+  protected paginar<T>(elementos: readonly T[], cantidad = 1): readonly T[] {
+    const inicio =
+      Math.min(this.pagina(), Math.max(0, Math.ceil(elementos.length / cantidad) - 1)) * cantidad;
+    return elementos.slice(inicio, inicio + cantidad);
+  }
+
+  protected readonly totalPaginas = computed(() => {
+    switch (this.seccion()) {
+      case 'personal':
+        return this.demo.empleados().length;
+      case 'productos':
+      case 'menu':
+        return this.demo.productos().length;
+      case 'mesas':
+        return Math.ceil(this.demo.mesas().length / 4);
+      case 'clientes':
+        return this.demo.clientesPendientes().length;
+      case 'espera':
+        return this.demo.espera().length;
+      case 'consulta':
+        return this.demo.mensajes().length;
+      case 'juegos':
+        return 3;
+      default:
+        return 1;
+    }
+  });
 
   /**
    * Se espera el cierre antes de navegar. Antes no se esperaba, así que
@@ -379,46 +424,6 @@ export class Operacion implements OnInit {
   private async avisarError(texto: string): Promise<void> {
     this.mensaje.set('');
     this.error.set(await this.errores.mostrar(texto));
-    this.traerElCartelALaVista();
-  }
-
-  /**
-   * Lleva la pantalla hasta el cartel de error y le pone el foco.
-   *
-   * POR QUÉ HACE FALTA
-   * Los formularios de alta son largos. Si alguien aprieta "Registrar"
-   * con la pantalla abajo, el cartel aparece arriba de todo, fuera de
-   * vista, y parece que el botón no hizo nada.
-   *
-   * POR QUÉ EL setTimeout
-   * El cartel está dentro de un `@if (error())`. En el momento de
-   * escribir la señal el elemento TODAVÍA NO EXISTE: lo crea Angular en
-   * la pasada de detección de cambios siguiente. Sin esperar ese turno,
-   * `carteldeError()` devuelve undefined y no pasa nada.
-   *
-   * POR QUÉ TAMBIÉN EL FOCO
-   * Mover la pantalla sirve para quien ve. El foco sirve para quien
-   * navega con teclado o con lector de pantalla: sin esto tendrían que
-   * salir a buscar el mensaje a mano. El cartel lleva `tabindex="-1"`
-   * para poder recibir el foco sin meterse en el orden de tabulación.
-   *
-   * El desplazamiento suave se apaga para quien pidió menos movimiento
-   * en su sistema operativo, igual que el fondo decorativo.
-   */
-  private traerElCartelALaVista(): void {
-    setTimeout(() => {
-      const cartel = this.carteldeError()?.nativeElement;
-      if (!cartel) {
-        return;
-      }
-
-      const menosMovimiento = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      cartel.scrollIntoView({
-        behavior: menosMovimiento ? 'auto' : 'smooth',
-        block: 'center',
-      });
-      cartel.focus({ preventScroll: true });
-    });
   }
 
   /** Muestra un éxito y baja cualquier error que hubiera quedado. */
@@ -437,9 +442,9 @@ export class Operacion implements OnInit {
       return;
     }
 
-    const resultado = await this.demo.registrarEmpleado(
-      this.empleadoForm.getRawValue() as AltaEmpleadoDemo,
-    );
+    if (!puedeAcceder(this.usuario()?.perfil, 'personal')) return;
+    const { repetirClave, ...empleado } = this.empleadoForm.getRawValue();
+    const resultado = await this.demo.registrarEmpleado(empleado as AltaEmpleadoDemo);
 
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo registrar el empleado.');
@@ -449,7 +454,12 @@ export class Operacion implements OnInit {
     // La contraseña se limpia sí o sí: no puede quedar en pantalla para
     // la siguiente alta (es el mismo criterio del requisito R13).
     this.empleadoForm.reset({ perfil: 'cocinero' });
-    this.avisarExito('Empleado registrado. Ya puede ingresar con su correo y contraseña.');
+    this.paso.set(0);
+    this.avisarExito(
+      this.modo === 'demo'
+        ? 'Empleado registrado en demostración.'
+        : 'Empleado registrado. Ya puede ingresar con su correo y contraseña.',
+    );
   }
 
   protected async registrarProducto(): Promise<void> {
@@ -497,7 +507,9 @@ export class Operacion implements OnInit {
 
   protected async asignarMesa(idEspera: string, numero: number): Promise<void> {
     const asignada = await this.demo.asignarMesa(idEspera, numero);
-    this.mensaje.set(asignada ? 'Mesa ' + numero + ' asignada y notificada.' : 'Esa mesa no está disponible.');
+    this.mensaje.set(
+      asignada ? 'Mesa ' + numero + ' asignada y notificada.' : 'Esa mesa no está disponible.',
+    );
   }
 
   protected async anotarCliente(): Promise<void> {
@@ -597,11 +609,15 @@ export class Operacion implements OnInit {
     const nombre = usuario ? usuario.nombres + ' ' + usuario.apellidos : 'Cliente';
     const mesa = this.demo.mesaVinculada() ?? 2;
     const enviado = (await this.demo.enviarPedido()).ok;
-    this.mensaje.set(enviado ? 'Pedido enviado al mozo.' : 'Agregá productos antes de enviar el pedido.');
+    this.mensaje.set(
+      enviado ? 'Pedido enviado al mozo.' : 'Agregá productos antes de enviar el pedido.',
+    );
   }
 
   protected async rechazarPedido(): Promise<void> {
-    this.demo.rechazarPedido('Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.');
+    this.demo.rechazarPedido(
+      'Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.',
+    );
     this.mensaje.set('Pedido rechazado y devuelto al cliente con el motivo.');
   }
 
@@ -728,10 +744,9 @@ export class Operacion implements OnInit {
   protected validar(formulario: { invalid: boolean; markAllAsTouched: () => void }): boolean {
     if (formulario.invalid) {
       formulario.markAllAsTouched();
-      this.mensaje.set('Revisá los campos marcados antes de guardar.');
+      this.error.set('Revisá los campos marcados antes de guardar.');
       return false;
     }
     return true;
   }
-
 }
