@@ -10,6 +10,8 @@
 
 .login-layout {
   display: grid;
+  height: 100%;
+  box-sizing: border-box;
   min-height: 100%;
   padding: max(1rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
@@ -17,8 +19,11 @@
 }
 
 .login-panel {
+  display: flex;
   width: min(100%, 24rem);
+  height: auto;
   min-width: 0;
+  flex-direction: column;
 }
 
 .login-intro {
@@ -72,9 +77,7 @@
 .field--invalid ion-input {
   --border-color: var(--tumbo-naranja-profundo);
 }
-// Dos líneas reservadas desde el primer render, incluso sin errores.
 .field__feedback {
-  min-block-size: calc(3em + 0.375rem);
   padding-top: 0.375rem;
   font-size: 0.75rem;
   line-height: 1.5;
@@ -131,9 +134,9 @@
 }
 
 .quick-access {
-  margin-top: 1.25rem;
+  margin-top: 1.75rem;
   padding-top: 1rem;
-  border-top: 1px solid #d8c99e;
+  border-top: 1px solid var(--tumbo-azul-sombra);
 }
 .quick-access__heading h2 {
   margin: 0 0 0.875rem;
@@ -157,12 +160,6 @@
   font-size: 1.625rem;
   cursor: pointer;
 }
-.carousel-arrow:hover {
-  background: var(--tumbo-crema-brillante);
-}
-.carousel-arrow:active {
-  background: var(--tumbo-amarillo-marca);
-}
 .carousel-arrow:disabled {
   opacity: 0.45;
   cursor: default;
@@ -177,7 +174,7 @@
   min-height: 80px;
   --background: var(--tumbo-crema-brillante);
   --background-hover: var(--tumbo-crema-brillante);
-  --background-activated: var(--tumbo-amarillo-marca);
+  --background-activated: #e5edf9;
   --border-color: #a59b7f;
   --border-width: 1px;
   --border-radius: 10px;
@@ -208,23 +205,6 @@
   font-weight: 600;
   overflow-wrap: anywhere;
   line-height: 1.45;
-}
-.quick-user__enter {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  align-self: center;
-  font-size: 1.125rem;
-}
-// El pie forma parte del mismo bloque, sin ocupar el espacio sobrante.
-.welcome-footer {
-  margin-top: 0.875rem;
-  text-align: center;
-  color: #526582;
-  font-size: 0.6875rem;
-}
-.welcome-footer p {
-  margin: 0;
-  line-height: 1.5;
 }
 
 @media (max-height: 700px) {
@@ -271,7 +251,91 @@
   .quick-user::part(native) {
     padding-block: 8px;
   }
-  .welcome-footer {
-    margin-top: 0.75rem;
+}
+
+@media (min-height: 701px) {
+  .login-brand {
+    transform: translateY(-18px);
   }
+  .quick-access {
+    margin-top: 2.25rem;
+  }
+}
+.quick-carousel {
+  gap: 8px;
+}
+.carousel-arrow {
+  position: relative;
+  isolation: isolate;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 24px;
+}
+.carousel-arrow::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border: 1px solid #b8c8e8;
+  border-radius: inherit;
+  background: var(--tumbo-azul-brillante);
+}
+.carousel-arrow:active::before {
+  background: #e5edf9;
+  border-color: var(--tumbo-azul-sombra);
+}
+@media (hover: hover) and (pointer: fine) {
+  .carousel-arrow:hover::before {
+    background: #e5edf9;
+  }
+}
+.quick-user {
+  --background: var(--tumbo-azul-brillante);
+  --background-hover: #edf3fb;
+  --border-color: #cad4e3;
+  --border-radius: 14px;
+}
+.quick-user::part(native) {
+  min-height: 84px;
+  padding: 14px;
+}
+.quick-user__texto {
+  grid-template-columns: minmax(0, 1fr) 18px;
+  gap: 5px 8px;
+}
+.quick-user__role {
+  grid-column: 1;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #526582;
+}
+.quick-user__name {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.quick-user__action {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  font-size: 20px;
+  font-weight: 400;
+}
+.carousel-position {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.carousel-position span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c3cad3;
+}
+.carousel-position .carousel-position--active {
+  background: var(--tumbo-azul-sombra);
 }

@@ -1,4 +1,4 @@
-<ion-header class="operation-top">
+<ion-header class="operation-top" [class.operation-top--home]="!seccion()">
   @if (usuario(); as usuarioActual) {
     <div class="operation-header" [class.operation-header--detail]="seccion()">
       @if (seccion()) {
@@ -19,11 +19,17 @@
           priority
           alt="Tumbito"
           class="operation-brand__lockup"
-        /><span>{{ usuarioActual.etiquetaPerfil }}</span>
+        />
+        <div class="operation-brand__text">
+          @if (!seccion()) {
+            <strong>Hola, {{ usuarioActual.nombres }} {{ usuarioActual.apellidos }}</strong>
+          }
+          <span>{{ usuarioActual.etiquetaPerfil }}</span>
+        </div>
       </div>
       <ion-button
         class="logout-button"
-        fill="outline"
+        [fill]="seccion() ? 'outline' : 'clear'"
         aria-label="Cerrar sesión"
         (click)="cerrarSesion()"
         ><ion-icon aria-hidden="true" slot="icon-only" name="log-out-outline"
@@ -31,38 +37,39 @@
     </div>
   }
 </ion-header>
-<ion-content class="operation-page" [scrollY]="false">
+<ion-content class="operation-page" [scrollY]="!seccion() || (seccion() === 'personal' && creando())">
   @if (usuario(); as usuarioActual) {
-    @if (seccion()) {
-      <tumbo-fondo-decorativo />
-    }
-    <div class="operation-layout">
+    <div
+      class="operation-layout"
+      [class.operation-layout--personal]="seccion() === 'personal'"
+      [class.operation-layout--employee-form]="seccion() === 'personal' && creando()"
+      [class.operation-layout--home]="!seccion()"
+    >
       @if (!seccion()) {
         <h1 #encabezado class="hub-title" tabindex="-1">Secciones del restaurante</h1>
-        <nav
-          class="hub-grid"
-          [class.hub-grid--single]="accesos().length === 1"
-          [class.hub-grid--many]="accesos().length > 8"
-          aria-label="Secciones del restaurante"
-        >
-          @for (acceso of accesos(); track acceso.id) {
-            <button class="hub-tile" type="button" (click)="abrir(acceso.id)">
-              <ion-icon [name]="acceso.icono" aria-hidden="true" /><span>{{ acceso.titulo }}</span>
-            </button>
-          }
-        </nav>
+        <tumbo-menu-operacion
+          [accesos]="accesos()"
+          [actividad]="actividad()"
+          [pedido]="demo.pedidoActivo()"
+          [perfil]="usuarioActual.perfil"
+          (seleccionar)="abrir($event)"
+        />
       } @else {
         <div class="view-heading">
           <h1 #encabezado tabindex="-1">{{ titulo() }}</h1>
           @if (
             seccion() === 'productos' ||
-            seccion() === 'mesas' ||
+            (seccion() === 'mesas' && gestiona()) ||
             seccion() === 'clientes' ||
             seccion() === 'personal'
           ) {
-            <ion-button fill="outline" (click)="creando.set(!creando()); paso.set(0)">{{
-              creando() ? 'Ver listado' : 'Agregar'
-            }}</ion-button>
+            <ion-button fill="outline" (click)="creando.set(!creando()); paso.set(0)">
+              @if (seccion() === 'personal' && !creando()) {
+                <span class="add-person-icon" aria-hidden="true">＋</span> Nuevo empleado
+              } @else {
+                {{ creando() ? 'Ver listado' : 'Agregar' }}
+              }
+            </ion-button>
           }
         </div>
         <div class="view-content">
@@ -86,165 +93,148 @@
 
           @if (seccion() === 'personal') {
             @if (creando()) {
-              <form class="demo-form" [formGroup]="empleadoForm" (ngSubmit)="registrarEmpleado()">
+              <form
+                class="employee-form"
+                [formGroup]="empleadoForm"
+                (ngSubmit)="registrarEmpleado()"
+              >
                 <div class="form-title">
                   <ion-icon aria-hidden="true" name="people-outline" />
                   <div><h2>Alta de empleado</h2></div>
-                  @if (paso() === 0) {
-                    <ion-button
-                      class="scan-button"
-                      fill="outline"
-                      type="button"
-                      aria-label="Simular lector de DNI"
-                      (click)="simularDniEmpleado()"
-                      ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
-                    /></ion-button>
-                  }
-                </div>
 
-                @if (paso() === 0) {
-                  <ion-input
-                    label="Nombres"
-                    label-placement="stacked"
-                    formControlName="nombres"
-                    fill="outline"
-                    [maxlength]="limites.nombres.max"
-                    autocomplete="given-name"
-                  />
-                  @if (campoInvalido(empleadoForm.controls.nombres)) {
-                    <small>{{ mensajeCampo(empleadoForm.controls.nombres, 'nombre') }}</small>
-                  }
-
-                  <ion-input
-                    label="Apellidos"
-                    label-placement="stacked"
-                    formControlName="apellidos"
-                    fill="outline"
-                    [maxlength]="limites.apellidos.max"
-                    autocomplete="family-name"
-                  />
-                  @if (campoInvalido(empleadoForm.controls.apellidos)) {
-                    <small>{{ mensajeCampo(empleadoForm.controls.apellidos, 'apellido') }}</small>
-                  }
-                }
-                @if (paso() === 1) {
-                  <ion-input
-                    label="DNI"
-                    label-placement="stacked"
-                    formControlName="dni"
-                    fill="outline"
-                    inputmode="numeric"
-                    [maxlength]="10"
-                    (ionInput)="filtrarTipeo(empleadoForm.controls.dni, $event, sobraEnDni)"
-                  />
-                  @if (campoInvalido(empleadoForm.controls.dni)) {
-                    <small>{{ mensajeCampo(empleadoForm.controls.dni, 'DNI') }}</small>
-                  }
-
-                  <ion-input
-                    label="CUIL"
-                    label-placement="stacked"
-                    formControlName="cuil"
-                    fill="outline"
-                    inputmode="numeric"
-                    [maxlength]="limites.cuil.max"
-                    (ionInput)="filtrarTipeo(empleadoForm.controls.cuil, $event, sobraEnCuil)"
-                  />
-                  @if (campoInvalido(empleadoForm.controls.cuil)) {
-                    <small>{{ mensajeCampo(empleadoForm.controls.cuil, 'CUIL') }}</small>
-                  }
-                }
-                @if (paso() === 2) {
-                  <ion-input
-                    label="Correo"
-                    label-placement="stacked"
-                    formControlName="correo"
-                    fill="outline"
-                    type="email"
-                    [maxlength]="limites.correo.max"
-                    autocomplete="email"
-                  />
-                  @if (campoInvalido(empleadoForm.controls.correo)) {
-                    <small>{{ mensajeCampo(empleadoForm.controls.correo, 'correo') }}</small>
-                  }
-
-                  <ion-select
-                    label="Perfil"
-                    label-placement="stacked"
-                    formControlName="perfil"
-                    fill="outline"
-                  >
-                    <ion-select-option value="metre">Metre</ion-select-option>
-                    <ion-select-option value="mozo">Mozo</ion-select-option>
-                    <ion-select-option value="cocinero">Cocinero</ion-select-option>
-                    <ion-select-option value="cantinero">Cantinero</ion-select-option>
-                  </ion-select>
-                }
-                @if (paso() === 3) {
-                  <ion-input
-                    label="Contraseña"
-                    label-placement="stacked"
-                    formControlName="clave"
-                    fill="outline"
-                    type="password"
-                    [maxlength]="limites.clave.max"
-                    autocomplete="new-password"
-                  />
-                  @if (campoInvalido(empleadoForm.controls.clave)) {
-                    <small>{{ mensajeCampo(empleadoForm.controls.clave, 'contraseña') }}</small>
-                  }
-
-                  <ion-input
-                    label="Repetir contraseña"
-                    label-placement="stacked"
-                    formControlName="repetirClave"
-                    fill="outline"
-                    type="password"
-                    autocomplete="new-password"
-                    [maxlength]="limites.clave.max"
-                  />
-                  @if (
-                    empleadoForm.controls.repetirClave.touched &&
-                    (empleadoForm.hasError('clavesDistintas') ||
-                      empleadoForm.controls.repetirClave.hasError('required'))
-                  ) {
-                    <p class="field-error" role="alert">
-                      {{
-                        empleadoForm.controls.repetirClave.hasError('required')
-                          ? 'Repetí la contraseña.'
-                          : 'Las contraseñas no coinciden.'
-                      }}
-                    </p>
-                  }
-                  <ion-button class="primary-action" type="submit" expand="block">
-                    <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
-                    empleado
-                  </ion-button>
-                }
-                <div class="wizard-controls">
                   <ion-button
-                    type="button"
+                    class="scan-button"
                     fill="outline"
-                    [disabled]="paso() === 0"
-                    (click)="paso.update(anteriorPaso)"
-                    >Anterior</ion-button
-                  ><span aria-live="polite">Paso {{ paso() + 1 }} de 4</span>
-                  @if (paso() < 3) {
-                    <ion-button type="button" (click)="avanzarEmpleado()">Siguiente</ion-button>
-                  }
+                    type="button"
+                    aria-label="Simular lector de DNI"
+                    (click)="simularDniEmpleado()"
+                    ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
+                  /></ion-button>
                 </div>
+
+<div class="employee-form__row"><div class="employee-form__field"><ion-input
+                  label="Nombres"
+                  label-placement="stacked"
+                  formControlName="nombres"
+                  fill="outline"
+                  [maxlength]="limites.nombres.max"
+                  autocomplete="given-name"
+                />
+                @if (campoInvalido(empleadoForm.controls.nombres)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.nombres, 'nombre') }}</small>
+                }</div><div class="employee-form__field"><ion-input
+                  label="Apellidos"
+                  label-placement="stacked"
+                  formControlName="apellidos"
+                  fill="outline"
+                  [maxlength]="limites.apellidos.max"
+                  autocomplete="family-name"
+                />
+                @if (campoInvalido(empleadoForm.controls.apellidos)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.apellidos, 'apellido') }}</small>
+                }</div></div>
+<div class="employee-form__row"><div class="employee-form__field"><ion-input
+                  label="DNI"
+                  label-placement="stacked"
+                  formControlName="dni"
+                  fill="outline"
+                  inputmode="numeric"
+                  [maxlength]="10"
+                  (ionInput)="filtrarTipeo(empleadoForm.controls.dni, $event, sobraEnDni)"
+                />
+                @if (campoInvalido(empleadoForm.controls.dni)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.dni, 'DNI') }}</small>
+                }</div><div class="employee-form__field"><ion-input
+                  label="CUIL"
+                  label-placement="stacked"
+                  formControlName="cuil"
+                  fill="outline"
+                  inputmode="numeric"
+                  [maxlength]="limites.cuil.max"
+                  (ionInput)="filtrarTipeo(empleadoForm.controls.cuil, $event, sobraEnCuil)"
+                />
+                @if (campoInvalido(empleadoForm.controls.cuil)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.cuil, 'CUIL') }}</small>
+                }</div></div>
+                <ion-input
+                  label="Correo"
+                  label-placement="stacked"
+                  formControlName="correo"
+                  fill="outline"
+                  type="email"
+                  [maxlength]="limites.correo.max"
+                  autocomplete="email"
+                />
+                @if (campoInvalido(empleadoForm.controls.correo)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.correo, 'correo') }}</small>
+                }
+
+                <ion-select
+                  label="Perfil"
+                  label-placement="stacked"
+                  formControlName="perfil"
+                  fill="outline"
+                >
+                  <ion-select-option value="metre">Metre</ion-select-option>
+                  <ion-select-option value="mozo">Mozo</ion-select-option>
+                  <ion-select-option value="cocinero">Cocinero</ion-select-option>
+                  <ion-select-option value="cantinero">Cantinero</ion-select-option>
+                </ion-select>
+
+                <ion-input
+                  label="Contraseña"
+                  label-placement="stacked"
+                  formControlName="clave"
+                  fill="outline"
+                  type="password"
+                  [maxlength]="limites.clave.max"
+                  autocomplete="new-password"
+                />
+                @if (campoInvalido(empleadoForm.controls.clave)) {
+                  <small>{{ mensajeCampo(empleadoForm.controls.clave, 'contraseña') }}</small>
+                }
+
+                <ion-input
+                  label="Repetir contraseña"
+                  label-placement="stacked"
+                  formControlName="repetirClave"
+                  fill="outline"
+                  type="password"
+                  autocomplete="new-password"
+                  [maxlength]="limites.clave.max"
+                />
+                @if (
+                  empleadoForm.controls.repetirClave.touched &&
+                  (empleadoForm.hasError('clavesDistintas') ||
+                    empleadoForm.controls.repetirClave.hasError('required'))
+                ) {
+                  <p class="field-error" role="alert">
+                    {{
+                      empleadoForm.controls.repetirClave.hasError('required')
+                        ? 'Repetí la contraseña.'
+                        : 'Las contraseñas no coinciden.'
+                    }}
+                  </p>
+                }
+                <ion-button class="primary-action" type="submit" expand="block">
+                  <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
+                  empleado
+                </ion-button>
               </form>
             } @else {
-              @for (empleado of paginar(demo.empleados()); track empleado.id) {
-                <article class="person-card">
-                  <ion-icon aria-hidden="true" name="people-outline" />
-                  <h2>{{ empleado.nombres }} {{ empleado.apellidos }}</h2>
-                  <p>{{ empleado.etiquetaPerfil }}</p>
-                  <p>{{ empleado.correo }}</p>
-                </article>
-              } @empty {
-                <p class="empty-state">Todavía no hay empleados.</p>
-              }
+              <section class="person-list" tabindex="0" aria-label="Lista de personal">
+                @for (empleado of demo.empleados(); track empleado.id) {
+                  <article class="person-card">
+                    <div class="person-card__details">
+                      <h2>{{ empleado.nombres }} {{ empleado.apellidos }}</h2>
+                      <p>{{ empleado.etiquetaPerfil }}</p>
+                      <p class="person-card__email">{{ empleado.correo }}</p>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-state">Todavía no hay empleados.</p>
+                }
+              </section>
             }
           }
 
@@ -287,15 +277,17 @@
                     type="number"
                   />
                 </div>
-                <ion-select
-                  label="Tipo"
-                  label-placement="stacked"
-                  formControlName="tipo"
-                  fill="outline"
-                >
-                  <ion-select-option value="plato">Plato · cocina</ion-select-option>
-                  <ion-select-option value="bebida">Bebida · bar</ion-select-option>
-                </ion-select>
+                @if (!tipoDeSector()) {
+                  <ion-select
+                    label="Tipo"
+                    label-placement="stacked"
+                    formControlName="tipo"
+                    fill="outline"
+                  >
+                    <ion-select-option value="plato">Plato · cocina</ion-select-option>
+                    <ion-select-option value="bebida">Bebida · bar</ion-select-option>
+                  </ion-select>
+                }
                 <ion-button class="primary-action" type="submit" expand="block">
                   <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Agregar a la
                   carta
@@ -303,7 +295,7 @@
               </form>
             } @else {
               <div class="menu-grid">
-                @for (producto of paginar(demo.productos()); track producto.id) {
+                @for (producto of paginar(productosDelSector()); track producto.id) {
                   <article class="product-card">
                     <div class="product-card__image">
                       <img [ngSrc]="imagenActual(producto)" width="220" height="150" alt="" />
@@ -376,6 +368,7 @@
                   @for (mesa of paginar(demo.mesas(), 4); track mesa.id) {
                     <button
                       class="table-tile"
+                      [disabled]="!gestiona()"
                       [class.table-tile--free]="mesa.disponible"
                       (click)="cambiarDisponibilidadMesa(mesa.numero)"
                     >
@@ -446,21 +439,23 @@
                         ><span>{{ cliente.correo }} · DNI {{ cliente.dni }}</span
                         ><em>Pendiente de aprobación</em>
                       </div>
-                      <div class="row-actions">
-                        <ion-button
-                          class="approve-button"
-                          size="small"
-                          (click)="resolverCliente(cliente.id, 'aprobado')"
-                          >Aprobar</ion-button
-                        >
-                        <ion-button
-                          class="reject-button"
-                          fill="outline"
-                          size="small"
-                          (click)="resolverCliente(cliente.id, 'rechazado')"
-                          >Rechazar</ion-button
-                        >
-                      </div>
+                      @if (gestiona()) {
+                        <div class="row-actions">
+                          <ion-button
+                            class="approve-button"
+                            size="small"
+                            (click)="resolverCliente(cliente.id, 'aprobado')"
+                            >Aprobar</ion-button
+                          >
+                          <ion-button
+                            class="reject-button"
+                            fill="outline"
+                            size="small"
+                            (click)="resolverCliente(cliente.id, 'rechazado')"
+                            >Rechazar</ion-button
+                          >
+                        </div>
+                      }
                     </article>
                   } @empty {
                     <div class="empty-state">No hay clientes pendientes.</div>

@@ -1,3 +1,4 @@
+import { MenuOperacion } from './menu-operacion.component';
 import { NgOptimizedImage } from '@angular/common';
 import {
   Component,
@@ -35,7 +36,6 @@ import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
-import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 import {
   wineOutline,
   receiptOutline,
@@ -92,11 +92,18 @@ import {
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { SesionService } from '../../core/services/sesion.service';
 
-import { SECCIONES, Seccion, puedeAcceder } from '../../core/navegacion/secciones';
+import {
+  accesosDelPerfil,
+  esGerencia,
+  tipoProductoDelPerfil,
+  Seccion,
+  puedeAcceder,
+} from '../../core/navegacion/secciones';
 type GraficoDemo = 'torta' | 'barras' | 'linea';
 
 @Component({
   imports: [
+    MenuOperacion,
     IonBadge,
     IonButton,
     IonCard,
@@ -119,7 +126,6 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonToggle,
     Espera,
     Paginador,
-    FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
@@ -161,9 +167,27 @@ export class Operacion implements OnInit {
     this.mesasDisponibles().slice(this.paginaItems(), this.paginaItems() + 1),
   );
   protected readonly creando = signal(false);
-  protected readonly accesos = computed(() =>
-    SECCIONES.filter((acceso) => puedeAcceder(this.usuario()?.perfil, acceso.id)),
+  protected readonly accesos = computed(() => accesosDelPerfil(this.usuario()?.perfil));
+  protected readonly gestiona = computed(() => esGerencia(this.usuario()?.perfil));
+  protected readonly tipoDeSector = computed(() => tipoProductoDelPerfil(this.usuario()?.perfil));
+  protected readonly productosDelSector = computed(() =>
+    this.demo
+      .productos()
+      .filter((producto) => !this.tipoDeSector() || producto.tipo === this.tipoDeSector()),
   );
+  protected readonly actividad = computed(() => {
+    const perfil = this.usuario()?.perfil;
+    return this.demo
+      .notificaciones()
+      .filter(
+        (notificacion) =>
+          perfil !== undefined &&
+          (perfil === 'dueno' ||
+            (this.modo !== 'demo' && notificacion.destinatarios.length === 0) ||
+            notificacion.destinatarios.includes(perfil)),
+      )
+      .slice(0, 4);
+  });
   protected readonly titulo = computed(
     () => this.accesos().find((acceso) => acceso.id === this.seccion())?.titulo ?? 'Tu restaurante',
   );
@@ -291,6 +315,8 @@ export class Operacion implements OnInit {
     this.paginaItems.set(0);
     this.paso.set(0);
     this.creando.set(false);
+    if (seccion === 'productos')
+      this.productoForm.controls.tipo.setValue(this.tipoDeSector() ?? 'plato');
     this.error.set('');
   }
 
@@ -313,18 +339,6 @@ export class Operacion implements OnInit {
     void this.demo.cargar();
   }
 
-  protected avanzarEmpleado(): void {
-    const campos =
-      this.paso() === 0
-        ? ['nombres', 'apellidos']
-        : this.paso() === 1
-          ? ['dni', 'cuil']
-          : ['correo', 'perfil'];
-    for (const nombre of campos) this.empleadoForm.get(nombre)?.markAsTouched();
-    if (campos.every((nombre) => this.empleadoForm.get(nombre)?.valid))
-      this.paso.update((paso) => paso + 1);
-  }
-
   protected paginar<T>(elementos: readonly T[], cantidad = 1): readonly T[] {
     const inicio =
       Math.min(this.pagina(), Math.max(0, Math.ceil(elementos.length / cantidad) - 1)) * cantidad;
@@ -334,8 +348,9 @@ export class Operacion implements OnInit {
   protected readonly totalPaginas = computed(() => {
     switch (this.seccion()) {
       case 'personal':
-        return this.demo.empleados().length;
+        return 1;
       case 'productos':
+        return this.productosDelSector().length;
       case 'menu':
         return this.demo.productos().length;
       case 'mesas':
@@ -463,6 +478,8 @@ export class Operacion implements OnInit {
   }
 
   protected async registrarProducto(): Promise<void> {
+    if (!puedeAcceder(this.usuario()?.perfil, 'productos')) return;
+    if (this.tipoDeSector()) this.productoForm.controls.tipo.setValue(this.tipoDeSector()!);
     if (!this.validar(this.productoForm)) {
       return;
     }
@@ -475,11 +492,12 @@ export class Operacion implements OnInit {
       return;
     }
 
-    this.productoForm.reset({ minutos: 10, precio: 1000, tipo: 'plato' });
+    this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
     this.avisarExito('Producto agregado con tres imágenes de demostración.');
   }
 
   protected async registrarMesa(): Promise<void> {
+    if (!this.gestiona()) return;
     if (!this.validar(this.mesaForm)) {
       return;
     }
@@ -501,6 +519,7 @@ export class Operacion implements OnInit {
   }
 
   protected async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<void> {
+    if (!this.gestiona()) return;
     await this.demo.resolverCliente(id, estado);
     this.mensaje.set(estado === 'aprobado' ? 'Cliente aprobado.' : 'Cliente rechazado.');
   }
@@ -591,6 +610,7 @@ export class Operacion implements OnInit {
   }
 
   protected async cambiarDisponibilidadMesa(numero: number): Promise<void> {
+    if (!this.gestiona()) return;
     const resultado = await this.demo.cambiarDisponibilidadMesa(numero);
     if (resultado.error) this.mensaje.set(resultado.error);
   }

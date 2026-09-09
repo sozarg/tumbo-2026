@@ -1,0 +1,121 @@
+@if (sector()) {
+  @if (destacado(); as principal) {
+    <nav class="sector-navigation" aria-label="Secciones del restaurante">
+      <button
+        class="hub-tile sector-primary"
+        type="button"
+        [attr.aria-label]="principal.titulo"
+        (click)="seleccionar.emit(principal.id)"
+      >
+        <span class="sector-primary__icon"
+          ><ion-icon [name]="principal.icono" aria-hidden="true"
+        /></span>
+        <span class="sector-primary__text"
+          ><strong>{{ principal.titulo }}</strong
+          ><small>{{ descripcion(principal) }}</small></span
+        >
+        <span class="chevron" aria-hidden="true">›</span>
+      </button>
+      @if (secundarios().length) {
+        <section aria-labelledby="sector-tools-title">
+          <h2 id="sector-tools-title">{{ sector() ? 'Administración' : 'Herramientas' }}</h2>
+          <div class="sector-tools">
+            @for (acceso of secundarios(); track acceso.id) {
+              <button
+                class="hub-tile sector-tool"
+                type="button"
+                (click)="seleccionar.emit(acceso.id)"
+              >
+                <ion-icon [name]="acceso.icono" aria-hidden="true" />
+                <span>{{ acceso.titulo }}</span
+                ><span class="chevron" aria-hidden="true">›</span>
+              </button>
+            }
+          </div>
+        </section>
+      }
+    </nav>
+    <section class="sector-status" aria-labelledby="sector-status-title">
+      <h2 id="sector-status-title">{{ tituloEstado() }}</h2>
+      <div class="sector-status__surface">
+        @if (pendientes().length) {
+          <div class="sector-order">
+            <div class="sector-order__heading">
+              <h3>Mesa {{ pedido().mesa }}</h3>
+              <time>{{ pedido().creadoEn }}</time>
+            </div>
+            @for (item of pendientes(); track item.productoId) {
+              <p>
+                <strong>{{ item.cantidad }} ×</strong> {{ item.nombre }}
+              </p>
+            }
+          </div>
+        } @else if (sector() || !actividad().length) {
+          <div class="sector-empty">
+            <h3>{{ sector() ? principal.titulo + ' al día' : 'Sin novedades' }}</h3>
+            <p>{{ sector() ? 'No hay pedidos pendientes.' : 'No tenés notificaciones nuevas.' }}</p>
+          </div>
+        }
+        @if (sector()) {
+          <div class="queue-vacancy"><span>Sin pedido</span></div>
+          <div class="queue-vacancy"><span>Sin pedido</span></div>
+        }
+        @if (actividad().length) {
+          <div class="sector-notices">
+            @for (notificacion of actividad(); track notificacion.id) {
+              <article>
+                <p>{{ notificacion.mensaje }}</p>
+                <time>{{ notificacion.fecha }}</time>
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  }
+} @else {
+  <nav aria-label="Secciones del restaurante">
+    <section aria-labelledby="primary-access-title">
+      <h2 id="primary-access-title">{{ tituloPrincipal() }}</h2>
+      <div class="owner-management-list">
+        @for (acceso of principales(); track acceso.id) {
+          <button
+            class="hub-tile owner-management-action"
+            type="button"
+            (click)="seleccionar.emit(acceso.id)"
+          >
+            <span class="action-icon"><ion-icon [name]="acceso.icono" aria-hidden="true" /></span>
+            <strong>{{ acceso.titulo }}</strong
+            ><span class="chevron" aria-hidden="true">›</span>
+          </button>
+        }
+      </div>
+    </section>
+    @for (grupo of grupos(); track grupo.titulo) {
+      <section [attr.aria-label]="grupo.titulo">
+        <h2>{{ grupo.titulo }}</h2>
+        <div class="tools-list" [class.tools-list--pair]="grupo.accesos.length === 2">
+          @for (acceso of grupo.accesos; track acceso.id) {
+            <button
+              class="hub-tile tool-action"
+              type="button"
+              (click)="seleccionar.emit(acceso.id)"
+            >
+              <ion-icon [name]="acceso.icono" aria-hidden="true" /><span>{{ acceso.titulo }}</span>
+            </button>
+          }
+        </div>
+      </section>
+    }
+  </nav>
+  @if (perfil() !== 'dueno' && actividad().length) {
+    <section class="activity" aria-label="Actividad">
+      @for (notificacion of actividad(); track notificacion.id) {
+        <article>
+          <p>{{ notificacion.mensaje }}</p>
+          <time>{{ notificacion.fecha }}</time>
+        </article>
+      }
+    </section>
+  }
+}

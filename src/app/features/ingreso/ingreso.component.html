@@ -119,6 +119,14 @@
           @if (accesoActual(); as usuario) {
             <ion-button
               class="quick-user"
+              [attr.aria-label]="
+                'Ingresar como ' +
+                usuario.nombres +
+                ' ' +
+                usuario.apellidos +
+                ', ' +
+                usuario.etiquetaPerfil
+              "
               fill="outline"
               [disabled]="enviando()"
               (click)="ingresarRapido(usuario)"
@@ -126,7 +134,7 @@
               <span class="quick-user__texto" aria-live="polite" aria-atomic="true"
                 ><span class="quick-user__role">{{ usuario.etiquetaPerfil }}</span
                 ><span class="quick-user__name">{{ usuario.nombres }} {{ usuario.apellidos }}</span
-                ><span class="quick-user__enter" aria-hidden="true">→</span></span
+                ><span class="quick-user__action" aria-hidden="true">→</span></span
               >
             </ion-button>
           } @else {
@@ -142,11 +150,12 @@
             ›
           </button>
         </div>
+        <div class="carousel-position" aria-hidden="true">
+          @for (usuario of usuariosRapidos(); track $index) {
+            <span [class.carousel-position--active]="$index === indiceRapido()"></span>
+          }
+        </div>
       </section>
-
-      <footer class="welcome-footer">
-        <p>Tumbito · 2026</p>
-      </footer>
     </section>
   </div>
 </ion-content>
