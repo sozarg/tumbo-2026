@@ -37,12 +37,12 @@
     </div>
   }
 </ion-header>
-<ion-content class="operation-page" [scrollY]="!seccion() || (seccion() === 'personal' && creando())">
+<ion-content class="operation-page" [scrollY]="!seccion() || ((seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') && creando())">
   @if (usuario(); as usuarioActual) {
     <div
       class="operation-layout"
-      [class.operation-layout--personal]="seccion() === 'personal'"
-      [class.operation-layout--employee-form]="seccion() === 'personal' && creando()"
+      [class.operation-layout--personal]="seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes'"
+      [class.operation-layout--employee-form]="(seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') && creando()"
       [class.operation-layout--home]="!seccion()"
     >
       @if (!seccion()) {
@@ -63,11 +63,11 @@
             seccion() === 'clientes' ||
             seccion() === 'personal'
           ) {
-            <ion-button fill="outline" (click)="creando.set(!creando()); paso.set(0)">
+            <ion-button fill="outline" (click)="alternarFormulario()">
               @if (seccion() === 'personal' && !creando()) {
                 <span class="add-person-icon" aria-hidden="true">＋</span> Nuevo empleado
               } @else {
-                {{ creando() ? 'Ver listado' : 'Agregar' }}
+                {{ creando() ? 'Ver listado' : seccion() === 'productos' ? '＋ Nuevo producto' : 'Agregar' }}
               }
             </ion-button>
           }
@@ -240,12 +240,11 @@
 
           @if (seccion() === 'productos') {
             @if (creando()) {
-              <form class="demo-form" [formGroup]="productoForm" (ngSubmit)="registrarProducto()">
+              <form class="employee-form" [formGroup]="productoForm" (ngSubmit)="registrarProducto()">
                 <div class="form-title">
                   <ion-icon aria-hidden="true" name="cube-outline" />
                   <div>
-                    <h2>Alta de producto</h2>
-                    <p>Tres imágenes y sector automático.</p>
+                    <h2>{{ productoEditado() ? 'Editar producto' : 'Nuevo producto' }}</h2>
                   </div>
                 </div>
                 <ion-input
@@ -261,7 +260,7 @@
                   fill="outline"
                   auto-grow="true"
                 />
-                <div class="form-row">
+                <div class="employee-form__row">
                   <ion-input
                     label="Minutos"
                     label-placement="stacked"
@@ -288,32 +287,21 @@
                     <ion-select-option value="bebida">Bebida · bar</ion-select-option>
                   </ion-select>
                 }
-                <ion-button class="primary-action" type="submit" expand="block">
-                  <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Agregar a la
-                  carta
-                </ion-button>
+                @if (productoForm.touched && productoForm.invalid) {
+                  <p class="field-error" role="alert">Completá los datos: nombre, descripción, tiempo y precio válidos.</p>
+                }
+                <ion-button class="primary-action" type="submit" expand="block">{{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}</ion-button>
               </form>
             } @else {
-              <div class="menu-grid">
-                @for (producto of paginar(productosDelSector()); track producto.id) {
-                  <article class="product-card">
-                    <div class="product-card__image">
-                      <img [ngSrc]="imagenActual(producto)" width="220" height="150" alt="" />
-                      <button aria-label="Ver siguiente imagen" (click)="alternarImagen(producto)">
-                        <ion-icon aria-hidden="true" name="arrow-forward-outline" />
-                      </button>
-                    </div>
-                    <div class="product-card__body">
-                      <div class="product-card__meta">
-                        <span>{{ producto.tipo }} · {{ producto.minutos }} min</span
-                        ><strong>{{ formatearPrecio(producto.precio) }}</strong>
-                      </div>
-                      <h2>{{ producto.nombre }}</h2>
-                      <p>{{ producto.descripcion }}</p>
-                    </div>
+              <section class="person-list product-list" tabindex="0" aria-label="Lista de productos">
+                @for (producto of productosDelSector(); track producto.id) {
+                  <article class="catalog-item">
+                    <div class="catalog-item__placeholder" aria-label="Sin imagen"><span aria-hidden="true">×</span><small>Sin imagen</small></div>
+                    <div class="catalog-item__details"><h2>{{ producto.nombre }}</h2><p>{{ producto.tipo === 'plato' ? 'Plato' : 'Bebida' }} · {{ producto.minutos }} min</p><strong>{{ formatearPrecio(producto.precio) }}</strong></div>
+                    <button class="catalog-item__edit" type="button" [attr.aria-label]="'Editar ' + producto.nombre" (click)="editarProducto(producto)"><ion-icon name="pencil-outline" aria-hidden="true" /></button>
                   </article>
-                }
-              </div>
+                } @empty { <p>No hay productos.</p> }
+              </section>
             }
           }
 
@@ -385,7 +373,7 @@
 
           @if (seccion() === 'clientes') {
             @if (creando()) {
-              <form class="demo-form" [formGroup]="clienteForm" (ngSubmit)="registrarCliente()">
+              <form class="employee-form" [formGroup]="clienteForm" (ngSubmit)="registrarCliente()">
                 <div class="form-title">
                   <ion-icon aria-hidden="true" name="happy-outline" />
                   <div>
@@ -393,7 +381,7 @@
                     <p>Queda pendiente de aprobación.</p>
                   </div>
                 </div>
-                <ion-input
+<div class="employee-form__row">                <ion-input
                   label="Nombres"
                   label-placement="stacked"
                   formControlName="nombres"
@@ -405,7 +393,7 @@
                   formControlName="apellidos"
                   fill="outline"
                 />
-                <ion-input
+</div>                <ion-input
                   label="DNI"
                   label-placement="stacked"
                   formControlName="dni"
@@ -425,19 +413,16 @@
                 </ion-button>
               </form>
             } @else {
-              <section class="section-block">
+              <section class="clients-panel">
                 <div class="section-heading">
                   <div><h2>Clientes pendientes</h2></div>
-                  <ion-badge>{{ demo.clientesPendientes().length }}</ion-badge>
                 </div>
-                <div class="client-list">
-                  @for (cliente of paginar(demo.clientesPendientes()); track cliente.id) {
-                    <article class="client-row">
-                      <img [ngSrc]="cliente.foto" width="64" height="64" alt="" />
+                <section class="person-list client-slots" [class.client-slots--scroll]="demo.clientesPendientes().length > 3" tabindex="0" aria-label="Clientes pendientes">
+                  @for (cliente of demo.clientesPendientes(); track cliente.id) {
+                    <article class="person-card client-entry">
+                      
                       <div>
-                        <strong>{{ cliente.apellidos }}, {{ cliente.nombres }}</strong
-                        ><span>{{ cliente.correo }} · DNI {{ cliente.dni }}</span
-                        ><em>Pendiente de aprobación</em>
+                        <h2>{{ cliente.nombres }} {{ cliente.apellidos }}</h2><p>{{ cliente.correo }}</p><p>DNI {{ cliente.dni }}</p><p class="client-entry__status">Pendiente de aprobación</p>
                       </div>
                       @if (gestiona()) {
                         <div class="row-actions">
@@ -457,10 +442,13 @@
                         </div>
                       }
                     </article>
-                  } @empty {
-                    <div class="empty-state">No hay clientes pendientes.</div>
                   }
-                </div>
+                  @for (slot of [0, 1, 2]; track slot) {
+                    @if (slot >= demo.clientesPendientes().length) {
+                      <div class="person-card client-slot">{{ slot === 0 ? 'No hay clientes pendientes.' : 'Sin cliente' }}</div>
+                    }
+                  }
+                </section>
               </section>
             }
           }

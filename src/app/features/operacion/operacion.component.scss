@@ -1581,7 +1581,8 @@ strong {
   font-weight: 600;
 }
 .employee-form ion-input,
-.employee-form ion-select {
+.employee-form ion-select,
+.employee-form ion-textarea {
   --background: var(--tumbo-azul-brillante);
   --border-color: #bac5d3;
   --border-radius: 10px;
@@ -1603,3 +1604,40 @@ strong {
 .employee-form__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .employee-form__field { min-width: 0; }
 .employee-form small, .employee-form .field-error { color: var(--tumbo-naranja-profundo); font-size: 12px; }
+
+.catalog-item { display: flex; align-items: center; gap: 12px; padding: 14px 10px; border: 1px solid #bac5d3; border-radius: 12px; background: var(--tumbo-azul-brillante); }
+.catalog-item + .catalog-item { margin-top: 10px; }
+.catalog-item__placeholder { flex: 0 0 64px; text-align: center; color: #526582; }
+.catalog-item__placeholder span { display: block; font-size: 28px; font-weight: 400; }
+.catalog-item__placeholder small { font-size: 9px; }
+.catalog-item__details { flex: 1; min-width: 0; }
+.catalog-item h2 { margin: 0 0 5px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.catalog-item p { margin: 0 0 8px; font-size: 11px; }
+.catalog-item strong { font-size: 13px; font-weight: 600; }
+.catalog-item__edit { flex: 0 0 44px; height: 44px; border: 1px solid #bac5d3; border-radius: 50%; background: transparent; color: var(--tumbo-azul-sombra); }
+.catalog-item__edit ion-icon { font-size: 19px; }
+.catalog-item__edit:focus-visible { outline: 2px solid var(--tumbo-azul-sombra); outline-offset: 2px; }
+.catalog-item__edit:active { background: #e5edf9; }
+
+.clients-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 12px; }
+.clients-panel .section-heading h2 { font-size: 14px; font-weight: 600; }
+.client-entry__status { color: #526582; margin-top: 8px !important; }
+.client-entry .row-actions { display: flex; gap: 10px; margin-top: 14px; }
+.client-entry ion-button { flex: 1; min-height: 44px; --border-radius: 10px; --box-shadow: none; font-weight: 600; }
+.client-slot { min-height: 120px; display: grid; place-items: center; color: #687a92; font-size: 12px; border-style: dashed; background: transparent; }
+.client-slots {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  overflow-y: hidden;
+}
+.client-slots .person-card {
+  margin: 0;
+  min-height: 0;
+  padding: 14px 18px;
+}
+.client-slots--scroll {
+  overflow-y: auto;
+  grid-template-rows: none;
+  grid-auto-rows: calc((100% - 20px) / 3);
+}

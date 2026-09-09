@@ -37,6 +37,7 @@ import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
 import {
+  pencilOutline,
   wineOutline,
   receiptOutline,
   gameControllerOutline,
@@ -167,6 +168,7 @@ export class Operacion implements OnInit {
     this.mesasDisponibles().slice(this.paginaItems(), this.paginaItems() + 1),
   );
   protected readonly creando = signal(false);
+  protected readonly productoEditado = signal<string | null>(null);
   protected readonly accesos = computed(() => accesosDelPerfil(this.usuario()?.perfil));
   protected readonly gestiona = computed(() => esGerencia(this.usuario()?.perfil));
   protected readonly tipoDeSector = computed(() => tipoProductoDelPerfil(this.usuario()?.perfil));
@@ -274,6 +276,7 @@ export class Operacion implements OnInit {
 
   constructor() {
     addIcons({
+      pencilOutline,
       wineOutline,
       receiptOutline,
       gameControllerOutline,
@@ -350,13 +353,13 @@ export class Operacion implements OnInit {
       case 'personal':
         return 1;
       case 'productos':
-        return this.productosDelSector().length;
+        return 1;
       case 'menu':
         return this.demo.productos().length;
       case 'mesas':
         return Math.ceil(this.demo.mesas().length / 4);
       case 'clientes':
-        return this.demo.clientesPendientes().length;
+        return 1;
       case 'espera':
         return this.demo.espera().length;
       case 'consulta':
@@ -477,15 +480,29 @@ export class Operacion implements OnInit {
     );
   }
 
+  protected editarProducto(producto: ProductoDemo): void {
+    if (!puedeAcceder(this.usuario()?.perfil, 'productos') || !this.productosDelSector().some(item => item.id === producto.id)) return;
+    this.productoEditado.set(producto.id);
+    this.productoForm.reset(producto);
+    this.creando.set(true);
+  }
+  protected alternarFormulario(): void {
+    this.creando.update(valor => !valor);
+    this.paso.set(0);
+    if (this.seccion() === 'productos') {
+      this.productoEditado.set(null);
+      this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
+    }
+  }
   protected async registrarProducto(): Promise<void> {
     if (!puedeAcceder(this.usuario()?.perfil, 'productos')) return;
     if (this.tipoDeSector()) this.productoForm.controls.tipo.setValue(this.tipoDeSector()!);
     if (!this.validar(this.productoForm)) {
       return;
     }
-    const resultado = await this.demo.registrarProducto(
-      this.productoForm.getRawValue() as AltaProductoDemo,
-    );
+    const datos = this.productoForm.getRawValue();
+    const id = this.productoEditado();
+    const resultado = id ? await this.demo.actualizarProducto(id, datos) : await this.demo.registrarProducto(datos);
 
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo agregar el producto.');
@@ -493,7 +510,9 @@ export class Operacion implements OnInit {
     }
 
     this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
-    this.avisarExito('Producto agregado con tres imágenes de demostración.');
+    this.productoEditado.set(null);
+    this.creando.set(false);
+    this.avisarExito(id ? 'Producto actualizado.' : 'Producto agregado.');
   }
 
   protected async registrarMesa(): Promise<void> {

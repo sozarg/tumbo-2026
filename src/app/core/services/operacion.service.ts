@@ -189,6 +189,13 @@ export class OperacionService {
     const usuario = this.sesion.usuario();
     return this.insertar('productos', { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos, creado_por: usuario?.id ?? null });
   }
+  async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
+    if (!this.cliente) {
+      this.mock.productos.update(items => items.map(item => item.id === id ? { ...item, ...d, sector: d.tipo === 'plato' ? 'cocina' : 'bar' } : item));
+      return { ok: true };
+    }
+    return this.actualizar('productos', id, { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos });
+  }
   async registrarMesa(d: AltaMesaDemo): Promise<Resultado> {
     if (!this.cliente) return { ok: this.mock.registrarMesa(d) };
     return this.insertar('mesas', { numero: d.numero, cantidad_comensales: d.comensales, tipo: this.tipoMesa(d.tipo) });
