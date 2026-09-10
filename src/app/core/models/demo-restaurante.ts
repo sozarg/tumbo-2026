@@ -120,6 +120,12 @@ export interface AltaProductoDemo {
   readonly minutos: number;
   readonly precio: number;
   readonly tipo: TipoProducto;
+  readonly imagen?: ImagenProducto;
+}
+
+export interface ImagenProducto {
+  readonly file: File;
+  readonly previewUrl: string;
 }
 
 export interface AltaMesaDemo {

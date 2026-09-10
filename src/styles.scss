@@ -177,6 +177,16 @@ body {
   font-family: var(--ion-font-family);
 }
 
+/* Componentes compartidos de catálogo y carga de imágenes. */
+.catalog-item__image { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 10px; object-fit: cover; background: var(--tumbo-crema-brillante); }
+.product-image-field { display: grid; gap: 6px; }
+.product-image-upload { display: grid; min-height: 150px; place-items: center; gap: 4px; border: 2px dashed var(--tumbo-azul-accion); border-radius: 14px; padding: 10px; color: var(--tumbo-azul-sombra); background: var(--tumbo-crema-brillante); cursor: pointer; text-align: center; }
+.product-image-upload img { width: 100%; max-height: 170px; border-radius: 10px; object-fit: cover; }
+.product-image-upload span { font-size: 2rem; line-height: 1; }
+.product-image-upload small { font-size: 11px; }
+#imagen-producto { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#imagen-producto:focus-visible + .product-image-upload { outline: 3px solid var(--tumbo-naranja-marca); outline-offset: 3px; }
+
 ion-app,
 ion-content {
   --background: #fbf1d5;

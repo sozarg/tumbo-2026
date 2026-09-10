@@ -68,6 +68,7 @@ import {
   AltaEmpleadoDemo,
   AltaMesaDemo,
   AltaProductoDemo,
+  ImagenProducto,
   EstadoPedido,
   ProductoDemo,
   SectorProducto,
@@ -254,6 +255,8 @@ export class Operacion implements OnInit {
     precio: [1000, [Validators.required, Validators.min(1)]],
     tipo: ['plato' as TipoProducto, Validators.required],
   });
+  protected readonly imagenProducto = signal<ImagenProducto | undefined>(undefined);
+  protected readonly errorImagen = signal('');
   protected readonly mesaForm = this.formularioBuilder.nonNullable.group({
     numero: [6, [Validators.required, Validators.min(1)]],
     comensales: [4, [Validators.required, Validators.min(1)]],
@@ -484,6 +487,8 @@ export class Operacion implements OnInit {
     if (!puedeAcceder(this.usuario()?.perfil, 'productos') || !this.productosDelSector().some(item => item.id === producto.id)) return;
     this.productoEditado.set(producto.id);
     this.productoForm.reset(producto);
+    this.imagenProducto.set(undefined);
+    this.errorImagen.set('');
     this.creando.set(true);
   }
   protected alternarFormulario(): void {
@@ -492,6 +497,8 @@ export class Operacion implements OnInit {
     if (this.seccion() === 'productos') {
       this.productoEditado.set(null);
       this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
+      this.imagenProducto.set(undefined);
+      this.errorImagen.set('');
     }
   }
   protected async registrarProducto(): Promise<void> {
@@ -500,7 +507,7 @@ export class Operacion implements OnInit {
     if (!this.validar(this.productoForm)) {
       return;
     }
-    const datos = this.productoForm.getRawValue();
+    const datos = { ...this.productoForm.getRawValue(), imagen: this.imagenProducto() } as AltaProductoDemo;
     const id = this.productoEditado();
     const resultado = id ? await this.demo.actualizarProducto(id, datos) : await this.demo.registrarProducto(datos);
 
@@ -510,9 +517,30 @@ export class Operacion implements OnInit {
     }
 
     this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
+    this.imagenProducto.set(undefined);
+    this.errorImagen.set('');
     this.productoEditado.set(null);
     this.creando.set(false);
     this.avisarExito(id ? 'Producto actualizado.' : 'Producto agregado.');
+  }
+
+  protected seleccionarImagen(evento: Event): void {
+    const input = evento.target;
+    if (!(input instanceof HTMLInputElement) || !input.files?.length) return;
+    const archivo = input.files[0];
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) {
+      this.errorImagen.set('La imagen debe estar en formato JPG, PNG o WebP.');
+      input.value = '';
+      return;
+    }
+    if (archivo.size > 5 * 1024 * 1024) {
+      this.errorImagen.set('La imagen no puede superar los 5 MB.');
+      input.value = '';
+      return;
+    }
+    this.imagenProducto.set({ file: archivo, previewUrl: URL.createObjectURL(archivo) });
+    this.errorImagen.set('');
+    input.value = '';
   }
 
   protected async registrarMesa(): Promise<void> {
