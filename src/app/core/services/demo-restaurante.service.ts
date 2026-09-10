@@ -85,6 +85,10 @@ export class DemoRestauranteService {
     this.notificar('Nuevo integrante agregado al equipo.', ['dueno', 'supervisor']);
   }
 
+  eliminarEmpleado(id: string): void {
+    this.empleados.update((empleados) => empleados.filter((empleado) => empleado.id !== id));
+  }
+
   registrarProducto(datos: AltaProductoDemo): void {
     const sector: SectorProducto = datos.tipo === 'plato' ? 'cocina' : 'bar';
     const producto: ProductoDemo = {
@@ -104,6 +108,10 @@ export class DemoRestauranteService {
       (datos.tipo === 'plato' ? 'Plato' : 'Bebida') + ' agregado a la carta.',
       sector === 'cocina' ? ['cocinero'] : ['cantinero'],
     );
+  }
+
+  eliminarProducto(id: string): void {
+    this.productos.update((productos) => productos.filter((producto) => producto.id !== id));
   }
 
   registrarMesa(datos: AltaMesaDemo): boolean {

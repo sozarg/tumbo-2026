@@ -1177,6 +1177,9 @@ ion-button::part(native) {
   margin-top: 10px;
 }
 .person-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex: 0 0 auto;
   border: 1px solid #bac5d3;
   border-radius: 14px;
@@ -1618,6 +1621,7 @@ strong {
 .catalog-item__edit ion-icon { font-size: 19px; }
 .catalog-item__edit:focus-visible { outline: 2px solid var(--tumbo-azul-sombra); outline-offset: 2px; }
 .catalog-item__edit:active { background: #e5edf9; }
+.catalog-item__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 
 .clients-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 12px; }
 .clients-panel .section-heading h2 { font-size: 14px; font-weight: 600; }
@@ -1641,3 +1645,4 @@ strong {
   grid-template-rows: none;
   grid-auto-rows: calc((100% - 20px) / 3);
 }
+.person-card__details { flex: 1; min-width: 0; }
