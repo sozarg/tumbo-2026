@@ -216,10 +216,16 @@
                     }}
                   </p>
                 }
-                <ion-button class="primary-action" type="submit" expand="block">
+                <tumbo-boton-confirmacion
+                  buttonClass="primary-action"
+                  expand="block"
+                  title="Confirmar alta de empleado"
+                  message="Vas a registrar este empleado y habilitar su acceso al sistema. ¿Querés continuar?"
+                  (confirmado)="registrarEmpleado()"
+                >
                   <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
                   empleado
-                </ion-button>
+                </tumbo-boton-confirmacion>
               </form>
             } @else {
               <section class="person-list" tabindex="0" aria-label="Lista de personal">
@@ -230,6 +236,15 @@
                       <p>{{ empleado.etiquetaPerfil }}</p>
                       <p class="person-card__email">{{ empleado.correo }}</p>
                     </div>
+                    <tumbo-boton-confirmacion
+                      buttonClass="icon-danger"
+                      [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
+                      title="Confirmar baja de personal"
+                      [message]="'Vas a quitar a ' + empleado.nombres + ' ' + empleado.apellidos + ' del personal activo. ¿Querés continuar?'"
+                      (confirmado)="eliminarEmpleado(empleado.id)"
+                    >
+                      <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                    </tumbo-boton-confirmacion>
                   </article>
                 } @empty {
                   <p class="empty-state">Todavía no hay empleados.</p>
@@ -303,7 +318,13 @@
                 @if (productoForm.touched && productoForm.invalid) {
                   <p class="field-error" role="alert">Completá los datos: nombre, descripción, tiempo y precio válidos.</p>
                 }
-                <ion-button class="primary-action" type="submit" expand="block">{{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}</ion-button>
+                <tumbo-boton-confirmacion
+                  buttonClass="primary-action"
+                  expand="block"
+                  [title]="productoEditado() ? 'Confirmar modificación' : 'Confirmar alta de producto'"
+                  [message]="productoEditado() ? 'Vas a guardar los cambios de este producto. ¿Querés continuar?' : 'Vas a agregar este producto al catálogo. ¿Querés continuar?'"
+                  (confirmado)="registrarProducto()"
+                >{{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}</tumbo-boton-confirmacion>
               </form>
             } @else {
               <section class="person-list product-list" tabindex="0" aria-label="Lista de productos">
@@ -315,7 +336,18 @@
                       <div class="catalog-item__placeholder" aria-label="Sin imagen"><span aria-hidden="true">×</span><small>Sin imagen</small></div>
                     }
                     <div class="catalog-item__details"><h2>{{ producto.nombre }}</h2><p>{{ producto.tipo === 'plato' ? 'Plato' : 'Bebida' }} · {{ producto.minutos }} min</p><strong>{{ formatearPrecio(producto.precio) }}</strong></div>
-                    <button class="catalog-item__edit" type="button" [attr.aria-label]="'Editar ' + producto.nombre" (click)="editarProducto(producto)"><ion-icon name="pencil-outline" aria-hidden="true" /></button>
+                    <div class="catalog-item__actions">
+                      <button class="catalog-item__edit" type="button" [attr.aria-label]="'Editar ' + producto.nombre" (click)="editarProducto(producto)"><ion-icon name="pencil-outline" aria-hidden="true" /></button>
+                      <tumbo-boton-confirmacion
+                        buttonClass="icon-danger"
+                        [ariaLabel]="'Eliminar ' + producto.nombre"
+                        title="Confirmar baja de producto"
+                        [message]="'Vas a quitar ' + producto.nombre + ' del catálogo. ¿Querés continuar?'"
+                        (confirmado)="eliminarProducto(producto.id)"
+                      >
+                        <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                      </tumbo-boton-confirmacion>
+                    </div>
                   </article>
                 } @empty { <p>No hay productos.</p> }
               </section>
@@ -360,9 +392,15 @@
                     >Movilidad reducida</ion-select-option
                   >
                 </ion-select>
-                <ion-button class="primary-action" type="submit" expand="block">
+                <tumbo-boton-confirmacion
+                  buttonClass="primary-action"
+                  expand="block"
+                  title="Confirmar alta de mesa"
+                  message="Vas a crear esta mesa y generar su código QR. ¿Querés continuar?"
+                  (confirmado)="registrarMesa()"
+                >
                   <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Crear mesa
-                </ion-button>
+                </tumbo-boton-confirmacion>
               </form>
             } @else {
               <section class="section-block">
@@ -371,17 +409,18 @@
                 </div>
                 <div class="table-grid">
                   @for (mesa of paginar(demo.mesas(), 4); track mesa.id) {
-                    <button
-                      class="table-tile"
+                    <tumbo-boton-confirmacion
+                      [buttonClass]="'table-tile' + (mesa.disponible ? ' table-tile--free' : '')"
                       [disabled]="!gestiona()"
-                      [class.table-tile--free]="mesa.disponible"
-                      (click)="cambiarDisponibilidadMesa(mesa.numero)"
+                      [title]="mesa.disponible ? 'Confirmar ocupación de mesa' : 'Confirmar liberación de mesa'"
+                      [message]="mesa.disponible ? 'Vas a marcar la mesa como ocupada. ¿Querés continuar?' : 'Vas a liberar la mesa para recibir nuevos clientes. ¿Querés continuar?'"
+                      (confirmado)="cambiarDisponibilidadMesa(mesa.numero)"
                     >
                       <span class="table-tile__number">{{ mesa.numero }}</span>
                       <span>{{ mesa.tipo }}</span>
                       <strong>{{ mesa.disponible ? 'Disponible' : 'Ocupada' }}</strong>
                       <small>{{ mesa.comensales }} comensales · QR listo</small>
-                    </button>
+                    </tumbo-boton-confirmacion>
                   }
                 </div>
               </section>
@@ -424,10 +463,16 @@
                   fill="outline"
                   type="email"
                 />
-                <ion-button class="primary-action" type="submit" expand="block">
+                <tumbo-boton-confirmacion
+                  buttonClass="primary-action"
+                  expand="block"
+                  title="Confirmar alta de cliente"
+                  message="Vas a registrar este cliente para que quede pendiente de aprobación. ¿Querés continuar?"
+                  (confirmado)="registrarCliente()"
+                >
                   <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
                   cliente
-                </ion-button>
+                </tumbo-boton-confirmacion>
               </form>
             } @else {
               <section class="clients-panel">
@@ -443,18 +488,22 @@
                       </div>
                       @if (gestiona()) {
                         <div class="row-actions">
-                          <ion-button
-                            class="approve-button"
+                          <tumbo-boton-confirmacion
+                            buttonClass="approve-button"
                             size="small"
-                            (click)="resolverCliente(cliente.id, 'aprobado')"
-                            >Aprobar</ion-button
+                            title="Confirmar aprobación"
+                            message="Vas a aprobar el acceso de este cliente. ¿Querés continuar?"
+                            (confirmado)="resolverCliente(cliente.id, 'aprobado')"
+                            >Aprobar</tumbo-boton-confirmacion
                           >
-                          <ion-button
-                            class="reject-button"
+                          <tumbo-boton-confirmacion
+                            buttonClass="reject-button"
                             fill="outline"
                             size="small"
-                            (click)="resolverCliente(cliente.id, 'rechazado')"
-                            >Rechazar</ion-button
+                            title="Confirmar rechazo"
+                            message="Vas a rechazar la solicitud de este cliente. ¿Querés continuar?"
+                            (confirmado)="resolverCliente(cliente.id, 'rechazado')"
+                            >Rechazar</tumbo-boton-confirmacion
                           >
                         </div>
                       }
@@ -504,14 +553,16 @@
                         [(pagina)]="paginaItems"
                       />
                     }
-                    <ion-button
-                      class="icon-danger"
+                    <tumbo-boton-confirmacion
+                      buttonClass="icon-danger"
                       fill="clear"
+                      title="Confirmar baja de la lista"
+                      message="Vas a quitar a esta persona de la lista de espera. ¿Querés continuar?"
                       aria-label="Eliminar de la lista"
-                      (click)="eliminarDeEspera(persona.id)"
+                      (confirmado)="eliminarDeEspera(persona.id)"
                     >
                       <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                    </ion-button>
+                    </tumbo-boton-confirmacion>
                   </article>
                 } @empty {
                   <div class="empty-state">La lista de espera está vacía.</div>
@@ -550,18 +601,20 @@
                     }
                   </ul>
                   <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
-                  <ion-button
-                    class="primary-action"
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
                     expand="block"
                     [disabled]="
                       demo.pedidoActivo().estado !== 'confirmado' &&
                       demo.pedidoActivo().estado !== 'en_preparacion'
                     "
-                    (click)="marcarSectorListo(seccion() === 'cocina' ? 'cocina' : 'bar')"
+                    title="Confirmar sector listo"
+                    message="Vas a marcar este sector como listo y avisar que sus productos están preparados. ¿Querés continuar?"
+                    (confirmado)="marcarSectorListo(seccion() === 'cocina' ? 'cocina' : 'bar')"
                   >
                     <ion-icon aria-hidden="true" slot="start" name="checkmark-done-outline" />Marcar
                     sector listo
-                  </ion-button>
+                  </tumbo-boton-confirmacion>
                 </ion-card-content>
               </ion-card>
             </section>
@@ -612,10 +665,10 @@
                   </ion-card-content>
                 </ion-card>
               </section>
-              <ion-button
-                class="primary-action"
+              <ion-button class="primary-action"
                 [disabled]="demo.pedidoActivo().estado !== 'entregado'"
-                (click)="recibirPedido()"
+                title="Confirmar recepción"
+                message="Vas a confirmar que recibiste el pedido. ¿Querés continuar?"
                 >Confirmar recepción</ion-button
               >
             } @else {
@@ -643,31 +696,39 @@
                     </ul>
                     <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
                     <div class="button-row">
-                      <ion-button
-                        class="reject-button"
+                      <tumbo-boton-confirmacion
+                        buttonClass="reject-button"
                         fill="outline"
                         [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'"
-                        (click)="rechazarPedido()"
-                        >Rechazar pedido</ion-button
+                        title="Confirmar rechazo del pedido"
+                        message="Vas a rechazar el pedido. ¿Querés continuar?"
+                        (confirmado)="rechazarPedido()"
+                        >Rechazar pedido</tumbo-boton-confirmacion
                       >
-                      <ion-button
-                        class="approve-button"
+                      <tumbo-boton-confirmacion
+                        buttonClass="approve-button"
                         [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'"
-                        (click)="confirmarPedido()"
-                        >Confirmar pedido</ion-button
+                        title="Confirmar pedido"
+                        message="Vas a confirmar el pedido y enviarlo a cocina y bar. ¿Querés continuar?"
+                        (confirmado)="confirmarPedido()"
+                        >Confirmar pedido</tumbo-boton-confirmacion
                       >
                     </div>
                     <div class="button-row">
-                      <ion-button
+                      <tumbo-boton-confirmacion
                         fill="outline"
                         [disabled]="demo.pedidoActivo().estado !== 'listo'"
-                        (click)="entregarPedido()"
-                        >Marcar entregado</ion-button
+                        title="Confirmar entrega"
+                        message="Vas a marcar el pedido como entregado. ¿Querés continuar?"
+                        (confirmado)="entregarPedido()"
+                        >Marcar entregado</tumbo-boton-confirmacion
                       >
-                      <ion-button
+                      <tumbo-boton-confirmacion
                         [disabled]="demo.cuenta()?.estado !== 'pagada'"
-                        (click)="confirmarPago()"
-                        >Confirmar pago</ion-button
+                        title="Confirmar pago"
+                        message="Vas a confirmar el pago y liberar la mesa. ¿Querés continuar?"
+                        (confirmado)="confirmarPago()"
+                        >Confirmar pago</tumbo-boton-confirmacion
                       >
                     </div>
                   </ion-card-content>
@@ -705,7 +766,7 @@
                   [value]="nombreAnonimo()"
                   (ionInput)="actualizarNombreAnonimo($event)"
                 />
-                <ion-button class="primary-action" (click)="anotarCliente()">Anotarme</ion-button>
+                <tumbo-boton-confirmacion buttonClass="primary-action" title="Confirmar ingreso a la lista" message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?" (confirmado)="anotarCliente()">Anotarme</tumbo-boton-confirmacion>
               </div>
             </section>
           }
@@ -760,12 +821,14 @@
                 ><strong>{{ formatearPrecio(demo.totalCarrito()) }}</strong
                 ><small>Tiempo estimado: {{ demo.tiempoCarrito() }} minutos</small>
               </div>
-              <ion-button
-                class="primary-action"
+              <tumbo-boton-confirmacion
+                buttonClass="primary-action"
                 [disabled]="demo.carrito().length === 0"
-                (click)="enviarPedido()"
+                title="Confirmar envío del pedido"
+                message="Vas a enviar el pedido al mozo para que lo prepare. ¿Querés continuar?"
+                (confirmado)="enviarPedido()"
                 ><ion-icon aria-hidden="true" slot="start" name="send-outline" />Enviar
-                pedido</ion-button
+                pedido</tumbo-boton-confirmacion
               >
             </section>
           }
@@ -867,12 +930,14 @@
                     slot="end"
                     formControlName="recomendaria"
                 /></ion-item>
-                <ion-button
-                  class="primary-action"
-                  type="submit"
+                <tumbo-boton-confirmacion
+                  buttonClass="primary-action"
                   [disabled]="demo.encuestaRespondida()"
+                  title="Confirmar envío de encuesta"
+                  message="Vas a guardar tus respuestas de satisfacción. ¿Querés continuar?"
+                  (confirmado)="registrarEncuesta()"
                   ><ion-icon aria-hidden="true" slot="start" name="document-text-outline" />Guardar
-                  encuesta</ion-button
+                  encuesta</tumbo-boton-confirmacion
                 >
               </form>
             </section>
@@ -997,12 +1062,14 @@
                         </button>
                       }
                     </div>
-                    <ion-button
-                      class="primary-action"
+                    <tumbo-boton-confirmacion
+                      buttonClass="primary-action"
                       expand="block"
                       [disabled]="demo.porcentajePropina() === null"
-                      (click)="generarCuenta()"
-                      >Generar cuenta</ion-button
+                      title="Confirmar generación de cuenta"
+                      message="Vas a generar la cuenta con el consumo y la propina seleccionada. ¿Querés continuar?"
+                      (confirmado)="generarCuenta()"
+                      >Generar cuenta</tumbo-boton-confirmacion
                     >
                   </div>
                 </section>
@@ -1050,9 +1117,9 @@
                       ><strong>{{ formatearPrecio(cuenta.total) }}</strong>
                     </div>
                     @if (cuenta.estado === 'pendiente_pago') {
-                      <ion-button class="primary-action" expand="block" (click)="pagarCuenta()"
+                      <tumbo-boton-confirmacion buttonClass="primary-action" expand="block" title="Confirmar pago" message="Vas a registrar el pago simulado de esta cuenta. ¿Querés continuar?" (confirmado)="pagarCuenta()"
                         ><ion-icon aria-hidden="true" slot="start" name="wallet-outline" />Pagar de
-                        forma simulada</ion-button
+                        forma simulada</tumbo-boton-confirmacion
                       >
                     } @else if (cuenta.estado === 'pagada') {
                       <div class="payment-waiting">
@@ -1085,11 +1152,13 @@
                     }}</strong>
                     <p>El mozo confirma el pago y la mesa vuelve a quedar disponible.</p>
                   </div>
-                  <ion-button
-                    class="primary-action"
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
                     [disabled]="demo.cuenta()?.estado !== 'pagada'"
-                    (click)="confirmarPago()"
-                    >Confirmar y liberar mesa</ion-button
+                    title="Confirmar pago y liberar mesa"
+                    message="Vas a confirmar el pago y liberar la mesa. ¿Querés continuar?"
+                    (confirmado)="confirmarPago()"
+                    >Confirmar y liberar mesa</tumbo-boton-confirmacion
                   >
                 </div>
               </section>

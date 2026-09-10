@@ -210,6 +210,23 @@ export class OperacionService {
     return this.guardarImagenProducto(id, d.imagen);
   }
 
+  async eliminarProducto(id: string): Promise<Resultado> {
+    if (!this.cliente) {
+      this.mock.eliminarProducto(id);
+      return { ok: true };
+    }
+    return this.actualizar('productos', id, { activo: false });
+  }
+
+  async eliminarEmpleado(id: string): Promise<Resultado> {
+    if (!this.cliente) {
+      this.mock.eliminarEmpleado(id);
+      return { ok: true };
+    }
+    const resultado = await this.cliente.from('usuarios').delete().eq('id', id);
+    return resultado.error ? this.fallo('eliminar el empleado', resultado.error) : (await this.cargar(), { ok: true });
+  }
+
   private async guardarImagenProducto(id: string, imagen?: AltaProductoDemo['imagen']): Promise<Resultado> {
     if (!this.cliente || !imagen) return { ok: true };
     try {

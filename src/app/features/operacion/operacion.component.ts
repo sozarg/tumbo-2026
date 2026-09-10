@@ -36,6 +36,7 @@ import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
+import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
 import {
   pencilOutline,
   wineOutline,
@@ -128,6 +129,7 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonToggle,
     Espera,
     Paginador,
+    BotonConfirmacion,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
@@ -483,6 +485,16 @@ export class Operacion implements OnInit {
     );
   }
 
+  protected async eliminarEmpleado(id: string): Promise<void> {
+    if (!this.gestiona()) return;
+    const resultado = await this.demo.eliminarEmpleado(id);
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo eliminar el empleado.');
+      return;
+    }
+    this.avisarExito('Empleado eliminado.');
+  }
+
   protected editarProducto(producto: ProductoDemo): void {
     if (!puedeAcceder(this.usuario()?.perfil, 'productos') || !this.productosDelSector().some(item => item.id === producto.id)) return;
     this.productoEditado.set(producto.id);
@@ -522,6 +534,16 @@ export class Operacion implements OnInit {
     this.productoEditado.set(null);
     this.creando.set(false);
     this.avisarExito(id ? 'Producto actualizado.' : 'Producto agregado.');
+  }
+
+  protected async eliminarProducto(id: string): Promise<void> {
+    if (!puedeAcceder(this.usuario()?.perfil, 'productos')) return;
+    const resultado = await this.demo.eliminarProducto(id);
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo eliminar el producto.');
+      return;
+    }
+    this.avisarExito('Producto eliminado del catálogo.');
   }
 
   protected seleccionarImagen(evento: Event): void {
