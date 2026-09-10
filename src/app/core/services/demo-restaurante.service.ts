@@ -95,7 +95,9 @@ export class DemoRestauranteService {
       sector,
       precio: datos.precio,
       minutos: datos.minutos,
-      fotos: ['imagenes/logo-nombre.png', 'imagenes/logo.png', 'imagenes/logo-nombre.png'],
+      fotos: datos.imagen
+        ? [datos.imagen.previewUrl]
+        : ['imagenes/logo-nombre.png', 'imagenes/logo.png', 'imagenes/logo-nombre.png'],
     };
     this.productos.update((productos) => [...productos, producto]);
     this.notificar(
@@ -379,7 +381,18 @@ export class DemoRestauranteService {
   }
 
   private productosIniciales(): ProductoDemo[] {
-    const fotos = ['imagenes/logo-nombre.png', 'imagenes/logo.png', 'imagenes/logo-nombre.png'];
+    const fotosPorNombre: Readonly<Record<string, string>> = {
+      'Hamburguesa TUMBO': 'imagenes/tumbito/carne.webp',
+      'Ravioles de la abuela': 'imagenes/tumbito/fideos.webp',
+      'Ensalada fresca': 'imagenes/tumbito/ensalada.webp',
+      'Papas crocantes': 'imagenes/tumbito/pizza.webp',
+      'Taco de vegetales': 'imagenes/tumbito/ensalada.webp',
+      'Limonada de la casa': 'imagenes/tumbito/sopa.webp',
+      'TUMBO Spritz': 'imagenes/tumbito/vino.webp',
+      Gaseosa: 'imagenes/tumbito/vino.webp',
+      'Agua mineral': 'imagenes/tumbito/vino.webp',
+      'Café de especialidad': 'imagenes/tumbito/cafe.webp',
+    };
     return [
       ['Hamburguesa TUMBO', 'Carne, cheddar, cebolla caramelizada y salsa de la casa.', 'plato', 'cocina', 7800, 18],
       ['Ravioles de la abuela', 'Ravioles caseros con salsa pomodoro y albahaca.', 'plato', 'cocina', 6900, 22],
@@ -399,7 +412,7 @@ export class DemoRestauranteService {
       sector: sector as SectorProducto,
       precio: precio as number,
       minutos: minutos as number,
-      fotos,
+      fotos: [fotosPorNombre[nombre as string] ?? 'imagenes/logo.png'],
     }));
   }
 

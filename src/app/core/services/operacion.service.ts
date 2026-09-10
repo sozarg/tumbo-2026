@@ -187,14 +187,56 @@ export class OperacionService {
   async registrarProducto(d: AltaProductoDemo): Promise<Resultado> {
     if (!this.cliente) { this.mock.registrarProducto(d); return { ok: true }; }
     const usuario = this.sesion.usuario();
-    return this.insertar('productos', { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos, creado_por: usuario?.id ?? null });
+    const resultado = await this.insertarConFila('productos', { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos, creado_por: usuario?.id ?? null });
+    if (!resultado.ok || !resultado.fila) return { ok: false, error: resultado.error };
+    return this.guardarImagenProducto(resultado.fila.id, d.imagen);
   }
   async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
     if (!this.cliente) {
-      this.mock.productos.update(items => items.map(item => item.id === id ? { ...item, ...d, sector: d.tipo === 'plato' ? 'cocina' : 'bar' } : item));
+      this.mock.productos.update(items => items.map(item => item.id === id ? {
+        ...item,
+        nombre: d.nombre,
+        descripcion: d.descripcion,
+        minutos: d.minutos,
+        precio: d.precio,
+        tipo: d.tipo,
+        sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+        fotos: d.imagen ? [d.imagen.previewUrl] : item.fotos,
+      } : item));
       return { ok: true };
     }
-    return this.actualizar('productos', id, { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos });
+    const resultado = await this.actualizar('productos', id, { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos });
+    if (!resultado.ok || !d.imagen) return resultado;
+    return this.guardarImagenProducto(id, d.imagen);
+  }
+
+  private async guardarImagenProducto(id: string, imagen?: AltaProductoDemo['imagen']): Promise<Resultado> {
+    if (!this.cliente || !imagen) return { ok: true };
+    try {
+      const archivo = await this.comprimirImagen(imagen.file);
+      const ruta = `${id}/${crypto.randomUUID()}.webp`;
+      const subida = await this.cliente.storage.from('fotos-productos').upload(ruta, archivo, { contentType: 'image/webp', cacheControl: '31536000', upsert: false });
+      if (subida.error) return { ok: false, error: 'No se pudo almacenar la imagen del producto.' };
+      const url = this.cliente.storage.from('fotos-productos').getPublicUrl(ruta).data.publicUrl;
+      const foto = await this.cliente.from('producto_fotos').upsert({ producto_id: id, url, orden: 1 }, { onConflict: 'producto_id,orden' });
+      if (foto.error) return { ok: false, error: 'La imagen se subió, pero no se pudo asociar al producto.' };
+      await this.cargar();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'No se pudo procesar la imagen del producto.' };
+    }
+  }
+
+  /** Comprime fotos de cámara antes de enviarlas a Storage. */
+  private async comprimirImagen(archivo: File): Promise<Blob> {
+    const bitmap = await createImageBitmap(archivo);
+    const escala = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * escala));
+    canvas.height = Math.max(1, Math.round(bitmap.height * escala));
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return new Promise((resolve, reject) => canvas.toBlob((salida) => salida ? resolve(salida) : reject(new Error('compresión fallida')), 'image/webp', 0.82));
   }
   async registrarMesa(d: AltaMesaDemo): Promise<Resultado> {
     if (!this.cliente) return { ok: this.mock.registrarMesa(d) };
