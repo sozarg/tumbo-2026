@@ -138,19 +138,18 @@ export class Ingreso {
     }
   }
 
-  protected async ingresarRapido(acceso: AccesoRapido): Promise<void> {
+  protected ingresarRapido(acceso: AccesoRapido): void {
     this.enviado.set(false);
     this.errorMensaje.set('');
-    this.enviando.set(true);
+    this.errores.limpiar();
 
-    try {
-      await this.autenticacion.ingresarRapido(acceso.id);
-      await this.router.navigate(['/operacion']);
-    } catch (error: unknown) {
-      // R9: todo error pasa por ErroresService, que además vibra.
-      this.errorMensaje.set(await this.errores.desdeExcepcion(error, 'No se pudo iniciar sesión.'));
-    } finally {
-      this.enviando.set(false);
-    }
+    // Rellena los campos del formulario con el correo del usuario seleccionado y la clave de demostración
+    this.formulario.patchValue({
+      correo: acceso.correo,
+      clave: this.claveDemostracion,
+    });
+
+    // Marca el formulario como modificado para que los inputs detecten el valor precargado
+    this.formulario.markAsDirty();
   }
 }
