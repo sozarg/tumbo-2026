@@ -119,6 +119,12 @@ export class Ingreso {
 
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      
+      // Llama directamente a mostrar() para activar la vibración y setear el mensaje
+      this.errorMensaje.set(
+        await this.errores.mostrar('Por favor, completá correctamente los campos obligatorios.', 'leve')
+      );
+      
       return;
     }
 
@@ -137,7 +143,6 @@ export class Ingreso {
       this.enviando.set(false);
     }
   }
-
   protected ingresarRapido(acceso: AccesoRapido): void {
     this.enviado.set(false);
     this.errorMensaje.set('');

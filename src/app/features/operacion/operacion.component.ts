@@ -457,6 +457,8 @@ export class Operacion implements OnInit {
 
   protected async registrarEmpleado(): Promise<void> {
     if (!this.validar(this.empleadoForm)) {
+      // Agrega la vibración y el mensaje cuando el formulario es inválido
+      await this.errores.mostrar('Por favor, revisá los campos obligatorios del formulario.', 'leve');
       return;
     }
 
@@ -465,7 +467,9 @@ export class Operacion implements OnInit {
     const resultado = await this.demo.registrarEmpleado(empleado as AltaEmpleadoDemo);
 
     if (!resultado.ok) {
-      await this.avisarError(resultado.error ?? 'No se pudo registrar el empleado.');
+      const mensaje = resultado.error ?? 'No se pudo registrar el empleado.';
+      await this.errores.mostrar(mensaje, 'grave');
+      await this.avisarError(mensaje);
       return;
     }
 
@@ -498,6 +502,7 @@ export class Operacion implements OnInit {
     if (!puedeAcceder(this.usuario()?.perfil, 'productos')) return;
     if (this.tipoDeSector()) this.productoForm.controls.tipo.setValue(this.tipoDeSector()!);
     if (!this.validar(this.productoForm)) {
+      await this.errores.mostrar('Por favor, completá correctamente los datos del producto.', 'leve');
       return;
     }
     const datos = this.productoForm.getRawValue();
@@ -505,7 +510,9 @@ export class Operacion implements OnInit {
     const resultado = id ? await this.demo.actualizarProducto(id, datos) : await this.demo.registrarProducto(datos);
 
     if (!resultado.ok) {
-      await this.avisarError(resultado.error ?? 'No se pudo agregar el producto.');
+      const mensaje = resultado.error ?? 'No se pudo agregar el producto.';
+      await this.errores.mostrar(mensaje, 'grave');
+      await this.avisarError(mensaje);
       return;
     }
 
@@ -517,30 +524,47 @@ export class Operacion implements OnInit {
 
   protected async registrarMesa(): Promise<void> {
     if (!this.gestiona()) return;
+
     if (!this.validar(this.mesaForm)) {
+      await this.errores.mostrar('Por favor, completá correctamente los datos de la mesa.', 'leve');
       return;
     }
-    const creada = (await this.demo.registrarMesa(this.mesaForm.getRawValue() as AltaMesaDemo)).ok;
-    this.mensaje.set(
-      creada
-        ? 'Mesa creada: el QR se generó automáticamente.'
-        : 'No se puede repetir el número de mesa.',
-    );
+
+    const resultado = await this.demo.registrarMesa(this.mesaForm.getRawValue() as AltaMesaDemo);
+
+    if (!resultado.ok) {
+      const mensaje = resultado.error ?? 'No se puede repetir el número de mesa.';
+      await this.errores.mostrar(mensaje, 'grave');
+      this.mensaje.set(mensaje);
+      return;
+    }
+
+    this.mensaje.set('Mesa creada: el QR se generó automáticamente.');
   }
 
-  protected async registrarCliente(): Promise<void> {
+protected async registrarCliente(): Promise<void> {
     if (!this.validar(this.clienteForm)) {
+      await this.errores.mostrar('Por favor, completá correctamente los datos del cliente.', 'leve');
       return;
     }
-    await this.demo.registrarCliente(this.clienteForm.getRawValue() as AltaClienteDemo);
-    this.clienteForm.reset();
-    this.mensaje.set('Cliente creado en estado pendiente de aprobación.');
-  }
 
-  protected async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<void> {
+    try {
+      await this.demo.registrarCliente(this.clienteForm.getRawValue() as AltaClienteDemo);
+      this.clienteForm.reset();
+      this.mensaje.set('Cliente creado en estado pendiente de aprobación.');
+    } catch (error: unknown) {
+      await this.errores.desdeExcepcion(error, 'No se pudo registrar el cliente.');
+    }
+  }
+protected async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<void> {
     if (!this.gestiona()) return;
-    await this.demo.resolverCliente(id, estado);
-    this.mensaje.set(estado === 'aprobado' ? 'Cliente aprobado.' : 'Cliente rechazado.');
+
+    try {
+      await this.demo.resolverCliente(id, estado);
+      this.mensaje.set(estado === 'aprobado' ? 'Cliente aprobado.' : 'Cliente rechazado.');
+    } catch (error: unknown) {
+      await this.errores.desdeExcepcion(error, 'No se pudo resolver el estado del cliente.');
+    }
   }
 
   protected async asignarMesa(idEspera: string, numero: number): Promise<void> {
