@@ -37,6 +37,39 @@
     </div>
   }
 </ion-header>
+<!--
+  LOS AVISOS VAN ACÁ ARRIBA, FUERA DE <ion-content>, Y NO SE PUEDEN MOVER
+  ADENTRO.
+
+  `ion-toast` se dibuja con z-index 60000 y pico, pero un z-index solo
+  compite dentro de su propio contexto de apilado. Estaban declarados
+  dentro de `.operation-layout`, que tiene `position: relative` y
+  `z-index: 1`: eso abre un contexto nuevo, y adentro de él los 60000 del
+  toast valen 1 para el mundo de afuera. Resultado: el encabezado
+  —`ion-header`, que Ionic pone en z-index 10— se dibujaba ENCIMA del
+  aviso, y el texto del toast y el título quedaban superpuestos, ninguno
+  de los dos legible.
+
+  Está verificado con el navegador: mismo alta, antes y después.
+-->
+<ion-toast
+  [isOpen]="error() !== ''"
+  [message]="error()"
+  position="top"
+  icon="alert-circle-outline"
+  [buttons]="[{ text: 'Cerrar', role: 'cancel' }]"
+  (didDismiss)="error.set('')"
+/>
+<ion-toast
+  [isOpen]="mensaje() !== ''"
+  [message]="mensaje()"
+  [duration]="3200"
+  position="top"
+  icon="checkmark-circle-outline"
+  cssClass="toast-tumbo"
+  (didDismiss)="cerrarAviso()"
+/>
+
 <ion-content class="operation-page" [scrollY]="!seccion() || ((seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') && creando())">
   @if (usuario(); as usuarioActual) {
     <div
@@ -73,23 +106,6 @@
           }
         </div>
         <div class="view-content">
-          <ion-toast
-            [isOpen]="error() !== ''"
-            [message]="error()"
-            position="top"
-            icon="alert-circle-outline"
-            [buttons]="[{ text: 'Cerrar', role: 'cancel' }]"
-            (didDismiss)="error.set('')"
-          />
-          <ion-toast
-            [isOpen]="mensaje() !== ''"
-            [message]="mensaje()"
-            [duration]="3200"
-            position="top"
-            icon="checkmark-circle-outline"
-            cssClass="toast-tumbo"
-            (didDismiss)="cerrarAviso()"
-          />
 
           @if (seccion() === 'personal') {
             @if (creando()) {
@@ -106,10 +122,54 @@
                     class="scan-button"
                     fill="outline"
                     type="button"
-                    aria-label="Simular lector de DNI"
-                    (click)="simularDniEmpleado()"
+                    [attr.aria-label]="lectorReal ? 'Leer el DNI con la cámara' : 'Simular lector de DNI'"
+                    (click)="leerDniEmpleado()"
                     ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
                   /></ion-button>
+                </div>
+
+                <!--
+                  La foto del empleado (punto 1). Va arriba de todo y no
+                  al final porque en el teléfono es lo primero que se
+                  hace: se saca la foto con la persona delante, y recién
+                  después se tipean los datos.
+                -->
+                <div class="employee-photo">
+                  @if (empleadoForm.controls.foto.value; as foto) {
+                    <img class="employee-photo__preview" [src]="foto.previewUrl" alt="Foto del empleado" />
+                    <div class="employee-photo__actions">
+                      <ion-button fill="outline" size="small" type="button" (click)="sacarFotoEmpleado()">
+                        <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                        Repetir
+                      </ion-button>
+                      <ion-button fill="clear" size="small" type="button" (click)="quitarFotoEmpleado()">
+                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                        Quitar
+                      </ion-button>
+                    </div>
+                    @if (foto.simulada) {
+                      <p class="employee-photo__note">
+                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                      </p>
+                    }
+                  } @else {
+                    <ion-button
+                      class="employee-photo__take"
+                      fill="outline"
+                      type="button"
+                      (click)="sacarFotoEmpleado()"
+                    >
+                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                      {{ camaraReal ? 'Sacar la foto' : 'Elegir una imagen' }}
+                    </ion-button>
+                    @if (campoInvalido(empleadoForm.controls.foto)) {
+                      <p class="employee-photo__error" role="alert">
+                        {{ mensajeCampo(empleadoForm.controls.foto, 'foto') }}
+                      </p>
+                    } @else {
+                      <p class="employee-photo__note">La foto personal es obligatoria.</p>
+                    }
+                  }
                 </div>
 
 <div class="employee-form__row"><div class="employee-form__field"><ion-input
@@ -219,12 +279,18 @@
                 <tumbo-boton-confirmacion
                   buttonClass="primary-action"
                   expand="block"
+                  [disabled]="enviando()"
+                  [puedeConfirmar]="empleadoEsValido"
                   title="Confirmar alta de empleado"
                   message="Vas a registrar este empleado y habilitar su acceso al sistema. ¿Querés continuar?"
                   (confirmado)="registrarEmpleado()"
                 >
-                  <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
-                  empleado
+                  @if (enviando()) {
+                    <tumbo-espera etiqueta="Registrando al empleado" />
+                  } @else {
+                    <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
+                    empleado
+                  }
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
@@ -236,15 +302,24 @@
                       <p>{{ empleado.etiquetaPerfil }}</p>
                       <p class="person-card__email">{{ empleado.correo }}</p>
                     </div>
-                    <tumbo-boton-confirmacion
-                      buttonClass="icon-danger"
-                      [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
-                      title="Confirmar baja de personal"
-                      [message]="'Vas a quitar a ' + empleado.nombres + ' ' + empleado.apellidos + ' del personal activo. ¿Querés continuar?'"
-                      (confirmado)="eliminarEmpleado(empleado.id)"
-                    >
-                      <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                    </tumbo-boton-confirmacion>
+                    @if (dandoDeBaja() === empleado.id) {
+                      <div class="person-card__espera">
+                        <tumbo-espera
+                          [etiqueta]="'Dando de baja a ' + empleado.nombres"
+                        />
+                      </div>
+                    } @else {
+                      <tumbo-boton-confirmacion
+                        buttonClass="icon-danger"
+                        [disabled]="dandoDeBaja() !== null"
+                        [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
+                        title="Confirmar baja de personal"
+                        [message]="'Vas a quitar a ' + empleado.nombres + ' ' + empleado.apellidos + ' del personal activo. ¿Querés continuar?'"
+                        (confirmado)="eliminarEmpleado(empleado.id)"
+                      >
+                        <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                      </tumbo-boton-confirmacion>
+                    }
                   </article>
                 } @empty {
                   <p class="empty-state">Todavía no hay empleados.</p>
@@ -436,6 +511,15 @@
                     <h2>Alta de cliente</h2>
                     <p>Queda pendiente de aprobación.</p>
                   </div>
+
+                  <ion-button
+                    class="scan-button"
+                    fill="outline"
+                    type="button"
+                    [attr.aria-label]="lectorReal ? 'Leer el DNI con la cámara' : 'Simular lector de DNI'"
+                    (click)="leerDniCliente()"
+                    ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
+                  /></ion-button>
                 </div>
 <div class="employee-form__row">                <ion-input
                   label="Nombres"

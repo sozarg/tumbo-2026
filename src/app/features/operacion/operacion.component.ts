@@ -48,6 +48,7 @@ import {
   arrowBackOutline,
   arrowForwardOutline,
   barChartOutline,
+  cameraOutline,
   checkmarkCircleOutline,
   checkmarkDoneOutline,
   closeCircleOutline,
@@ -78,7 +79,9 @@ import {
 } from '../../core/models/demo-restaurante';
 import { OperacionService } from '../../core/services/operacion.service';
 import { ErroresService } from '../../core/services/errores.service';
-import { inventarPersona } from '../../core/demo/generador-de-personas';
+import { Camara, FotoTomada } from '../../core/dispositivo/camara.service';
+import { LectorDeDni, ResultadoDeLectura } from '../../core/dispositivo/lector-de-dni.service';
+import { DatosDeDni } from '../../core/dni/codigo-de-dni';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
 import {
@@ -89,6 +92,7 @@ import {
   cuilConDigitoValido,
   cuilValido,
   dniValido,
+  fotoRequerida,
   sinEspaciosSolos,
   validadoresDeNombre,
 } from '../../core/validacion/validadores';
@@ -146,6 +150,8 @@ export class Operacion implements OnInit {
   private readonly sesion = inject(SesionService);
   private readonly autenticacion = inject(AUTENTICACION);
   protected readonly demo = inject(OperacionService);
+  private readonly lector = inject(LectorDeDni);
+  private readonly camara = inject(Camara);
 
   protected readonly usuario = this.sesion.usuario;
   protected readonly modo = this.autenticacion.modo;
@@ -201,9 +207,27 @@ export class Operacion implements OnInit {
   protected readonly error = signal('');
 
   protected readonly enviando = signal(false);
+
+  /**
+   * El id del empleado que se está dando de baja, o `null`.
+   *
+   * Es el id y no un booleano porque la espera se muestra EN SU FILA:
+   * con un booleano habría que apagar las once filas de la lista o
+   * poner un indicador suelto que no dice a quién corresponde.
+   *
+   * La baja pasa por una Edge Function, que verifica quién llama, borra
+   * la foto del bucket y después la cuenta. Eso tarda lo suficiente como
+   * para que, sin indicador, la pantalla parezca colgada (requisito
+   * excluyente R6: indicadores en TODAS las esperas).
+   */
+  protected readonly dandoDeBaja = signal<string | null>(null);
   protected readonly imagenes = signal<Record<string, number>>({});
   protected readonly nombreAnonimo = signal('');
   protected readonly qrSeleccionado = signal<number | null>(null);
+
+  /** `false` en el navegador: ahí la cámara y el lector se simulan. */
+  protected readonly camaraReal = this.camara.esReal;
+  protected readonly lectorReal = this.lector.esReal;
   protected readonly perfilEsCliente = computed(() => {
     const perfil = this.usuario()?.perfil;
     return perfil === 'cliente_registrado' || perfil === 'cliente_anonimo';
@@ -241,6 +265,16 @@ export class Operacion implements OnInit {
       clave: ['', [Validators.required, ...conLimite('clave')]],
       repetirClave: ['', Validators.required],
       perfil: ['cocinero' as Extract<AltaEmpleadoDemo['perfil'], string>, Validators.required],
+      /**
+       * La foto no se tipea: es el archivo que devuelve la cámara. Vive
+       * igual en el formulario para que entre en la misma validación que
+       * el resto y el cartel de confirmación no se abra sin ella.
+       *
+       * En modo demostración no hay Storage donde subirla, así que ahí
+       * no se exige: si no, la aplicación no se podría probar sin
+       * Supabase configurado.
+       */
+      foto: [null as FotoTomada | null, this.modo === 'demo' ? [] : [fotoRequerida]],
     },
     {
       // Cruza DNI y CUIL: los ocho dígitos del medio del CUIL son el DNI.
@@ -291,6 +325,7 @@ export class Operacion implements OnInit {
       arrowBackOutline,
       arrowForwardOutline,
       barChartOutline,
+      cameraOutline,
       checkmarkCircleOutline,
       checkmarkDoneOutline,
       closeCircleOutline,
@@ -460,23 +495,62 @@ export class Operacion implements OnInit {
     this.mensaje.set('');
   }
 
+  /**
+   * Lo consulta el botón de confirmar ANTES de abrir el cartel.
+   *
+   * Es una propiedad y no un método porque se pasa como valor al
+   * componente: si fuera `validarEmpleado()` en la plantilla se
+   * ejecutaría en cada ciclo de detección de cambios en vez de cuando
+   * hace falta. `validar` además marca los campos y muestra los errores,
+   * que es lo que tiene que ver la persona.
+   */
+  protected readonly empleadoEsValido = (): boolean => this.validar(this.empleadoForm);
+
   protected async registrarEmpleado(): Promise<void> {
+    // El alta tarda: crea la cuenta, sube la foto y recarga el listado.
+    // Sin este guarda, dos envíos superpuestos crean la misma persona dos
+    // veces; el segundo choca contra el DNI único y muestra un error que
+    // hace creer que no se guardó nada.
+    if (this.enviando()) return;
+
     if (!this.validar(this.empleadoForm)) {
       return;
     }
 
     if (!puedeAcceder(this.usuario()?.perfil, 'personal')) return;
-    const { repetirClave, ...empleado } = this.empleadoForm.getRawValue();
-    const resultado = await this.demo.registrarEmpleado(empleado as AltaEmpleadoDemo);
+
+    const { repetirClave, foto, ...empleado } = this.empleadoForm.getRawValue();
+
+    this.enviando.set(true);
+    let resultado;
+    try {
+      resultado = await this.demo.registrarEmpleado({
+        ...empleado,
+        foto: foto ?? undefined,
+      } as AltaEmpleadoDemo);
+    } finally {
+      // En el `finally` y no después del `await`: si la llamada tira, el
+      // botón tiene que volver a habilitarse igual. Si no, la pantalla
+      // queda trabada y hay que salir y entrar de nuevo a la sección.
+      this.enviando.set(false);
+    }
 
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo registrar el empleado.');
       return;
     }
 
+    // La cuenta quedó creada aunque algo secundario haya fallado, así que
+    // el formulario se limpia igual. El aviso se muestra como error —con
+    // su vibración— porque hay algo que alguien tiene que ir a arreglar.
+    if (resultado.aviso) {
+      await this.avisarError(resultado.aviso);
+    }
+
     // La contraseña se limpia sí o sí: no puede quedar en pantalla para
     // la siguiente alta (es el mismo criterio del requisito R13).
     this.empleadoForm.reset({ perfil: 'cocinero' });
+    this.quitarFotoEmpleado();
     this.paso.set(0);
     this.avisarExito(
       this.modo === 'demo'
@@ -486,17 +560,38 @@ export class Operacion implements OnInit {
   }
 
   protected async eliminarEmpleado(id: string): Promise<void> {
-    if (!this.gestiona()) return;
-    const resultado = await this.demo.eliminarEmpleado(id);
+    if (!this.gestiona() || this.dandoDeBaja()) return;
+
+    this.dandoDeBaja.set(id);
+    let resultado;
+    try {
+      resultado = await this.demo.eliminarEmpleado(id);
+    } finally {
+      // En el `finally`: si la llamada tira, la fila tiene que volver a
+      // su estado normal igual, o queda girando para siempre.
+      this.dandoDeBaja.set(null);
+    }
+
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo eliminar el empleado.');
       return;
     }
-    this.avisarExito('Empleado eliminado.');
+    // La foto puede no haberse podido borrar aunque la baja sí: se avisa
+    // como error, con su vibración, porque queda un archivo con dueño.
+    if (resultado.aviso) {
+      await this.avisarError(resultado.aviso);
+      return;
+    }
+
+    this.avisarExito('Empleado dado de baja.');
   }
 
   protected editarProducto(producto: ProductoDemo): void {
-    if (!puedeAcceder(this.usuario()?.perfil, 'productos') || !this.productosDelSector().some(item => item.id === producto.id)) return;
+    if (
+      !puedeAcceder(this.usuario()?.perfil, 'productos') ||
+      !this.productosDelSector().some((item) => item.id === producto.id)
+    )
+      return;
     this.productoEditado.set(producto.id);
     this.productoForm.reset(producto);
     this.imagenProducto.set(undefined);
@@ -504,7 +599,7 @@ export class Operacion implements OnInit {
     this.creando.set(true);
   }
   protected alternarFormulario(): void {
-    this.creando.update(valor => !valor);
+    this.creando.update((valor) => !valor);
     this.paso.set(0);
     if (this.seccion() === 'productos') {
       this.productoEditado.set(null);
@@ -519,9 +614,14 @@ export class Operacion implements OnInit {
     if (!this.validar(this.productoForm)) {
       return;
     }
-    const datos = { ...this.productoForm.getRawValue(), imagen: this.imagenProducto() } as AltaProductoDemo;
+    const datos = {
+      ...this.productoForm.getRawValue(),
+      imagen: this.imagenProducto(),
+    } as AltaProductoDemo;
     const id = this.productoEditado();
-    const resultado = id ? await this.demo.actualizarProducto(id, datos) : await this.demo.registrarProducto(datos);
+    const resultado = id
+      ? await this.demo.actualizarProducto(id, datos)
+      : await this.demo.registrarProducto(datos);
 
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo agregar el producto.');
@@ -616,47 +716,150 @@ export class Operacion implements OnInit {
   }
 
   /**
-   * Simula leer el código de barras del DNI (punto 1).
+   * Lee el documento y completa el formulario (punto 1).
    *
-   * QUÉ CAMBIÓ
-   * Antes era siempre la misma persona escrita a mano —Valentina
-   * Molina, DNI 43.210.987— con dos problemas: el DNI tenía puntos, que
-   * la base rechaza, y el CUIL `27-43210987-6` era falso (el dígito que
-   * le correspondía era el 4). Nadie lo notaba porque nada lo comprobaba.
+   * EN EL APK Y EN EL NAVEGADOR
+   * Es el mismo botón. En el teléfono abre la cámara y lee el PDF417 del
+   * DNI de verdad; en el navegador inventa una persona. El servicio
+   * decide cuál de las dos, y el mensaje que ve el usuario dice cuál
+   * fue: una lectura simulada nunca se anuncia como real.
    *
-   * Además, al ser siempre el mismo, el segundo alta chocaba contra el
-   * DNI único y había que inventar números a mano para seguir probando.
-   *
-   * Ahora cada lectura devuelve una persona distinta, con el CUIL
-   * derivado del DNI y del sexo con el algoritmo real.
-   *
-   * SOBRE EL CORREO
-   * Un DNI no trae correo: eso es comodidad para probar, no fidelidad.
-   * El resto —nombres, apellidos, número— sí es lo que trae el PDF417,
-   * y el CUIL se DERIVA de ahí, no se lee.
+   * EL CORREO
+   * Un DNI no trae correo, así que en una lectura real ese campo queda
+   * vacío para que lo complete quien carga. En la simulada se rellena,
+   * que es comodidad para probar y no fidelidad al documento.
    */
-  protected simularDniEmpleado(): void {
-    const persona = inventarPersona();
+  protected async leerDniEmpleado(): Promise<void> {
+    const lectura = await this.lector.leer();
+    if (!(await this.aplicarLectura(lectura))) return;
+    if (lectura.estado !== 'leido') return;
+
     this.empleadoForm.patchValue({
-      nombres: persona.nombres,
-      apellidos: persona.apellidos,
-      dni: persona.dni,
-      cuil: persona.cuil,
-      correo: persona.correo,
+      nombres: lectura.datos.nombres,
+      apellidos: lectura.datos.apellidos,
+      dni: lectura.datos.dni,
+      cuil: lectura.datos.cuil ?? '',
+      correo: this.correoPropuesto(lectura.datos),
     });
-    this.avisarExito('Lectura simulada: los datos del DNI se autocompletaron.');
   }
 
   /** Igual que el del empleado, para el alta de cliente (punto 5). */
-  protected simularDniCliente(): void {
-    const persona = inventarPersona();
+  protected async leerDniCliente(): Promise<void> {
+    const lectura = await this.lector.leer();
+    if (!(await this.aplicarLectura(lectura))) return;
+    if (lectura.estado !== 'leido') return;
+
     this.clienteForm.patchValue({
-      nombres: persona.nombres,
-      apellidos: persona.apellidos,
-      dni: persona.dni,
-      correo: persona.correo,
+      nombres: lectura.datos.nombres,
+      apellidos: lectura.datos.apellidos,
+      dni: lectura.datos.dni,
+      correo: this.correoPropuesto(lectura.datos),
     });
-    this.avisarExito('Lectura simulada: los datos del DNI se autocompletaron.');
+  }
+
+  /**
+   * Traduce el resultado del lector a lo que ve la persona.
+   *
+   * Devuelve `true` solo cuando hay datos para cargar. Los cuatro
+   * desenlaces se muestran distinto a propósito: cancelar no es un
+   * error y no tiene que vibrar, y "esto no es un DNI" no es lo mismo
+   * que "no pude leer" —uno se arregla apuntando a otra cosa y el otro
+   * mejorando la luz—.
+   */
+  private async aplicarLectura(lectura: ResultadoDeLectura): Promise<boolean> {
+    switch (lectura.estado) {
+      case 'leido':
+        this.avisarExito(
+          lectura.datos.correo
+            ? 'Datos leídos del código. Revisalos antes de registrar.'
+            : 'DNI leído. El documento no trae correo: revisá el propuesto.',
+        );
+        return true;
+
+      case 'cancelado':
+        return false;
+
+      case 'otro-codigo':
+        await this.avisarError(
+          'Ese código no es de un DNI. Apuntá al código del dorso del documento.',
+        );
+        return false;
+
+      case 'error':
+        await this.avisarError(lectura.mensaje);
+        return false;
+    }
+  }
+
+  /**
+   * Un correo PROPUESTO a partir del documento.
+   *
+   * EL DNI NO TRAE CORREO
+   * Ni el PDF417 del documento argentino ni ningún otro campo del código
+   * lo tienen: adentro hay trámite, apellidos, nombres, sexo, número,
+   * ejemplar, fechas y CUIL. Nada más. Así que después de escanear, ese
+   * campo quedaba obligatoriamente vacío.
+   *
+   * POR QUÉ SE PROPONE UNO IGUAL
+   * Porque el campo es obligatorio y tipear una dirección entera con el
+   * teléfono en la mano, delante de la persona que se está dando de
+   * alta, es la parte más lenta del alta. Se arma con el nombre, el
+   * apellido y los últimos cuatro dígitos del DNI, así que no choca con
+   * el de otra persona.
+   *
+   * ES UNA PROPUESTA, NO UN DATO DEL DOCUMENTO. El campo queda editable
+   * y el aviso de la lectura pide expresamente que se revise: si la
+   * persona tiene un correo de verdad, se escribe encima.
+   *
+   * Si el código SÍ trae un correo —los de prueba lo traen— se usa ese y
+   * no se inventa nada.
+   */
+  private correoPropuesto(datos: DatosDeDni): string {
+    if (datos.correo) return datos.correo;
+
+    const parte = (texto: string) =>
+      texto
+        .toLocaleLowerCase('es-AR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z]/g, '');
+
+    return `${parte(datos.nombres)}.${parte(datos.apellidos)}.${datos.dni.slice(-4)}@tumbo.demo`;
+  }
+
+  /**
+   * Saca la foto del empleado (punto 1).
+   *
+   * La anterior se descarta con `revokeObjectURL`: son URLs que el
+   * navegador retiene hasta que se recarga la página, y sacarse cinco
+   * fotos seguidas dejaría cinco imágenes enteras en memoria.
+   */
+  protected async sacarFotoEmpleado(): Promise<void> {
+    const resultado = await this.camara.sacarFoto();
+
+    if (resultado.estado === 'cancelado') return;
+
+    if (resultado.estado === 'error') {
+      await this.avisarError(resultado.mensaje);
+      return;
+    }
+
+    this.olvidarFotoEmpleado();
+    this.empleadoForm.controls.foto.setValue(resultado.foto);
+    this.empleadoForm.controls.foto.markAsTouched();
+  }
+
+  protected quitarFotoEmpleado(): void {
+    this.olvidarFotoEmpleado();
+    this.empleadoForm.controls.foto.setValue(null);
+    this.empleadoForm.controls.foto.markAsTouched();
+  }
+
+  private olvidarFotoEmpleado(): void {
+    const anterior = this.empleadoForm.controls.foto.value;
+    if (anterior?.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(anterior.previewUrl);
+    }
   }
 
   protected alternarImagen(producto: ProductoDemo): void {

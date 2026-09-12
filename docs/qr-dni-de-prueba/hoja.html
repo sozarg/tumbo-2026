@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Documentos de prueba · Tumbito</title>
+<style>
+  body { margin: 0; padding: 24px; background: #fbf1d5; color: #003592;
+         font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .aviso { max-width: 60ch; font-size: 13px; line-height: 1.5; margin: 0 0 20px; }
+  .grilla { display: grid; gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .doc { background: #f8fbfd; border: 1px solid #bac5d3; border-radius: 12px;
+         padding: 12px; text-align: center; break-inside: avoid; }
+  .doc img { width: 100%; max-width: 150px; height: auto; }
+  .nombre { margin: 6px 0 2px; font-weight: 600; font-size: 14px; }
+  .dato { margin: 0; font-size: 11px; opacity: .75; }
+  /* El correo es largo y no puede salirse de la tarjeta ni quedar cortado. */
+  .correo { margin: 4px 0 0; font-size: 10px; opacity: .7;
+            overflow-wrap: anywhere; line-height: 1.3; }
+  @media print { body { background: #fff; } .aviso { display: none; } }
+</style>
+</head>
+<body>
+  <h1>Documentos de prueba · Tumbito</h1>
+  <p class="aviso">
+    Cada código trae adentro los datos de una persona inventada, con el mismo
+    formato que el código real del DNI argentino, más un correo al final que
+    el documento no tiene y que se agrega para no tener que tipearlo. La aplicación no distingue
+    estos de un documento de verdad: los lee por el mismo camino. Los números
+    salen del rango 95.000.000 en adelante, que no está asignado, así que no
+    son el DNI de nadie. Tanda generada con la semilla <strong>2026</strong>:
+    volver a correr el script con esa semilla reimprime exactamente esta hoja.
+  </p>
+  <div class="grilla">
+      <article class="doc">
+        <img src="01-juarez.png" alt="QR del documento de Milagros Juarez" />
+        <p class="nombre">Juarez, Milagros</p>
+        <p class="dato">DNI 99664953 · F · variante vieja</p>
+        <p class="correo">milagros.juarez.4953@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="02-escalante.png" alt="QR del documento de Lisandro Escalante" />
+        <p class="nombre">Escalante, Lisandro</p>
+        <p class="dato">DNI 98843808 · M · variante nueva</p>
+        <p class="correo">lisandro.escalante.3808@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="03-leguizamon.png" alt="QR del documento de Nicanor Leguizamon" />
+        <p class="nombre">Leguizamon, Nicanor</p>
+        <p class="dato">DNI 98131890 · M · variante vieja</p>
+        <p class="correo">nicanor.leguizamon.1890@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="04-duarte.png" alt="QR del documento de Bruno Duarte" />
+        <p class="nombre">Duarte, Bruno</p>
+        <p class="dato">DNI 96621275 · M · variante nueva</p>
+        <p class="correo">bruno.duarte.1275@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="05-tolosa.png" alt="QR del documento de Selena Tolosa" />
+        <p class="nombre">Tolosa, Selena</p>
+        <p class="dato">DNI 96198516 · F · variante vieja</p>
+        <p class="correo">selena.tolosa.8516@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="06-gauna.png" alt="QR del documento de Abril Gauna" />
+        <p class="nombre">Gauna, Abril</p>
+        <p class="dato">DNI 96064372 · F · variante nueva</p>
+        <p class="correo">abril.gauna.4372@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="07-zalazar.png" alt="QR del documento de Joaquin Zalazar" />
+        <p class="nombre">Zalazar, Joaquin</p>
+        <p class="dato">DNI 96381379 · M · variante vieja</p>
+        <p class="correo">joaquin.zalazar.1379@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="08-bordon.png" alt="QR del documento de Abril Bordon" />
+        <p class="nombre">Bordon, Abril</p>
+        <p class="dato">DNI 99425512 · F · variante nueva</p>
+        <p class="correo">abril.bordon.5512@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="09-zalazar.png" alt="QR del documento de Bruno Zalazar" />
+        <p class="nombre">Zalazar, Bruno</p>
+        <p class="dato">DNI 95491610 · M · variante vieja</p>
+        <p class="correo">bruno.zalazar.1610@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="10-ferreyra.png" alt="QR del documento de Selena Ferreyra" />
+        <p class="nombre">Ferreyra, Selena</p>
+        <p class="dato">DNI 98431680 · F · variante nueva</p>
+        <p class="correo">selena.ferreyra.1680@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="11-ojeda.png" alt="QR del documento de Ivo Ojeda" />
+        <p class="nombre">Ojeda, Ivo</p>
+        <p class="dato">DNI 97090499 · M · variante vieja</p>
+        <p class="correo">ivo.ojeda.0499@tumbo.demo</p>
+      </article>
+      <article class="doc">
+        <img src="12-acuna.png" alt="QR del documento de Rocio Acuña" />
+        <p class="nombre">Acuña, Rocio</p>
+        <p class="dato">DNI 97057220 · F · variante nueva</p>
+        <p class="correo">rocio.acuna.7220@tumbo.demo</p>
+      </article>
+  </div>
+</body>
+</html>

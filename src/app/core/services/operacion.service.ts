@@ -2,9 +2,24 @@ import { DestroyRef, Injectable, inject, signal, computed } from '@angular/core'
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Tablas } from '../models/base-de-datos';
 import {
-  AltaClienteDemo, AltaEmpleadoDemo, AltaMesaDemo, AltaProductoDemo, ClientePendienteDemo,
-  CuentaDemo, EstadoPedido, MensajeDemo, MesaDemo, NotificacionDemo, PedidoDemo,
-  PedidoItemDemo, PersonaEsperaDemo, ProductoDemo, SectorProducto, TipoMesa, TipoProducto,
+  AltaClienteDemo,
+  AltaEmpleadoDemo,
+  AltaMesaDemo,
+  AltaProductoDemo,
+  ClientePendienteDemo,
+  CuentaDemo,
+  EstadoPedido,
+  FotoDePersona,
+  MensajeDemo,
+  MesaDemo,
+  NotificacionDemo,
+  PedidoDemo,
+  PedidoItemDemo,
+  PersonaEsperaDemo,
+  ProductoDemo,
+  SectorProducto,
+  TipoMesa,
+  TipoProducto,
 } from '../models/demo-restaurante';
 import { PerfilUsuario, Usuario, etiquetaDePerfil } from '../models/usuario';
 import { DemoRestauranteService } from './demo-restaurante.service';
@@ -15,7 +30,14 @@ type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
 type Item = Tablas<'pedido_items'>;
 type Producto = Tablas<'productos'>;
-type Resultado = { ok: boolean; error?: string };
+/**
+ * `aviso` es para lo que salió a medias: la operación principal se hizo,
+ * pero algo secundario no. El alta de empleado es el caso: si la cuenta
+ * se creó y la foto no se pudo subir, devolver `ok: false` sería mentir
+ * —invitaría a repetir el alta y a chocar con el correo duplicado— y
+ * devolver `ok: true` a secas escondería que falta la foto.
+ */
+type Resultado = { ok: boolean; error?: string; aviso?: string };
 
 /** Persistencia de la pantalla Operaciones. El mock se conserva solo para el modo sin configuración. */
 /**
@@ -45,12 +67,26 @@ function normalizarDni(valor: string): string {
   return (valor ?? '').replace(/[.\s]/g, '');
 }
 
+/**
+ * Los cuatro perfiles que son personal.
+ *
+ * Tienen que ser LOS MISMOS que acepta la Edge Function `crear-empleado`
+ * y los mismos que ofrece el `<ion-select>` del alta. Antes esta lista
+ * estaba escrita a mano adentro de `cargarUsuarios` y le faltaba
+ * `metre`: se podía dar de alta un metre —el formulario lo ofrece— y
+ * después no aparecía en el listado de personal. La cuenta existía y
+ * era invisible.
+ */
+const PERFILES_DE_EMPLEADO: readonly PerfilUsuario[] = ['metre', 'mozo', 'cocinero', 'cantinero'];
+
 @Injectable({ providedIn: 'root' })
 export class OperacionService {
   private readonly mock = inject(DemoRestauranteService);
   private readonly sesion = inject(SesionService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly cliente: SupabaseClient | null = supabaseConfigurado ? (exigirCliente() as unknown as SupabaseClient) : null;
+  private readonly cliente: SupabaseClient | null = supabaseConfigurado
+    ? (exigirCliente() as unknown as SupabaseClient)
+    : null;
   private canal: ReturnType<NonNullable<typeof this.cliente>['channel']> | null = null;
   private sesionActiva: Sesion | null = null;
   private pedidoReal: Pedido | null = null;
@@ -63,24 +99,40 @@ export class OperacionService {
   readonly empleados = this.cliente ? signal<Usuario[]>([]) : this.mock.empleados;
   readonly clientes = this.cliente ? signal<ClientePendienteDemo[]>([]) : this.mock.clientes;
   readonly espera = this.cliente ? signal<PersonaEsperaDemo[]>([]) : this.mock.espera;
-  readonly pedidoActivo = this.cliente ? signal<PedidoDemo>(this.pedidoVacio()) : this.mock.pedidoActivo;
+  readonly pedidoActivo = this.cliente
+    ? signal<PedidoDemo>(this.pedidoVacio())
+    : this.mock.pedidoActivo;
   readonly carrito = this.cliente ? signal<PedidoItemDemo[]>([]) : this.mock.carrito;
   readonly mensajes = this.cliente ? signal<MensajeDemo[]>([]) : this.mock.mensajes;
-  readonly notificaciones = this.cliente ? signal<NotificacionDemo[]>([]) : this.mock.notificaciones;
+  readonly notificaciones = this.cliente
+    ? signal<NotificacionDemo[]>([])
+    : this.mock.notificaciones;
   readonly descuento = this.cliente ? signal(0) : this.mock.descuento;
-  readonly intentosJuego = this.cliente ? signal<Record<string, number>>({}) : this.mock.intentosJuego;
+  readonly intentosJuego = this.cliente
+    ? signal<Record<string, number>>({})
+    : this.mock.intentosJuego;
   readonly encuestaRespondida = this.cliente ? signal(false) : this.mock.encuestaRespondida;
-  readonly porcentajePropina = this.cliente ? signal<number | null>(null) : this.mock.porcentajePropina;
+  readonly porcentajePropina = this.cliente
+    ? signal<number | null>(null)
+    : this.mock.porcentajePropina;
   readonly cuenta = this.cliente ? signal<CuentaDemo | null>(null) : this.mock.cuenta;
   readonly mesaVinculada = this.cliente ? signal<number | null>(null) : this.mock.mesaVinculada;
-  readonly clientesPendientes = computed(() => this.clientes().filter((c) => c.estado === 'pendiente'));
-  readonly totalCarrito = computed(() => this.carrito().reduce((t, i) => t + i.precio * i.cantidad, 0));
-  readonly tiempoCarrito = computed(() => this.carrito().reduce((t, i) => Math.max(t, i.minutos), 0));
+  readonly clientesPendientes = computed(() =>
+    this.clientes().filter((c) => c.estado === 'pendiente'),
+  );
+  readonly totalCarrito = computed(() =>
+    this.carrito().reduce((t, i) => t + i.precio * i.cantidad, 0),
+  );
+  readonly tiempoCarrito = computed(() =>
+    this.carrito().reduce((t, i) => Math.max(t, i.minutos), 0),
+  );
   readonly productosCocina = computed(() => this.productos().filter((p) => p.sector === 'cocina'));
   readonly productosBar = computed(() => this.productos().filter((p) => p.sector === 'bar'));
 
   constructor() {
-    this.destroyRef.onDestroy(() => { if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal); });
+    this.destroyRef.onDestroy(() => {
+      if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
+    });
     if (this.cliente) void this.cargar();
   }
 
@@ -89,33 +141,58 @@ export class OperacionService {
     try {
       const usuario = this.sesion.usuario();
       if (!usuario) return;
-      const [productos, fotos, mesas, usuarios, espera, sesiones, mensajes, notificaciones] = await Promise.all([
-        this.cliente.from('productos').select('*').eq('activo', true).order('nombre'),
-        this.cliente.from('producto_fotos').select('*').order('orden'),
-        this.cliente.from('mesas').select('*').order('numero'),
-        this.cliente.from('usuarios').select('*').order('apellidos'),
-        this.cliente.from('lista_espera').select('*').neq('estado', 'eliminado').order('creado_en'),
-        this.cliente.from('sesiones_mesa').select('*').in('estado', ['activa', 'cuenta_solicitada', 'pagada']).order('abierta_en', { ascending: false }),
-        this.cliente.from('mensajes').select('*').order('enviado_en'),
-        this.cliente.from('notificaciones').select('*').eq('usuario_id', usuario.id).order('enviada_en', { ascending: false }).limit(1),
-      ]);
-      this.validar(productos.error, 'productos'); this.validar(mesas.error, 'mesas');
+      const [productos, fotos, mesas, usuarios, espera, sesiones, mensajes, notificaciones] =
+        await Promise.all([
+          this.cliente.from('productos').select('*').eq('activo', true).order('nombre'),
+          this.cliente.from('producto_fotos').select('*').order('orden'),
+          this.cliente.from('mesas').select('*').order('numero'),
+          this.cliente.from('usuarios').select('*').order('apellidos'),
+          this.cliente
+            .from('lista_espera')
+            .select('*')
+            .neq('estado', 'eliminado')
+            .order('creado_en'),
+          this.cliente
+            .from('sesiones_mesa')
+            .select('*')
+            .in('estado', ['activa', 'cuenta_solicitada', 'pagada'])
+            .order('abierta_en', { ascending: false }),
+          this.cliente.from('mensajes').select('*').order('enviado_en'),
+          this.cliente
+            .from('notificaciones')
+            .select('*')
+            .eq('usuario_id', usuario.id)
+            .order('enviada_en', { ascending: false })
+            .limit(1),
+        ]);
+      this.validar(productos.error, 'productos');
+      this.validar(mesas.error, 'mesas');
       if (productos.data) {
         this.productosPorId = new Map(productos.data.map((p) => [p.id, p]));
         const fotosPorProducto = new Map<string, string[]>();
-        for (const foto of fotos.data ?? []) fotosPorProducto.set(foto.producto_id, [...(fotosPorProducto.get(foto.producto_id) ?? []), foto.url]);
-        this.productos.set(productos.data.map((p) => this.aProducto(p, fotosPorProducto.get(p.id) ?? [])));
+        for (const foto of fotos.data ?? [])
+          fotosPorProducto.set(foto.producto_id, [
+            ...(fotosPorProducto.get(foto.producto_id) ?? []),
+            foto.url,
+          ]);
+        this.productos.set(
+          productos.data.map((p) => this.aProducto(p, fotosPorProducto.get(p.id) ?? [])),
+        );
       }
       if (mesas.data) this.mesas.set(mesas.data.map((m) => this.aMesa(m)));
       if (usuarios.data) this.cargarUsuarios(usuarios.data, usuario);
       if (espera.data) await this.cargarEspera(espera.data);
       if (notificaciones.data) this.notificaciones.set(notificaciones.data.map(this.aNotificacion));
       this.sesionActiva = this.elegirSesion(sesiones.data ?? [], usuario);
-      this.mesaVinculada.set(this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? null);
+      this.mesaVinculada.set(
+        this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? null,
+      );
       await this.cargarPedidoYCuenta();
       if (mensajes.data) this.mensajes.set(mensajes.data.map((m) => this.aMensaje(m, usuario.id)));
       this.suscribirRealtime();
-    } catch (error) { this.registrarError('cargar Operaciones', error); }
+    } catch (error) {
+      this.registrarError('cargar Operaciones', error);
+    }
   }
 
   /**
@@ -137,7 +214,7 @@ export class OperacionService {
       return { ok: true };
     }
 
-    const { error } = await this.cliente.functions.invoke('crear-empleado', {
+    const { data, error } = await this.cliente.functions.invoke('crear-empleado', {
       body: {
         nombres: d.nombres,
         apellidos: d.apellidos,
@@ -153,10 +230,57 @@ export class OperacionService {
       return { ok: false, error: await this.mensajeDeLaFuncion(error) };
     }
 
+    // La foto va DESPUÉS y no adentro de la Edge Function: la ruta en
+    // Storage se arma con el id del usuario, y ese id recién existe
+    // cuando la cuenta está creada. Mandar la imagen en el cuerpo de la
+    // función significaría pasar megabytes en base64 por una llamada que
+    // hoy pesa medio kilobyte.
+    const aviso = await this.guardarFotoDeEmpleado((data as { id?: string })?.id, d.foto);
+
     // La lista de usuarios no la refresca realtime: `usuarios` no está
     // entre las tablas suscriptas, así que se recarga a mano.
-    await this.cargar();
-    return { ok: true };
+    await this.recargarUsuarios();
+    return aviso ? { ok: true, aviso } : { ok: true };
+  }
+
+  /**
+   * Sube la foto del empleado y la deja apuntada en `usuarios.foto_url`.
+   *
+   * Devuelve el texto del aviso cuando algo falla, o `undefined` cuando
+   * salió bien o cuando no había foto. Nunca tira: llegado este punto la
+   * cuenta ya existe, y una excepción acá dejaría a quien la creó sin
+   * saber que se creó.
+   */
+  private async guardarFotoDeEmpleado(
+    id?: string,
+    foto?: FotoDePersona,
+  ): Promise<string | undefined> {
+    if (!this.cliente || !foto) return undefined;
+    if (!id) return 'El empleado se creó, pero no se pudo guardar la foto.';
+
+    try {
+      const archivo = await this.comprimirImagen(foto.file);
+      const ruta = `${id}/${crypto.randomUUID()}.webp`;
+
+      const subida = await this.cliente.storage
+        .from('fotos-usuarios')
+        .upload(ruta, archivo, {
+          contentType: 'image/webp',
+          cacheControl: '31536000',
+          upsert: false,
+        });
+
+      if (subida.error) {
+        return 'El empleado se creó, pero la foto no se pudo subir.';
+      }
+
+      const url = this.cliente.storage.from('fotos-usuarios').getPublicUrl(ruta).data.publicUrl;
+      const guardada = await this.cliente.from('usuarios').update({ foto_url: url }).eq('id', id);
+
+      return guardada.error ? 'La foto se subió, pero no se pudo asociar al empleado.' : undefined;
+    } catch {
+      return 'El empleado se creó, pero no se pudo procesar la foto.';
+    }
   }
 
   /**
@@ -185,27 +309,51 @@ export class OperacionService {
     return 'No se pudo crear el empleado. Revisá la conexión e intentá nuevamente.';
   }
   async registrarProducto(d: AltaProductoDemo): Promise<Resultado> {
-    if (!this.cliente) { this.mock.registrarProducto(d); return { ok: true }; }
+    if (!this.cliente) {
+      this.mock.registrarProducto(d);
+      return { ok: true };
+    }
     const usuario = this.sesion.usuario();
-    const resultado = await this.insertarConFila('productos', { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos, creado_por: usuario?.id ?? null });
+    const resultado = await this.insertarConFila('productos', {
+      nombre: d.nombre,
+      descripcion: d.descripcion,
+      tipo: d.tipo,
+      sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+      precio: d.precio,
+      tiempo_elaboracion_min: d.minutos,
+      creado_por: usuario?.id ?? null,
+    });
     if (!resultado.ok || !resultado.fila) return { ok: false, error: resultado.error };
     return this.guardarImagenProducto(resultado.fila.id, d.imagen);
   }
   async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
     if (!this.cliente) {
-      this.mock.productos.update(items => items.map(item => item.id === id ? {
-        ...item,
-        nombre: d.nombre,
-        descripcion: d.descripcion,
-        minutos: d.minutos,
-        precio: d.precio,
-        tipo: d.tipo,
-        sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-        fotos: d.imagen ? [d.imagen.previewUrl] : item.fotos,
-      } : item));
+      this.mock.productos.update((items) =>
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                nombre: d.nombre,
+                descripcion: d.descripcion,
+                minutos: d.minutos,
+                precio: d.precio,
+                tipo: d.tipo,
+                sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+                fotos: d.imagen ? [d.imagen.previewUrl] : item.fotos,
+              }
+            : item,
+        ),
+      );
       return { ok: true };
     }
-    const resultado = await this.actualizar('productos', id, { nombre: d.nombre, descripcion: d.descripcion, tipo: d.tipo, sector: d.tipo === 'plato' ? 'cocina' : 'bar', precio: d.precio, tiempo_elaboracion_min: d.minutos });
+    const resultado = await this.actualizar('productos', id, {
+      nombre: d.nombre,
+      descripcion: d.descripcion,
+      tipo: d.tipo,
+      sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+      precio: d.precio,
+      tiempo_elaboracion_min: d.minutos,
+    });
     if (!resultado.ok || !d.imagen) return resultado;
     return this.guardarImagenProducto(id, d.imagen);
   }
@@ -223,20 +371,60 @@ export class OperacionService {
       this.mock.eliminarEmpleado(id);
       return { ok: true };
     }
-    const resultado = await this.cliente.from('usuarios').delete().eq('id', id);
-    return resultado.error ? this.fallo('eliminar el empleado', resultado.error) : (await this.cargar(), { ok: true });
+    /**
+     * LA BAJA PASA POR UNA EDGE FUNCTION, NO POR UN `delete` DE ACÁ.
+     *
+     * Lo que había antes era esto:
+     *
+     *     await this.cliente.from('usuarios').delete().eq('id', id);
+     *
+     * y no borraba nada. En el esquema no hay una sola política
+     * `for delete`, así que RLS lo deniega; pero PostgREST no devuelve
+     * error, devuelve éxito con cero filas. Como acá solo se miraba
+     * `resultado.error`, la aplicación decía «empleado eliminado» y el
+     * empleado seguía ahí.
+     *
+     * Además, aunque hubiera política, borrar `public.usuarios` dejaría
+     * la cuenta de `auth.users` huérfana: el correo y el DNI quedarían
+     * ocupados para siempre. La función borra la cuenta de Auth, y la
+     * fila del legajo se va sola por el `on delete cascade`.
+     */
+    const { data, error } = await this.cliente.functions.invoke('eliminar-empleado', {
+      body: { id },
+    });
+
+    if (error) {
+      return { ok: false, error: await this.mensajeDeLaFuncion(error) };
+    }
+
+    await this.recargarUsuarios();
+
+    const aviso = (data as { aviso?: string })?.aviso;
+    return aviso ? { ok: true, aviso } : { ok: true };
   }
 
-  private async guardarImagenProducto(id: string, imagen?: AltaProductoDemo['imagen']): Promise<Resultado> {
+  private async guardarImagenProducto(
+    id: string,
+    imagen?: AltaProductoDemo['imagen'],
+  ): Promise<Resultado> {
     if (!this.cliente || !imagen) return { ok: true };
     try {
       const archivo = await this.comprimirImagen(imagen.file);
       const ruta = `${id}/${crypto.randomUUID()}.webp`;
-      const subida = await this.cliente.storage.from('fotos-productos').upload(ruta, archivo, { contentType: 'image/webp', cacheControl: '31536000', upsert: false });
+      const subida = await this.cliente.storage
+        .from('fotos-productos')
+        .upload(ruta, archivo, {
+          contentType: 'image/webp',
+          cacheControl: '31536000',
+          upsert: false,
+        });
       if (subida.error) return { ok: false, error: 'No se pudo almacenar la imagen del producto.' };
       const url = this.cliente.storage.from('fotos-productos').getPublicUrl(ruta).data.publicUrl;
-      const foto = await this.cliente.from('producto_fotos').upsert({ producto_id: id, url, orden: 1 }, { onConflict: 'producto_id,orden' });
-      if (foto.error) return { ok: false, error: 'La imagen se subió, pero no se pudo asociar al producto.' };
+      const foto = await this.cliente
+        .from('producto_fotos')
+        .upsert({ producto_id: id, url, orden: 1 }, { onConflict: 'producto_id,orden' });
+      if (foto.error)
+        return { ok: false, error: 'La imagen se subió, pero no se pudo asociar al producto.' };
       await this.cargar();
       return { ok: true };
     } catch {
@@ -253,11 +441,21 @@ export class OperacionService {
     canvas.height = Math.max(1, Math.round(bitmap.height * escala));
     canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
-    return new Promise((resolve, reject) => canvas.toBlob((salida) => salida ? resolve(salida) : reject(new Error('compresión fallida')), 'image/webp', 0.82));
+    return new Promise((resolve, reject) =>
+      canvas.toBlob(
+        (salida) => (salida ? resolve(salida) : reject(new Error('compresión fallida'))),
+        'image/webp',
+        0.82,
+      ),
+    );
   }
   async registrarMesa(d: AltaMesaDemo): Promise<Resultado> {
     if (!this.cliente) return { ok: this.mock.registrarMesa(d) };
-    return this.insertar('mesas', { numero: d.numero, cantidad_comensales: d.comensales, tipo: this.tipoMesa(d.tipo) });
+    return this.insertar('mesas', {
+      numero: d.numero,
+      cantidad_comensales: d.comensales,
+      tipo: this.tipoMesa(d.tipo),
+    });
   }
   async registrarCliente(d: AltaClienteDemo): Promise<Resultado> {
     // La creación de auth.users requiere service_role, que nunca se expone al navegador.
@@ -266,104 +464,562 @@ export class OperacionService {
     return { ok: true };
   }
   async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<Resultado> {
-    if (!this.cliente) { this.mock.resolverCliente(id, estado); return { ok: true }; }
+    if (!this.cliente) {
+      this.mock.resolverCliente(id, estado);
+      return { ok: true };
+    }
     return this.actualizar('usuarios', id, { estado });
   }
   async cambiarDisponibilidadMesa(numero: number): Promise<Resultado> {
-    if (!this.cliente) { this.mock.cambiarDisponibilidadMesa(numero); return { ok: true }; }
+    if (!this.cliente) {
+      this.mock.cambiarDisponibilidadMesa(numero);
+      return { ok: true };
+    }
     const mesa = this.mesas().find((m) => m.numero === numero);
-    return mesa ? this.actualizar('mesas', mesa.id, { estado: mesa.disponible ? 'ocupada' : 'libre' }) : { ok: false, error: 'Mesa inexistente.' };
+    return mesa
+      ? this.actualizar('mesas', mesa.id, { estado: mesa.disponible ? 'ocupada' : 'libre' })
+      : { ok: false, error: 'Mesa inexistente.' };
   }
   async anotarEnEspera(nombre: string): Promise<Resultado> {
-    if (!this.cliente) { this.mock.anotarEnEspera(nombre); return { ok: true }; }
+    if (!this.cliente) {
+      this.mock.anotarEnEspera(nombre);
+      return { ok: true };
+    }
     const id = this.sesion.usuario()?.id;
-    return id ? this.insertar('lista_espera', { cliente_id: id }) : { ok: false, error: 'No hay sesión activa.' };
+    return id
+      ? this.insertar('lista_espera', { cliente_id: id })
+      : { ok: false, error: 'No hay sesión activa.' };
   }
   async eliminarDeEspera(id: string): Promise<Resultado> {
-    if (!this.cliente) { this.mock.eliminarDeEspera(id); return { ok: true }; }
-    return this.actualizar('lista_espera', id, { estado: 'eliminado', mesa_id: null, asignado_en: null });
+    if (!this.cliente) {
+      this.mock.eliminarDeEspera(id);
+      return { ok: true };
+    }
+    return this.actualizar('lista_espera', id, {
+      estado: 'eliminado',
+      mesa_id: null,
+      asignado_en: null,
+    });
   }
   async asignarMesa(idEspera: string, numero: number): Promise<Resultado> {
     if (!this.cliente) return { ok: this.mock.asignarMesa(idEspera, numero) };
     const mesa = this.mesas().find((m) => m.numero === numero);
     if (!mesa || !mesa.disponible) return { ok: false, error: 'Esa mesa no está disponible.' };
-    const r = await this.actualizar('lista_espera', idEspera, { estado: 'asignado', mesa_id: mesa.id, asignado_en: new Date().toISOString() });
+    const r = await this.actualizar('lista_espera', idEspera, {
+      estado: 'asignado',
+      mesa_id: mesa.id,
+      asignado_en: new Date().toISOString(),
+    });
     if (!r.ok) return r;
     await this.actualizar('mesas', mesa.id, { estado: 'ocupada' });
     const espera = this.espera().find((e) => e.id === idEspera);
     const clienteId = espera ? this.clientePorEspera.get(espera.id) : undefined;
-    if (clienteId) await this.insertar('sesiones_mesa', { mesa_id: mesa.id, cliente_id: clienteId, comensales: mesa.comensales });
+    if (clienteId)
+      await this.insertar('sesiones_mesa', {
+        mesa_id: mesa.id,
+        cliente_id: clienteId,
+        comensales: mesa.comensales,
+      });
     return { ok: true };
   }
-  vincularMesa(numero: number): boolean { return this.mesaVinculada() === numero; }
-  agregarAlCarrito(p: ProductoDemo): void { this.carrito.update((items) => { const old = items.find((i) => i.productoId === p.id); return old ? items.map((i) => i.productoId === p.id ? { ...i, cantidad: i.cantidad + 1 } : i) : [...items, { productoId: p.id, nombre: p.nombre, cantidad: 1, precio: p.precio, sector: p.sector, minutos: p.minutos }]; }); }
-  quitarDelCarrito(id: string): void { this.carrito.update((items) => items.map((i) => i.productoId === id ? { ...i, cantidad: i.cantidad - 1 } : i).filter((i) => i.cantidad > 0)); }
+  vincularMesa(numero: number): boolean {
+    return this.mesaVinculada() === numero;
+  }
+  agregarAlCarrito(p: ProductoDemo): void {
+    this.carrito.update((items) => {
+      const old = items.find((i) => i.productoId === p.id);
+      return old
+        ? items.map((i) => (i.productoId === p.id ? { ...i, cantidad: i.cantidad + 1 } : i))
+        : [
+            ...items,
+            {
+              productoId: p.id,
+              nombre: p.nombre,
+              cantidad: 1,
+              precio: p.precio,
+              sector: p.sector,
+              minutos: p.minutos,
+            },
+          ];
+    });
+  }
+  quitarDelCarrito(id: string): void {
+    this.carrito.update((items) =>
+      items
+        .map((i) => (i.productoId === id ? { ...i, cantidad: i.cantidad - 1 } : i))
+        .filter((i) => i.cantidad > 0),
+    );
+  }
   async enviarPedido(): Promise<Resultado> {
-    if (!this.cliente) { const u = this.sesion.usuario(); return { ok: this.mock.enviarPedido(u ? `${u.nombres} ${u.apellidos}` : 'Cliente', this.mesaVinculada() ?? 2) }; }
-    if (!this.sesionActiva || !this.carrito().length) return { ok: false, error: 'No hay mesa o productos seleccionados.' };
-    const p = await this.insertarConFila('pedidos', { sesion_mesa_id: this.sesionActiva.id, estado: 'pendiente_confirmacion' });
+    if (!this.cliente) {
+      const u = this.sesion.usuario();
+      return {
+        ok: this.mock.enviarPedido(
+          u ? `${u.nombres} ${u.apellidos}` : 'Cliente',
+          this.mesaVinculada() ?? 2,
+        ),
+      };
+    }
+    if (!this.sesionActiva || !this.carrito().length)
+      return { ok: false, error: 'No hay mesa o productos seleccionados.' };
+    const p = await this.insertarConFila('pedidos', {
+      sesion_mesa_id: this.sesionActiva.id,
+      estado: 'pendiente_confirmacion',
+    });
     const pedidoCreado = p.fila;
     if (!p.ok || !pedidoCreado) return p;
-    const items = this.carrito().map((i) => ({ pedido_id: pedidoCreado.id, producto_id: i.productoId, cantidad: i.cantidad, precio_unitario: i.precio, sector: i.sector }));
-    const { error } = await this.cliente.from('pedido_items').insert(items); if (error) return this.fallo('crear ítems del pedido', error);
-    this.carrito.set([]); await this.cargarPedidoYCuenta(); return { ok: true };
+    const items = this.carrito().map((i) => ({
+      pedido_id: pedidoCreado.id,
+      producto_id: i.productoId,
+      cantidad: i.cantidad,
+      precio_unitario: i.precio,
+      sector: i.sector,
+    }));
+    const { error } = await this.cliente.from('pedido_items').insert(items);
+    if (error) return this.fallo('crear ítems del pedido', error);
+    this.carrito.set([]);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
   }
-  async rechazarPedido(motivo: string): Promise<Resultado> { return this.cambiarEstadoPedido('rechazado', { motivo_rechazo: motivo }); }
-  async confirmarPedido(): Promise<Resultado> { return this.cambiarEstadoPedido('confirmado', { motivo_rechazo: null }); }
+  async rechazarPedido(motivo: string): Promise<Resultado> {
+    return this.cambiarEstadoPedido('rechazado', { motivo_rechazo: motivo });
+  }
+  async confirmarPedido(): Promise<Resultado> {
+    return this.cambiarEstadoPedido('confirmado', { motivo_rechazo: null });
+  }
   async marcarSectorListo(sector: SectorProducto): Promise<Resultado> {
-    if (!this.cliente) { this.mock.marcarSectorListo(sector); return { ok: true }; }
+    if (!this.cliente) {
+      this.mock.marcarSectorListo(sector);
+      return { ok: true };
+    }
     if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
-    const { error } = await this.cliente.from('pedido_items').update({ estado: 'listo', listo_en: new Date().toISOString() }).eq('pedido_id', this.pedidoReal.id).eq('sector', sector);
-    if (error) return this.fallo('marcar sector listo', error); await this.cargarPedidoYCuenta(); return { ok: true };
+    const { error } = await this.cliente
+      .from('pedido_items')
+      .update({ estado: 'listo', listo_en: new Date().toISOString() })
+      .eq('pedido_id', this.pedidoReal.id)
+      .eq('sector', sector);
+    if (error) return this.fallo('marcar sector listo', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
   }
-  async marcarEntregado(): Promise<Resultado> { return this.cambiarEstadoPedido('entregado'); }
-  async confirmarRecepcion(): Promise<Resultado> { return this.cambiarEstadoPedido('recibido'); }
+  async marcarEntregado(): Promise<Resultado> {
+    return this.cambiarEstadoPedido('entregado');
+  }
+  async confirmarRecepcion(): Promise<Resultado> {
+    return this.cambiarEstadoPedido('recibido');
+  }
   async agregarMensaje(autor: string, texto: string, propio: boolean): Promise<Resultado> {
-    if (!this.cliente) { this.mock.agregarMensaje(autor, texto, propio); return { ok: true }; }
-    return this.sesionActiva && this.sesion.usuario() ? this.insertar('mensajes', { sesion_mesa_id: this.sesionActiva.id, autor_id: this.sesion.usuario()!.id, tipo: propio ? 'consulta' : 'respuesta', cuerpo: texto }) : { ok: false, error: 'No hay estadía activa.' };
+    if (!this.cliente) {
+      this.mock.agregarMensaje(autor, texto, propio);
+      return { ok: true };
+    }
+    return this.sesionActiva && this.sesion.usuario()
+      ? this.insertar('mensajes', {
+          sesion_mesa_id: this.sesionActiva.id,
+          autor_id: this.sesion.usuario()!.id,
+          tipo: propio ? 'consulta' : 'respuesta',
+          cuerpo: texto,
+        })
+      : { ok: false, error: 'No hay estadía activa.' };
   }
-  async jugar(id: string, gano: boolean): Promise<{ ok: boolean; intento: number; descuento: number }> {
-    if (!this.cliente) { const intento = this.mock.jugar(id, gano); return { ok: true, intento, descuento: this.mock.descuento() }; }
-    if (!this.sesionActiva || this.sesion.usuario()?.perfil !== 'cliente_registrado') return { ok: false, intento: 0, descuento: 0 };
-    const { data: juego } = await this.cliente.from('juegos').select('*').ilike('nombre', `%${id}%`).maybeSingle();
+  async jugar(
+    id: string,
+    gano: boolean,
+  ): Promise<{ ok: boolean; intento: number; descuento: number }> {
+    if (!this.cliente) {
+      const intento = this.mock.jugar(id, gano);
+      return { ok: true, intento, descuento: this.mock.descuento() };
+    }
+    if (!this.sesionActiva || this.sesion.usuario()?.perfil !== 'cliente_registrado')
+      return { ok: false, intento: 0, descuento: 0 };
+    const { data: juego } = await this.cliente
+      .from('juegos')
+      .select('*')
+      .ilike('nombre', `%${id}%`)
+      .maybeSingle();
     if (!juego) return { ok: false, intento: 0, descuento: 0 };
-    const { count } = await this.cliente.from('partidas_juego').select('*', { count: 'exact', head: true }).eq('sesion_mesa_id', this.sesionActiva.id).eq('juego_id', juego.id);
-    const intento = (count ?? 0) + 1; const descuento = gano && intento === 1 ? juego.porcentaje_descuento : 0;
-    const r = await this.insertar('partidas_juego', { juego_id: juego.id, sesion_mesa_id: this.sesionActiva.id, cliente_id: this.sesion.usuario()!.id, intento, gano, descuento_otorgado: descuento });
-    if (r.ok && descuento) this.descuento.set(descuento); return { ok: r.ok, intento, descuento: this.descuento() };
+    const { count } = await this.cliente
+      .from('partidas_juego')
+      .select('*', { count: 'exact', head: true })
+      .eq('sesion_mesa_id', this.sesionActiva.id)
+      .eq('juego_id', juego.id);
+    const intento = (count ?? 0) + 1;
+    const descuento = gano && intento === 1 ? juego.porcentaje_descuento : 0;
+    const r = await this.insertar('partidas_juego', {
+      juego_id: juego.id,
+      sesion_mesa_id: this.sesionActiva.id,
+      cliente_id: this.sesion.usuario()!.id,
+      intento,
+      gano,
+      descuento_otorgado: descuento,
+    });
+    if (r.ok && descuento) this.descuento.set(descuento);
+    return { ok: r.ok, intento, descuento: this.descuento() };
   }
-  seleccionarPropina(p: number): void { this.porcentajePropina.set(p); }
-  async registrarEncuesta(): Promise<Resultado> { if (!this.cliente) { return { ok: this.mock.registrarEncuesta() }; } return this.sesionActiva && this.sesion.usuario() ? this.insertar('encuestas', { sesion_mesa_id: this.sesionActiva.id, cliente_id: this.sesion.usuario()!.id }) : { ok: false, error: 'No hay estadía activa.' }; }
+  seleccionarPropina(p: number): void {
+    this.porcentajePropina.set(p);
+  }
+  async registrarEncuesta(): Promise<Resultado> {
+    if (!this.cliente) {
+      return { ok: this.mock.registrarEncuesta() };
+    }
+    return this.sesionActiva && this.sesion.usuario()
+      ? this.insertar('encuestas', {
+          sesion_mesa_id: this.sesionActiva.id,
+          cliente_id: this.sesion.usuario()!.id,
+        })
+      : { ok: false, error: 'No hay estadía activa.' };
+  }
   async generarCuenta(): Promise<Resultado> {
-    if (!this.cliente) return { ok: this.mock.generarCuenta() }; const p = this.porcentajePropina();
-    if (!this.sesionActiva || p === null) return { ok: false, error: 'Seleccioná una propina antes de generar la cuenta.' };
-    const calculo = await this.cliente.rpc('calcular_cuenta', { p_sesion_id: this.sesionActiva.id }); if (calculo.error || !calculo.data?.[0]) return this.fallo('calcular la cuenta', calculo.error);
-    const c = calculo.data[0]; const propina = Math.round((c.base * p) / 100); const nivel = ({ 20: 'excelente', 15: 'muy_bueno', 10: 'bueno', 5: 'regular', 0: 'malo' } as const)[p as 0 | 5 | 10 | 15 | 20];
-    const r = await this.insertar('cuentas', { sesion_mesa_id: this.sesionActiva.id, subtotal: c.subtotal, descuento_pct: c.descuento_pct, descuento_monto: c.descuento_monto, nivel_propina: nivel, propina_pct: p, propina_monto: propina, total: c.base + propina }); if (r.ok) await this.cargarPedidoYCuenta(); return r;
+    if (!this.cliente) return { ok: this.mock.generarCuenta() };
+    const p = this.porcentajePropina();
+    if (!this.sesionActiva || p === null)
+      return { ok: false, error: 'Seleccioná una propina antes de generar la cuenta.' };
+    const calculo = await this.cliente.rpc('calcular_cuenta', {
+      p_sesion_id: this.sesionActiva.id,
+    });
+    if (calculo.error || !calculo.data?.[0]) return this.fallo('calcular la cuenta', calculo.error);
+    const c = calculo.data[0];
+    const propina = Math.round((c.base * p) / 100);
+    const nivel = (
+      { 20: 'excelente', 15: 'muy_bueno', 10: 'bueno', 5: 'regular', 0: 'malo' } as const
+    )[p as 0 | 5 | 10 | 15 | 20];
+    const r = await this.insertar('cuentas', {
+      sesion_mesa_id: this.sesionActiva.id,
+      subtotal: c.subtotal,
+      descuento_pct: c.descuento_pct,
+      descuento_monto: c.descuento_monto,
+      nivel_propina: nivel,
+      propina_pct: p,
+      propina_monto: propina,
+      total: c.base + propina,
+    });
+    if (r.ok) await this.cargarPedidoYCuenta();
+    return r;
   }
-  async pagarCuenta(): Promise<Resultado> { return this.actualizarCuenta('pagada'); }
-  async confirmarPago(): Promise<Resultado> { return this.actualizarCuenta('confirmada'); }
+  async pagarCuenta(): Promise<Resultado> {
+    return this.actualizarCuenta('pagada');
+  }
+  async confirmarPago(): Promise<Resultado> {
+    return this.actualizarCuenta('confirmada');
+  }
 
-  private async cambiarEstadoPedido(estado: 'rechazado' | 'confirmado' | 'entregado' | 'recibido', extra: Record<string, unknown> = {}): Promise<Resultado> { if (!this.cliente) { if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? '')); else if (estado === 'confirmado') this.mock.confirmarPedido(); else if (estado === 'entregado') this.mock.marcarEntregado(); else this.mock.confirmarRecepcion(); return { ok: true }; } if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' }; if (estado === 'recibido') return this.actualizar('pedidos', this.pedidoReal.id, { recibido_en: new Date().toISOString() }); return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra }); }
-  private async actualizarCuenta(estado: 'pagada' | 'confirmada'): Promise<Resultado> { if (!this.cliente) { if (estado === 'pagada') this.mock.pagarCuenta(); else this.mock.confirmarPago(); return { ok: true }; } const c = this.cuentaReal; return c ? this.actualizar('cuentas', c.id, { estado, ...(estado === 'pagada' ? { pagada_en: new Date().toISOString() } : { confirmada_en: new Date().toISOString() }) }) : { ok: false, error: 'No hay cuenta activa.' }; }
-  private async cargarPedidoYCuenta(): Promise<void> { if (!this.cliente || !this.sesionActiva) return; const q = await this.cliente.from('pedidos').select('*').eq('sesion_mesa_id', this.sesionActiva.id).order('creado_en', { ascending: false }).limit(1).maybeSingle(); if (q.error) { this.registrarError('cargar pedido', q.error); return; } this.pedidoReal = q.data; if (q.data) { const i = await this.cliente.from('pedido_items').select('*').eq('pedido_id', q.data.id); this.pedidoActivo.set(this.aPedido(q.data, i.data ?? [])); } const c = await this.cliente.from('cuentas').select('*').eq('sesion_mesa_id', this.sesionActiva.id).maybeSingle(); this.cuentaReal = c.data; if (!c.error) this.cuenta.set(c.data ? { subtotal: c.data.subtotal, descuento: c.data.descuento_monto, porcentajePropina: c.data.propina_pct ?? 0, propina: c.data.propina_monto, total: c.data.total, estado: c.data.estado === 'pendiente' ? 'pendiente_pago' : c.data.estado } : null); }
-  private suscribirRealtime(): void { if (!this.cliente || this.canal) return; this.canal = this.cliente.channel('operacion-compartida').on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'lista_espera' }, () => void this.cargar()).on('postgres_changes', { event: '*', schema: 'public', table: 'mensajes' }, () => void this.cargar()).subscribe(); }
-  private cargarUsuarios(filas: Tablas<'usuarios'>[], actual: Usuario): void { this.empleados.set(filas.filter((f) => ['cocinero', 'cantinero', 'mozo'].includes(f.perfil)).map(this.aUsuario)); this.clientes.set(filas.filter((f) => ['cliente_registrado', 'cliente_anonimo'].includes(f.perfil)).map((f) => ({ id: f.id, nombres: f.nombres, apellidos: f.apellidos ?? '', dni: f.dni ?? '', correo: f.correo ?? '', foto: f.foto_url ?? 'imagenes/logo.png', estado: f.estado }))); if (!this.empleados().some((e) => e.id === actual.id) && actual.perfil !== 'dueno') this.empleados.update((e) => [...e, actual]); }
-  private async cargarEspera(filas: Tablas<'lista_espera'>[]): Promise<void> { const ids = filas.map((f) => f.cliente_id); if (!this.cliente || !ids.length) { this.espera.set([]); return; } const { data } = await this.cliente.from('usuarios').select('*').in('id', ids); const usuarios = new Map((data ?? []).map((u) => [u.id, u])); this.clientePorEspera.clear(); for (const f of filas) this.clientePorEspera.set(f.id, f.cliente_id); this.espera.set(filas.map((f) => ({ id: f.id, nombre: `${usuarios.get(f.cliente_id)?.nombres ?? 'Cliente'} ${usuarios.get(f.cliente_id)?.apellidos ?? ''}`.trim(), foto: usuarios.get(f.cliente_id)?.foto_url ?? 'imagenes/logo.png', fecha: new Date(f.creado_en).toLocaleString('es-AR'), mesaAsignada: this.mesas().find((m) => m.id === f.mesa_id)?.numero }))); }
-  private elegirSesion(s: Sesion[], u: Usuario): Sesion | null { return s.find((x) => x.cliente_id === u.id) ?? s[0] ?? null; }
-  private aProducto(p: Producto, fotos: string[]): ProductoDemo { return { id: p.id, nombre: p.nombre, descripcion: p.descripcion, tipo: p.tipo as TipoProducto, sector: p.sector, precio: Number(p.precio), minutos: p.tiempo_elaboracion_min, fotos: fotos.length ? fotos : ['imagenes/logo.png'] }; }
-  private aMesa(m: Tablas<'mesas'>): MesaDemo { return { id: m.id, numero: m.numero, comensales: m.cantidad_comensales, tipo: this.tipoDemo(m.tipo), disponible: m.estado === 'libre', qrToken: m.qr_token }; }
-  private aUsuario(f: Tablas<'usuarios'>): Usuario { return { id: f.id, nombres: f.nombres, apellidos: f.apellidos ?? '', correo: f.correo ?? '', perfil: f.perfil, etiquetaPerfil: etiquetaDePerfil(f.perfil), estado: f.estado, fotoUrl: f.foto_url }; }
-  private aPedido(p: Pedido, items: Item[]): PedidoDemo { const estado = p.estado === 'entregado' && p.recibido_en !== null ? 'recibido' : p.estado === 'pagado' ? 'recibido' : p.estado as EstadoPedido; return { id: p.id, mesa: this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0, cliente: 'Cliente de la mesa', creadoEn: new Date(p.creado_en).toLocaleString('es-AR'), items: items.map((i) => ({ productoId: i.producto_id, nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto', cantidad: i.cantidad, precio: Number(i.precio_unitario), sector: i.sector, minutos: this.productosPorId.get(i.producto_id)?.tiempo_elaboracion_min ?? 0 })), estado, motivoRechazo: p.motivo_rechazo ?? '', descuentoPorJuego: this.descuento(), sectoresListos: { cocina: items.filter((i) => i.sector === 'cocina').every((i) => i.estado === 'listo'), bar: items.filter((i) => i.sector === 'bar').every((i) => i.estado === 'listo') } }; }
-  private aMensaje(m: Tablas<'mensajes'>, id: string): MensajeDemo { return { id: m.id, autor: m.autor_id === id ? 'Vos' : 'Equipo TUMBO', texto: m.cuerpo, fecha: new Date(m.enviado_en).toLocaleString('es-AR'), esPropio: m.autor_id === id }; }
-  private aNotificacion = (n: Tablas<'notificaciones'>): NotificacionDemo => ({ id: n.id, mensaje: n.cuerpo, fecha: new Date(n.enviada_en).toLocaleString('es-AR'), destinatarios: [] });
-  private tipoMesa(t: TipoMesa): Tablas<'mesas'>['tipo'] { return t === 'VIP' ? 'vip' : t === 'estándar' ? 'estandar' : 'movilidad_reducida'; }
-  private tipoDemo(t: Tablas<'mesas'>['tipo']): TipoMesa { return t === 'vip' ? 'VIP' : t === 'estandar' ? 'estándar' : 'movilidad_reducida'; }
-  private pedidoVacio(): PedidoDemo { return { id: '', mesa: 0, cliente: 'Sin pedido activo', creadoEn: '', items: [], estado: 'pendiente_confirmacion', motivoRechazo: '', descuentoPorJuego: 0, sectoresListos: { cocina: false, bar: false } }; }
-  private validar(error: unknown, recurso: string): void { if (error) this.registrarError(`cargar ${recurso}`, error); }
-  private async insertar<T extends keyof import('../models/base-de-datos').Database['public']['Tables']>(tabla: T, fila: import('../models/base-de-datos').Database['public']['Tables'][T]['Insert']): Promise<Resultado> { const r = await this.insertarConFila(tabla, fila); return { ok: r.ok, error: r.error }; }
-  private async insertarConFila<T extends keyof import('../models/base-de-datos').Database['public']['Tables']>(tabla: T, fila: import('../models/base-de-datos').Database['public']['Tables'][T]['Insert']): Promise<{ ok: boolean; fila?: Tablas<T>; error?: string }> { if (!this.cliente) return { ok: false }; const r = await this.cliente.from(tabla).insert(fila).select().single(); return r.error || !r.data ? { ok: false, error: this.fallo('guardar datos', r.error).error } : { ok: true, fila: r.data as Tablas<T> }; }
-  private async actualizar<T extends keyof import('../models/base-de-datos').Database['public']['Tables']>(tabla: T, id: string, cambios: import('../models/base-de-datos').Database['public']['Tables'][T]['Update']): Promise<Resultado> { if (!this.cliente) return { ok: false }; const r = await this.cliente.from(tabla).update(cambios).eq('id', id); return r.error ? this.fallo(`actualizar ${String(tabla)}`, r.error) : { ok: true }; }
-  private fallo(accion: string, error: unknown): Resultado { this.registrarError(accion, error); const mensaje = typeof error === 'object' && error && 'message' in error ? String((error as { message: unknown }).message) : ''; return { ok: false, error: mensaje.toLowerCase().includes('row-level') ? 'No tenés permisos para realizar esta operación.' : `No se pudo ${accion}. Revisá la conexión e intentá nuevamente.` }; }
-  private registrarError(accion: string, error: unknown): void { console.error(`[TUMBO] Error al ${accion}`, error); }
+  private async cambiarEstadoPedido(
+    estado: 'rechazado' | 'confirmado' | 'entregado' | 'recibido',
+    extra: Record<string, unknown> = {},
+  ): Promise<Resultado> {
+    if (!this.cliente) {
+      if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? ''));
+      else if (estado === 'confirmado') this.mock.confirmarPedido();
+      else if (estado === 'entregado') this.mock.marcarEntregado();
+      else this.mock.confirmarRecepcion();
+      return { ok: true };
+    }
+    if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
+    if (estado === 'recibido')
+      return this.actualizar('pedidos', this.pedidoReal.id, {
+        recibido_en: new Date().toISOString(),
+      });
+    return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra });
+  }
+  private async actualizarCuenta(estado: 'pagada' | 'confirmada'): Promise<Resultado> {
+    if (!this.cliente) {
+      if (estado === 'pagada') this.mock.pagarCuenta();
+      else this.mock.confirmarPago();
+      return { ok: true };
+    }
+    const c = this.cuentaReal;
+    return c
+      ? this.actualizar('cuentas', c.id, {
+          estado,
+          ...(estado === 'pagada'
+            ? { pagada_en: new Date().toISOString() }
+            : { confirmada_en: new Date().toISOString() }),
+        })
+      : { ok: false, error: 'No hay cuenta activa.' };
+  }
+  private async cargarPedidoYCuenta(): Promise<void> {
+    if (!this.cliente || !this.sesionActiva) return;
+    const q = await this.cliente
+      .from('pedidos')
+      .select('*')
+      .eq('sesion_mesa_id', this.sesionActiva.id)
+      .order('creado_en', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (q.error) {
+      this.registrarError('cargar pedido', q.error);
+      return;
+    }
+    this.pedidoReal = q.data;
+    if (q.data) {
+      const i = await this.cliente.from('pedido_items').select('*').eq('pedido_id', q.data.id);
+      this.pedidoActivo.set(this.aPedido(q.data, i.data ?? []));
+    }
+    const c = await this.cliente
+      .from('cuentas')
+      .select('*')
+      .eq('sesion_mesa_id', this.sesionActiva.id)
+      .maybeSingle();
+    this.cuentaReal = c.data;
+    if (!c.error)
+      this.cuenta.set(
+        c.data
+          ? {
+              subtotal: c.data.subtotal,
+              descuento: c.data.descuento_monto,
+              porcentajePropina: c.data.propina_pct ?? 0,
+              propina: c.data.propina_monto,
+              total: c.data.total,
+              estado: c.data.estado === 'pendiente' ? 'pendiente_pago' : c.data.estado,
+            }
+          : null,
+      );
+  }
+  private suscribirRealtime(): void {
+    if (!this.cliente || this.canal) return;
+    this.canal = this.cliente
+      .channel('operacion-compartida')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'mesas' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pedidos' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pedido_items' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lista_espera' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'mensajes' },
+        () => void this.cargar(),
+      )
+      .subscribe();
+  }
+  /**
+   * Vuelve a leer SOLO la lista de personas.
+   *
+   * POR QUÉ NO SE LLAMA A `cargar()`
+   * `cargar()` recarga el mundo entero: productos, fotos, mesas,
+   * usuarios, lista de espera, sesiones, mensajes y notificaciones, y
+   * después encadena la espera, el pedido, sus ítems y la cuenta. Son
+   * hasta cinco idas y vueltas al servidor, una atrás de otra.
+   *
+   * Después de dar de alta a un empleado lo único que cambió es la
+   * tabla de usuarios. Pagar la recarga completa ahí es lo que hacía
+   * que el botón de confirmar se quedara pensando varios segundos.
+   */
+  private async recargarUsuarios(): Promise<void> {
+    if (!this.cliente) return;
+
+    const usuario = this.sesion.usuario();
+    if (!usuario) return;
+
+    const { data } = await this.cliente.from('usuarios').select('*').order('apellidos');
+    if (data) this.cargarUsuarios(data, usuario);
+  }
+
+  private cargarUsuarios(filas: Tablas<'usuarios'>[], actual: Usuario): void {
+    this.empleados.set(
+      filas.filter((f) => PERFILES_DE_EMPLEADO.includes(f.perfil)).map(this.aUsuario),
+    );
+    this.clientes.set(
+      filas
+        .filter((f) => ['cliente_registrado', 'cliente_anonimo'].includes(f.perfil))
+        .map((f) => ({
+          id: f.id,
+          nombres: f.nombres,
+          apellidos: f.apellidos ?? '',
+          dni: f.dni ?? '',
+          correo: f.correo ?? '',
+          foto: f.foto_url ?? 'imagenes/logo.png',
+          estado: f.estado,
+        })),
+    );
+    if (!this.empleados().some((e) => e.id === actual.id) && actual.perfil !== 'dueno')
+      this.empleados.update((e) => [...e, actual]);
+  }
+  private async cargarEspera(filas: Tablas<'lista_espera'>[]): Promise<void> {
+    const ids = filas.map((f) => f.cliente_id);
+    if (!this.cliente || !ids.length) {
+      this.espera.set([]);
+      return;
+    }
+    const { data } = await this.cliente.from('usuarios').select('*').in('id', ids);
+    const usuarios = new Map((data ?? []).map((u) => [u.id, u]));
+    this.clientePorEspera.clear();
+    for (const f of filas) this.clientePorEspera.set(f.id, f.cliente_id);
+    this.espera.set(
+      filas.map((f) => ({
+        id: f.id,
+        nombre:
+          `${usuarios.get(f.cliente_id)?.nombres ?? 'Cliente'} ${usuarios.get(f.cliente_id)?.apellidos ?? ''}`.trim(),
+        foto: usuarios.get(f.cliente_id)?.foto_url ?? 'imagenes/logo.png',
+        fecha: new Date(f.creado_en).toLocaleString('es-AR'),
+        mesaAsignada: this.mesas().find((m) => m.id === f.mesa_id)?.numero,
+      })),
+    );
+  }
+  private elegirSesion(s: Sesion[], u: Usuario): Sesion | null {
+    return s.find((x) => x.cliente_id === u.id) ?? s[0] ?? null;
+  }
+  private aProducto(p: Producto, fotos: string[]): ProductoDemo {
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      tipo: p.tipo as TipoProducto,
+      sector: p.sector,
+      precio: Number(p.precio),
+      minutos: p.tiempo_elaboracion_min,
+      fotos: fotos.length ? fotos : ['imagenes/logo.png'],
+    };
+  }
+  private aMesa(m: Tablas<'mesas'>): MesaDemo {
+    return {
+      id: m.id,
+      numero: m.numero,
+      comensales: m.cantidad_comensales,
+      tipo: this.tipoDemo(m.tipo),
+      disponible: m.estado === 'libre',
+      qrToken: m.qr_token,
+    };
+  }
+  private aUsuario(f: Tablas<'usuarios'>): Usuario {
+    return {
+      id: f.id,
+      nombres: f.nombres,
+      apellidos: f.apellidos ?? '',
+      correo: f.correo ?? '',
+      perfil: f.perfil,
+      etiquetaPerfil: etiquetaDePerfil(f.perfil),
+      estado: f.estado,
+      fotoUrl: f.foto_url,
+    };
+  }
+  private aPedido(p: Pedido, items: Item[]): PedidoDemo {
+    const estado =
+      p.estado === 'entregado' && p.recibido_en !== null
+        ? 'recibido'
+        : p.estado === 'pagado'
+          ? 'recibido'
+          : (p.estado as EstadoPedido);
+    return {
+      id: p.id,
+      mesa: this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0,
+      cliente: 'Cliente de la mesa',
+      creadoEn: new Date(p.creado_en).toLocaleString('es-AR'),
+      items: items.map((i) => ({
+        productoId: i.producto_id,
+        nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto',
+        cantidad: i.cantidad,
+        precio: Number(i.precio_unitario),
+        sector: i.sector,
+        minutos: this.productosPorId.get(i.producto_id)?.tiempo_elaboracion_min ?? 0,
+      })),
+      estado,
+      motivoRechazo: p.motivo_rechazo ?? '',
+      descuentoPorJuego: this.descuento(),
+      sectoresListos: {
+        cocina: items.filter((i) => i.sector === 'cocina').every((i) => i.estado === 'listo'),
+        bar: items.filter((i) => i.sector === 'bar').every((i) => i.estado === 'listo'),
+      },
+    };
+  }
+  private aMensaje(m: Tablas<'mensajes'>, id: string): MensajeDemo {
+    return {
+      id: m.id,
+      autor: m.autor_id === id ? 'Vos' : 'Equipo TUMBO',
+      texto: m.cuerpo,
+      fecha: new Date(m.enviado_en).toLocaleString('es-AR'),
+      esPropio: m.autor_id === id,
+    };
+  }
+  private aNotificacion = (n: Tablas<'notificaciones'>): NotificacionDemo => ({
+    id: n.id,
+    mensaje: n.cuerpo,
+    fecha: new Date(n.enviada_en).toLocaleString('es-AR'),
+    destinatarios: [],
+  });
+  private tipoMesa(t: TipoMesa): Tablas<'mesas'>['tipo'] {
+    return t === 'VIP' ? 'vip' : t === 'estándar' ? 'estandar' : 'movilidad_reducida';
+  }
+  private tipoDemo(t: Tablas<'mesas'>['tipo']): TipoMesa {
+    return t === 'vip' ? 'VIP' : t === 'estandar' ? 'estándar' : 'movilidad_reducida';
+  }
+  private pedidoVacio(): PedidoDemo {
+    return {
+      id: '',
+      mesa: 0,
+      cliente: 'Sin pedido activo',
+      creadoEn: '',
+      items: [],
+      estado: 'pendiente_confirmacion',
+      motivoRechazo: '',
+      descuentoPorJuego: 0,
+      sectoresListos: { cocina: false, bar: false },
+    };
+  }
+  private validar(error: unknown, recurso: string): void {
+    if (error) this.registrarError(`cargar ${recurso}`, error);
+  }
+  private async insertar<
+    T extends keyof import('../models/base-de-datos').Database['public']['Tables'],
+  >(
+    tabla: T,
+    fila: import('../models/base-de-datos').Database['public']['Tables'][T]['Insert'],
+  ): Promise<Resultado> {
+    const r = await this.insertarConFila(tabla, fila);
+    return { ok: r.ok, error: r.error };
+  }
+  private async insertarConFila<
+    T extends keyof import('../models/base-de-datos').Database['public']['Tables'],
+  >(
+    tabla: T,
+    fila: import('../models/base-de-datos').Database['public']['Tables'][T]['Insert'],
+  ): Promise<{ ok: boolean; fila?: Tablas<T>; error?: string }> {
+    if (!this.cliente) return { ok: false };
+    const r = await this.cliente.from(tabla).insert(fila).select().single();
+    return r.error || !r.data
+      ? { ok: false, error: this.fallo('guardar datos', r.error).error }
+      : { ok: true, fila: r.data as Tablas<T> };
+  }
+  private async actualizar<
+    T extends keyof import('../models/base-de-datos').Database['public']['Tables'],
+  >(
+    tabla: T,
+    id: string,
+    cambios: import('../models/base-de-datos').Database['public']['Tables'][T]['Update'],
+  ): Promise<Resultado> {
+    if (!this.cliente) return { ok: false };
+    const r = await this.cliente.from(tabla).update(cambios).eq('id', id);
+    return r.error ? this.fallo(`actualizar ${String(tabla)}`, r.error) : { ok: true };
+  }
+  private fallo(accion: string, error: unknown): Resultado {
+    this.registrarError(accion, error);
+    const mensaje =
+      typeof error === 'object' && error && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : '';
+    return {
+      ok: false,
+      error: mensaje.toLowerCase().includes('row-level')
+        ? 'No tenés permisos para realizar esta operación.'
+        : `No se pudo ${accion}. Revisá la conexión e intentá nuevamente.`,
+    };
+  }
+  private registrarError(accion: string, error: unknown): void {
+    console.error(`[TUMBO] Error al ${accion}`, error);
+  }
 }

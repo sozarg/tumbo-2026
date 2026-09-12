@@ -217,3 +217,19 @@ export const clavesCoinciden: ValidatorFn = (grupo) => {
   const repetida = grupo.get('repetirClave')?.value;
   return clave && repetida && clave !== repetida ? { clavesDistintas: true } : null;
 };
+
+/**
+ * La foto personal del empleado, que el punto 1 pide obligatoria.
+ *
+ * POR QUÉ ES UN VALIDADOR Y NO UNA COMPROBACIÓN AL ENVIAR
+ * Antes se miraba dentro de `registrarEmpleado`, o sea después de que la
+ * persona apretara Confirmar. Eso funcionaba, pero el formulario se
+ * consideraba «válido» sin foto: el cartel de confirmación se abría, y
+ * recién ahí aparecía el error. Como validador, la foto entra en el
+ * mismo `invalid` que el resto y el diálogo directamente no se abre.
+ *
+ * El valor no es texto sino el archivo con su vista previa, así que
+ * alcanza con preguntar si hay algo.
+ */
+export const fotoRequerida: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
+  control.value ? null : { fotoRequerida: true };

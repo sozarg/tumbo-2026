@@ -1576,6 +1576,60 @@ strong {
   justify-content: space-between;
   margin: 0 0 4px;
 }
+
+/*
+  La foto del empleado (punto 1). El recuadro mide lo mismo haya foto o
+  no: si creciera de golpe empujaría los campos justo cuando la persona
+  está mirando.
+*/
+.employee-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 168px;
+  border: 1px dashed #bac5d3;
+  border-radius: 12px;
+  background: var(--tumbo-azul-brillante);
+  padding: 12px;
+  text-align: center;
+}
+.employee-photo__preview {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  border: 3px solid var(--tumbo-amarillo-marca);
+  object-fit: cover;
+}
+.employee-photo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.employee-photo__note {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+/*
+  La espera de la baja ocupa el mismo lugar que el tachito, para que la
+  fila no se mueva ni cambie de alto mientras se procesa.
+*/
+.person-card__espera {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.employee-photo__error {
+  margin: 0;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 12px;
+  font-weight: 600;
+}
 .employee-form .form-title > ion-icon {
   display: none;
 }
