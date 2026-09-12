@@ -112,6 +112,14 @@ export interface AltaEmpleadoDemo {
    */
   readonly clave: string;
   readonly perfil: Extract<PerfilUsuario, 'metre' | 'mozo' | 'cocinero' | 'cantinero'>;
+  /**
+   * La foto personal, tomada con la cámara (punto 1).
+   *
+   * Es opcional en el tipo y obligatoria en el formulario. La diferencia
+   * es a propósito: el modo demostración no tiene dónde subirla, y el
+   * alta de demostración tiene que seguir funcionando sin cámara.
+   */
+  readonly foto?: FotoDePersona;
 }
 
 export interface AltaProductoDemo {
@@ -127,6 +135,15 @@ export interface ImagenProducto {
   readonly file: File;
   readonly previewUrl: string;
 }
+
+/**
+ * La foto de una persona, con la misma forma que la de un producto.
+ *
+ * Es un alias y no una interfaz nueva a propósito: si fueran dos tipos
+ * distintos con los mismos campos, el día que haya que cambiar uno
+ * alguien se va a olvidar del otro.
+ */
+export type FotoDePersona = ImagenProducto;
 
 export interface AltaMesaDemo {
   readonly numero: number;

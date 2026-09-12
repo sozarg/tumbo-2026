@@ -75,6 +75,10 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
     return 'El CUIL tiene que ser de 11 números, con guiones o sin ellos.';
   }
 
+  if (errores['fotoRequerida']) {
+    return 'Falta la foto personal: el alta la pide tomada con la cámara.';
+  }
+
   if (errores['soloNumeros']) {
     return `${El} solo puede tener números.`;
   }

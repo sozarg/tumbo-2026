@@ -27,9 +27,34 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!--
+            Pide que Google Play Services baje el lector de códigos al
+            INSTALAR la aplicación y no la primera vez que alguien toca el
+            botón.
+
+            Sin esto, el primer escaneo en un teléfono nuevo falla, el
+            servicio pide esperar unos segundos y volver a intentar. Eso
+            está contemplado en el código y muestra un mensaje claro, pero
+            es justo el momento en que uno menos quiere explicar por qué
+            la aplicación "no anda": mostrándola.
+        -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        Cámara: la foto del empleado y la lectura del DNI (punto 1).
+
+        `uses-feature` con `required="false"` es a propósito: sin eso,
+        Play Store esconde la aplicación en cualquier dispositivo sin
+        cámara y la instalación deja de ser posible. Que el permiso se
+        pida en el momento de usarlo ya lo maneja el plugin.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 </manifest>
