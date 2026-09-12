@@ -67,10 +67,38 @@ La plantilla ahora lee una señal. El control sigue siendo el que valida; lo ún
 
 Las tres fotos son obligatorias **en el alta** y no en la edición: ahí los lugares vacíos significan «esta no la cambié» y `guardarFotosDelProducto` los saltea. Sin eso, cambiarle el precio a un plato obligaba a volver a sacar las tres fotos.
 
+---
+
+### Tres bugs que aparecieron al probarlo, y que valen para todo el proyecto
+
+**1. La pantalla iba una foto atrasada, y después quedaba colgada.** Elegías una imagen del disco y no pasaba nada; apretabas cualquier botón —sonaba el audio que había quedado encolado— y recién ahí aparecía.
+
+La causa: **esta aplicación no usa `zone.js`**. No está en las dependencias ni en los polyfills, y en el navegador `window.Zone` es `undefined`: Angular corre en modo *zoneless*. Eso tiene dos consecuencias que conviene que sepa todo el equipo:
+
+- **`NgZone.run()` no hace nada acá.** Sin `zone.js` es un objeto vacío que ejecuta la función y se va. Un primer intento de arreglar esto con `NgZone.run` no cambió una coma del comportamiento.
+- **Escribir una señal no redibuja: agenda un redibujado**, y el planificador agenda con `requestAnimationFrame` compitiendo contra un `setTimeout`. Cuando se cierra el diálogo de archivos del sistema, la ventana queda sin foco y el navegador pausa `requestAnimationFrame` y estrangula los `setTimeout`. El redibujado espera hasta que algo devuelve el foco: el clic.
+
+La solución es `detectChanges()`, que no agenda: revisa la vista **ahora**, sincrónicamente. **Para cualquier pantalla que reciba datos de la cámara, del lector de QR o de cualquier puente nativo, este es el patrón a copiar** — está comentado largo en `operacion.component.ts` (`aplicarYRedibujar`).
+
+**2. La baja decía que sí y no borraba nada en pantalla.** Mismo patrón que la baja de empleado: un `update` que RLS deniega **no da error** en PostgREST, devuelve éxito con cero filas. Y además la lista nunca se recargaba, porque `productos` no está entre las tablas del canal de tiempo real. Ahora las tres escrituras pasan por un solo lugar que escribe, **comprueba** que haya filas afectadas y recarga.
+
+De yapa arregló algo que nadie había reportado: editar solo el precio tampoco se veía hasta recargar la página.
+
+**3. Faltaban los dos spinners.** El del alta estaba en la plantilla y nadie prendía la señal; el de la baja no existía. Ahora el de la baja sale **en la tarjeta** del producto que se está quitando.
+
+---
+
 ### Probado
 
-Con Playwright contra la aplicación corriendo: validaciones campo por campo, carga y reemplazo de las tres fotos, alta repetida rechazada con el nombre escrito distinto, alta nueva con el nombre normalizado, y edición sin volver a pedir las fotos. 12 pruebas nuevas en `operacion.service.spec.ts`.
+**Automático:** Playwright contra la aplicación corriendo — validaciones campo por campo, carga y reemplazo de las tres fotos, alta repetida rechazada con el nombre escrito distinto, alta nueva con el nombre normalizado, edición sin volver a pedir las fotos, y la baja sacando el producto de la lista. 12 pruebas nuevas en `operacion.service.spec.ts` (142 en total, todas en verde).
+
+**A mano, en el navegador contra Supabase:**
+
+- [x] Como **dueño**: alta, baja y edición
+- [x] Como **cocinero** (el perfil que pide el enunciado): las mismas tres
+- [x] Nombre repetido rechazado
+- [x] Desde un **cliente**, el plato nuevo aparece en el Menú
 
 ### Falta
 
-Nada del enunciado. Queda la corrida en el APK para ver el menú de cámara/galería del sistema.
+Nada del enunciado en la web. Queda la corrida en el APK para ver el menú de cámara/galería del sistema operativo, que es lo único que el navegador no puede mostrar.

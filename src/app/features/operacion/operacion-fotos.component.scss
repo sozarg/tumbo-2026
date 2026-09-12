@@ -47,6 +47,22 @@
   border: 0;
 }
 
+/**
+ * El spinner de la baja, en el lugar de los dos botones de la tarjeta.
+ *
+ * Mide lo mismo que ocupaban `editar` + `eliminar` juntos (44 px cada
+ * uno más el espacio del medio) para que la fila no se mueva cuando los
+ * botones se van. Mismo criterio que `.person-card__espera`, que hace
+ * esto para un botón solo.
+ */
+.catalog-item__espera {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
 .product-photos__legend {
   padding: 0;
   margin-bottom: 0.5rem;

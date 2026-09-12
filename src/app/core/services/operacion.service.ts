@@ -441,14 +441,18 @@ export class OperacionService {
     }
 
     if (enLaCarta) {
-      const vuelta = await this.actualizar('productos', enLaCarta.id, {
-        nombre,
-        descripcion: d.descripcion,
-        precio: d.precio,
-        tiempo_elaboracion_min: d.minutos,
-        sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-        activo: true,
-      });
+      const vuelta = await this.escribirProducto(
+        enLaCarta.id,
+        {
+          nombre,
+          descripcion: d.descripcion,
+          precio: d.precio,
+          tiempo_elaboracion_min: d.minutos,
+          sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+          activo: true,
+        },
+        'devolver el producto a la carta',
+      );
       if (!vuelta.ok) return vuelta;
 
       const conFotos = await this.guardarFotosDelProducto(enLaCarta.id, d.fotos);
@@ -471,7 +475,16 @@ export class OperacionService {
       creado_por: usuario?.id ?? null,
     });
     if (!resultado.ok || !resultado.fila) return { ok: false, error: resultado.error };
-    return this.guardarFotosDelProducto(resultado.fila.id, d.fotos);
+
+    const conFotos = await this.guardarFotosDelProducto(resultado.fila.id, d.fotos);
+
+    // El alta siempre lleva las tres fotos, así que `guardarFotosDelProducto`
+    // ya recargó. El `if` es para el caso sin fotos —que hoy el formulario
+    // no deja pasar, pero que si mañana lo deja no puede terminar con el
+    // producto guardado y la lista sin él.
+    if (conFotos.ok && !d.fotos?.some(Boolean)) await this.cargar();
+
+    return conFotos;
   }
   async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
     const nombre = comoSeGuarda(d.nombre);
@@ -521,24 +534,95 @@ export class OperacionService {
       };
     }
 
-    const resultado = await this.actualizar('productos', id, {
-      nombre,
-      descripcion: d.descripcion,
-      tipo: d.tipo,
-      sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-      precio: d.precio,
-      tiempo_elaboracion_min: d.minutos,
-    });
+    // `escribirProducto` y no `actualizar`: también recarga. Sin eso,
+    // editar solo el precio no se veía hasta recargar la página, porque
+    // `guardarFotosDelProducto` —que es quien recargaba— se va derecho
+    // cuando no hay fotos nuevas.
+    const resultado = await this.escribirProducto(
+      id,
+      {
+        nombre,
+        descripcion: d.descripcion,
+        tipo: d.tipo,
+        sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+        precio: d.precio,
+        tiempo_elaboracion_min: d.minutos,
+      },
+      'guardar los cambios del producto',
+    );
     if (!resultado.ok) return resultado;
     return this.guardarFotosDelProducto(id, d.fotos);
   }
 
+  /**
+   * Saca un producto de la carta (baja lógica).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * EL BUG QUE ESTO ARREGLA
+   *
+   * La pantalla decía «Producto eliminado del catálogo» y el producto
+   * seguía ahí, en la lista, abajo del cartel. Dos problemas encadenados,
+   * y el primero es EL MISMO que tenía la baja de empleado:
+   *
+   *   1. NADIE VERIFICABA QUE SE HUBIERA ESCRITO. `actualizar` solo mira
+   *      `r.error`. Un `update` que RLS deniega no da error en PostgREST:
+   *      da éxito con cero filas. Hoy la política `productos_modificacion`
+   *      usa `es_staff()` y deja pasar al dueño, así que sí escribe — pero
+   *      el día que alguien ajuste esa política, la aplicación volvería a
+   *      mentir sin que nadie se entere. Se verifica y listo.
+   *
+   *   2. LA LISTA NO SE RECARGABA. `cargar()` trae solo los activos, pero
+   *      nada la volvía a llamar: `productos` no está entre las tablas del
+   *      canal de tiempo real —están mesas, pedidos, pedido_items,
+   *      lista_espera y mensajes— así que la fila vieja se quedaba en
+   *      memoria hasta que alguien recargaba la página.
+   *
+   * El `select('id')` es lo que convierte «no sé» en «sé»: PostgREST
+   * devuelve las filas afectadas, así que cero filas es cero filas.
+   */
   async eliminarProducto(id: string): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.eliminarProducto(id);
       return { ok: true };
     }
-    return this.actualizar('productos', id, { activo: false });
+    return this.escribirProducto(id, { activo: false }, 'dar de baja el producto');
+  }
+
+  /**
+   * Cambia una fila de `productos` y deja la pantalla al día.
+   *
+   * Tres cosas que las tres altas/bajas/ediciones necesitan por igual:
+   * escribir, COMPROBAR que se escribió, y recargar. Están acá juntas
+   * para que no se pueda hacer una y olvidarse de las otras dos.
+   *
+   * No se toca el `actualizar` genérico: lo usan pedidos, cuentas, mesas
+   * y lista_espera, y el `select` de vuelta depende de que cada tabla
+   * tenga una política de lectura que le sirva a quien llama. `productos`
+   * la tiene (`productos_lectura ... using (true)`); las demás hay que
+   * mirarlas una por una antes de cambiarlas.
+   */
+  private async escribirProducto(
+    id: string,
+    cambios: Partial<Producto>,
+    accion: string,
+  ): Promise<Resultado> {
+    const { data, error } = await this.cliente!.from('productos')
+      .update(cambios)
+      .eq('id', id)
+      .select('id');
+
+    if (error) return this.fallo(accion, error);
+
+    if (!data?.length) {
+      // Cero filas con éxito: o la fila ya no está, o RLS lo denegó sin
+      // decirlo. Para quien mira la pantalla son lo mismo —no pasó— y
+      // eso es lo que tiene que leer.
+      this.registrarError(accion, 'el update afectó cero filas');
+      return { ok: false, error: `No se pudo ${accion}. Puede que ya no exista o que no tengas permiso.` };
+    }
+
+    await this.cargar();
+    return { ok: true };
   }
 
   async eliminarEmpleado(id: string): Promise<Resultado> {

@@ -1,6 +1,7 @@
 import { MenuOperacion } from './menu-operacion.component';
 import { NgOptimizedImage } from '@angular/common';
 import {
+  ChangeDetectorRef,
   Component,
   ElementRef,
   Injector,
@@ -147,6 +148,8 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
 })
 export class Operacion implements OnInit {
   private readonly injector = inject(Injector);
+  /** Para redibujar en el acto desde los callbacks de la cámara. Ver `aplicarYRedibujar`. */
+  private readonly detector = inject(ChangeDetectorRef);
   private readonly encabezado = viewChild<ElementRef<HTMLElement>>('encabezado');
   private readonly formularioBuilder = inject(FormBuilder);
   private readonly errores = inject(ErroresService);
@@ -306,10 +309,7 @@ export class Operacion implements OnInit {
    */
   protected readonly productoForm = this.formularioBuilder.nonNullable.group({
     nombre: ['', [Validators.required, sinEspaciosSolos, ...conLimite('nombreProducto')]],
-    descripcion: [
-      '',
-      [Validators.required, sinEspaciosSolos, ...conLimite('descripcionProducto')],
-    ],
+    descripcion: ['', [Validators.required, sinEspaciosSolos, ...conLimite('descripcionProducto')]],
     minutos: [10, [Validators.required, enteroValido, Validators.min(1), Validators.max(600)]],
     precio: [1000, [Validators.required, precioValido, Validators.min(1)]],
     tipo: ['plato' as TipoProducto, Validators.required],
@@ -722,6 +722,12 @@ export class Operacion implements OnInit {
     }
   }
   protected async registrarProducto(): Promise<void> {
+    // Mismo guarda que el alta de empleado: el alta sube tres fotos y
+    // recarga el catálogo, así que tarda. Sin esto, dos envíos
+    // superpuestos crean el producto dos veces y el segundo choca contra
+    // el nombre único, con un error que hace creer que no se guardó nada.
+    if (this.enviando()) return;
+
     if (!puedeAcceder(this.usuario()?.perfil, 'productos')) return;
     if (this.tipoDeSector()) this.productoForm.controls.tipo.setValue(this.tipoDeSector()!);
     if (!this.validar(this.productoForm)) {
@@ -732,9 +738,18 @@ export class Operacion implements OnInit {
       fotos: this.productoForm.controls.fotos.value,
     } as AltaProductoDemo;
     const id = this.productoEditado();
-    const resultado = id
-      ? await this.demo.actualizarProducto(id, datos)
-      : await this.demo.registrarProducto(datos);
+
+    this.enviando.set(true);
+    let resultado;
+    try {
+      resultado = id
+        ? await this.demo.actualizarProducto(id, datos)
+        : await this.demo.registrarProducto(datos);
+    } finally {
+      // En el `finally`: si la llamada tira, el botón tiene que volver a
+      // habilitarse igual o la pantalla queda trabada.
+      this.enviando.set(false);
+    }
 
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo agregar el producto.');
@@ -761,9 +776,24 @@ export class Operacion implements OnInit {
     this.avisarExito(resultado.aviso ?? (id ? 'Producto actualizado.' : 'Producto agregado.'));
   }
 
+  /**
+   * Saca un producto de la carta.
+   *
+   * Usa la misma señal `dandoDeBaja` que el personal: guarda el id del
+   * que se está procesando, así el spinner sale EN ESA tarjeta y los
+   * demás botones quedan deshabilitados mientras tanto.
+   */
   protected async eliminarProducto(id: string): Promise<void> {
-    if (!puedeAcceder(this.usuario()?.perfil, 'productos')) return;
-    const resultado = await this.demo.eliminarProducto(id);
+    if (!puedeAcceder(this.usuario()?.perfil, 'productos') || this.dandoDeBaja()) return;
+
+    this.dandoDeBaja.set(id);
+    let resultado;
+    try {
+      resultado = await this.demo.eliminarProducto(id);
+    } finally {
+      this.dandoDeBaja.set(null);
+    }
+
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo eliminar el producto.');
       return;
@@ -788,8 +818,10 @@ export class Operacion implements OnInit {
       return;
     }
 
-    this.cambiarFotoDeProducto(lugar, resultado.foto);
-    this.errorImagen.set('');
+    this.aplicarYRedibujar(() => {
+      this.cambiarFotoDeProducto(lugar, resultado.foto);
+      this.errorImagen.set('');
+    });
   }
 
   protected quitarFotoDeProducto(lugar: number): void {
@@ -811,6 +843,55 @@ export class Operacion implements OnInit {
     this.fotosDelProducto.set(fotos);
     this.productoForm.controls.fotos.setValue([...fotos]);
     this.productoForm.controls.fotos.markAsTouched();
+  }
+
+  /**
+   * Aplica un cambio de estado Y REDIBUJA EN EL ACTO.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * EL BUG, EN SERIO ESTA VEZ
+   *
+   * Síntoma: elegís una foto del disco y la página queda como colgada.
+   * Apretás cualquier botón —se escucha el sonido que había quedado
+   * encolado— y recién ahí aparece la imagen.
+   *
+   * ESTA APLICACIÓN NO USA ZONE.JS. `zone.js` no está entre las
+   * dependencias ni en los polyfills, y en el navegador `window.Zone`
+   * es `undefined`: Angular corre en modo «zoneless». Eso tiene una
+   * consecuencia que hay que tener presente en todo el proyecto:
+   *
+   *   NgZone.run() NO HACE NADA. Sin zone.js, `NgZone` es un objeto
+   *   vacío que ejecuta la función y se va. Un intento anterior de
+   *   arreglar esto con `NgZone.run` no cambió una sola coma del
+   *   comportamiento.
+   *
+   * Sin zonas, escribir una señal no redibuja: AGENDA un redibujado. Y
+   * el planificador de Angular agenda con `requestAnimationFrame`
+   * compitiendo contra un `setTimeout`. Después de que se cierra el
+   * diálogo de archivos del sistema operativo, la ventana queda un rato
+   * sin foco, y ahí el navegador PAUSA `requestAnimationFrame` y
+   * estrangula los `setTimeout`. El redibujado agendado se queda
+   * esperando hasta que algo devuelve el foco: tu clic.
+   *
+   * Eso explica las tres cosas que se veían: el retraso variable, que
+   * un clic cualquiera lo destrabe, y el sonido que sale junto con la
+   * imagen —el audio se reanuda con el mismo gesto—.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ `detectChanges` Y NO OTRA COSA
+   *
+   * `detectChanges()` no agenda: revisa esta vista y sus hijas AHORA,
+   * sincrónicamente, sin pasar por el planificador. Así el navegador no
+   * tiene nada que estrangular. Es la herramienta correcta justo para
+   * este caso: un cambio que llega de un callback del sistema, fuera de
+   * cualquier evento de la página.
+   *
+   * La señal sigue siendo la fuente de verdad para la plantilla; esto
+   * solo garantiza CUÁNDO se mira.
+   */
+  private aplicarYRedibujar(cambio: () => void): void {
+    cambio();
+    this.detector.detectChanges();
   }
 
   /** Libera la URL de vista previa, que el navegador retiene hasta recargar. */
@@ -1008,7 +1089,8 @@ export class Operacion implements OnInit {
       return;
     }
 
-    this.cambiarFotoDeEmpleado(resultado.foto);
+    // Misma razón que en el producto. Ver `aplicarYRedibujar`.
+    this.aplicarYRedibujar(() => this.cambiarFotoDeEmpleado(resultado.foto));
   }
 
   protected quitarFotoEmpleado(): void {
