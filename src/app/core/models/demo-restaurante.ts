@@ -128,7 +128,18 @@ export interface AltaProductoDemo {
   readonly minutos: number;
   readonly precio: number;
   readonly tipo: TipoProducto;
-  readonly imagen?: ImagenProducto;
+  /**
+   * Las tres fotos del producto (punto 2), en el orden en que se ven.
+   *
+   * Son tres lugares fijos y no una lista que crece: la tabla
+   * `producto_fotos` tiene `orden smallint check (orden between 1 and 3)`
+   * y un índice único por (producto, orden). La posición en este arreglo
+   * ES el orden en la base.
+   *
+   * Un lugar puede venir en `null` al editar, cuando esa foto no se
+   * cambió: ahí se deja la que ya estaba.
+   */
+  readonly fotos?: readonly (ImagenProducto | null)[];
 }
 
 export interface ImagenProducto {

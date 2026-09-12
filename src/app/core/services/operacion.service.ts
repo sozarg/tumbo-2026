@@ -79,6 +79,56 @@ function normalizarDni(valor: string): string {
  */
 const PERFILES_DE_EMPLEADO: readonly PerfilUsuario[] = ['metre', 'mozo', 'cocinero', 'cantinero'];
 
+/**
+ * Deja el nombre del producto como se va a guardar.
+ *
+ * POR QUÉ SE NORMALIZA AL GUARDAR Y NO SOLO AL BUSCAR
+ * La base tiene `constraint nombre_unico_por_tipo unique (tipo, nombre)`,
+ * y ese único compara texto crudo: «Milanesa napolitana» y «Milanesa
+ * napolitana » —con un espacio al final, invisible— son dos platos
+ * distintos para PostgreSQL. Guardar siempre la forma canónica hace que
+ * el único de la base signifique lo que uno cree que significa, y de
+ * paso deja la carta prolija.
+ *
+ * No se saca el acento ni se baja a minúsculas: el nombre se muestra tal
+ * cual en la carta, y «Té» no es «Te».
+ */
+export function comoSeGuarda(nombre: string): string {
+  return (nombre ?? '').trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Si dos nombres son el mismo plato para la carta.
+ *
+ * Compara sin distinguir mayúsculas, igual que el `ilike` con el que se
+ * consulta la base. El único de PostgreSQL sí distingue —«milanesa» y
+ * «Milanesa» pueden convivir—, y justamente por eso el control es más
+ * estricto que la base y no al revés: una carta con las dos no es un
+ * error de integridad, es una carta mal cargada.
+ */
+export function mismoNombre(uno: string, otro: string): boolean {
+  return (
+    comoSeGuarda(uno).toLocaleLowerCase('es-AR') === comoSeGuarda(otro).toLocaleLowerCase('es-AR')
+  );
+}
+
+/**
+ * Escapa los comodines de `ilike`.
+ *
+ * `%` y `_` son comodines: sin esto, buscar «Café 100% arábica» le
+ * preguntaría a la base por cualquier nombre que empiece «Café 100» y
+ * termine « arábica», y un plato distinto pasaría por repetido.
+ */
+export function paraIlike(texto: string): string {
+  return texto.replace(/[\\%_]/g, (caracter) => `\\${caracter}`);
+}
+
+/** Cómo se nombra cada tipo en los mensajes al usuario. */
+const NOMBRE_DEL_TIPO: Readonly<Record<TipoProducto, string>> = {
+  plato: 'plato',
+  bebida: 'bebida',
+};
+
 @Injectable({ providedIn: 'root' })
 export class OperacionService {
   private readonly mock = inject(DemoRestauranteService);
@@ -308,14 +358,115 @@ export class OperacionService {
     this.registrarError('crear el empleado', error);
     return 'No se pudo crear el empleado. Revisá la conexión e intentá nuevamente.';
   }
+  /**
+   * Busca un producto en la carta por su nombre (punto 2).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ MIRA TAMBIÉN LOS DADOS DE BAJA
+   *
+   * `eliminarProducto` no borra: pone `activo = false`, y `cargar()` solo
+   * trae los activos. Pero el único de la base —`unique (tipo, nombre)`—
+   * no sabe de eso: sigue ocupando el nombre.
+   *
+   * Si esto mirara solo la lista en pantalla, dar de alta un plato que
+   * alguien había sacado de la carta pasaría el control, llegaría al
+   * `insert` y volvería como «No se pudo guardar datos». El nombre está
+   * tomado por algo que no se ve en ningún lado: sin salida.
+   *
+   * Por eso la consulta va contra la base sin filtrar por `activo`, y
+   * quien llama decide qué hacer con cada caso.
+   *
+   * `exceptoId` es para la edición: un producto no choca consigo mismo.
+   */
+  private async buscarEnLaCarta(
+    tipo: TipoProducto,
+    nombre: string,
+    exceptoId?: string,
+  ): Promise<Producto | null> {
+    if (!this.cliente) return null;
+
+    let consulta = this.cliente
+      .from('productos')
+      .select('*')
+      .eq('tipo', tipo)
+      .ilike('nombre', paraIlike(nombre));
+
+    if (exceptoId) consulta = consulta.neq('id', exceptoId);
+
+    const { data, error } = await consulta.limit(1);
+
+    // Si la consulta falla no se inventa un «no existe»: se deja seguir y
+    // que el único de la base sea el que decida. Peor mensaje, nunca un
+    // duplicado.
+    if (error) {
+      this.registrarError('verificar la carta', error);
+      return null;
+    }
+
+    return (data?.[0] as Producto) ?? null;
+  }
+
+  /**
+   * Agrega un producto a la carta (punto 2).
+   *
+   * El enunciado pide que «se verifique la existencia en la carta». Acá
+   * hay tres finales posibles y no dos:
+   *
+   *   - no está        → se da de alta;
+   *   - está y activo  → se rechaza con el nombre a la vista;
+   *   - está y dado de baja → vuelve a la carta con los datos nuevos.
+   *
+   * El tercero es el que importa. Es el mismo plato de antes: crear una
+   * fila nueva es imposible —el único de la base lo impide— y rechazarlo
+   * dejaría al usuario peleando contra un nombre ocupado por algo que no
+   * puede ver ni borrar. Reactivar y pisar los datos es lo que la persona
+   * está pidiendo cuando lo vuelve a cargar.
+   */
   async registrarProducto(d: AltaProductoDemo): Promise<Resultado> {
+    const nombre = comoSeGuarda(d.nombre);
+    const comoSeLlama = NOMBRE_DEL_TIPO[d.tipo];
+
     if (!this.cliente) {
-      this.mock.registrarProducto(d);
+      if (this.mock.productos().some((p) => p.tipo === d.tipo && mismoNombre(p.nombre, nombre))) {
+        return { ok: false, error: `Ya hay un ${comoSeLlama} con ese nombre en la carta.` };
+      }
+      this.mock.registrarProducto({ ...d, nombre });
       return { ok: true };
     }
+
+    const enLaCarta = await this.buscarEnLaCarta(d.tipo, nombre);
+
+    if (enLaCarta?.activo) {
+      return { ok: false, error: `«${enLaCarta.nombre}» ya está en la carta.` };
+    }
+
+    if (enLaCarta) {
+      const vuelta = await this.escribirProducto(
+        enLaCarta.id,
+        {
+          nombre,
+          descripcion: d.descripcion,
+          precio: d.precio,
+          tiempo_elaboracion_min: d.minutos,
+          sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+          activo: true,
+        },
+        'devolver el producto a la carta',
+      );
+      if (!vuelta.ok) return vuelta;
+
+      const conFotos = await this.guardarFotosDelProducto(enLaCarta.id, d.fotos);
+      if (!conFotos.ok) return conFotos;
+
+      return {
+        ok: true,
+        aviso: `Ese ${comoSeLlama} estaba dado de baja: volvió a la carta con los datos nuevos.`,
+      };
+    }
+
     const usuario = this.sesion.usuario();
     const resultado = await this.insertarConFila('productos', {
-      nombre: d.nombre,
+      nombre,
       descripcion: d.descripcion,
       tipo: d.tipo,
       sector: d.tipo === 'plato' ? 'cocina' : 'bar',
@@ -324,46 +475,154 @@ export class OperacionService {
       creado_por: usuario?.id ?? null,
     });
     if (!resultado.ok || !resultado.fila) return { ok: false, error: resultado.error };
-    return this.guardarImagenProducto(resultado.fila.id, d.imagen);
+
+    const conFotos = await this.guardarFotosDelProducto(resultado.fila.id, d.fotos);
+
+    // El alta siempre lleva las tres fotos, así que `guardarFotosDelProducto`
+    // ya recargó. El `if` es para el caso sin fotos —que hoy el formulario
+    // no deja pasar, pero que si mañana lo deja no puede terminar con el
+    // producto guardado y la lista sin él.
+    if (conFotos.ok && !d.fotos?.some(Boolean)) await this.cargar();
+
+    return conFotos;
   }
   async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
+    const nombre = comoSeGuarda(d.nombre);
+    const comoSeLlama = NOMBRE_DEL_TIPO[d.tipo];
+
     if (!this.cliente) {
+      if (
+        this.mock
+          .productos()
+          .some((p) => p.id !== id && p.tipo === d.tipo && mismoNombre(p.nombre, nombre))
+      ) {
+        return { ok: false, error: `Ya hay otro ${comoSeLlama} con ese nombre en la carta.` };
+      }
       this.mock.productos.update((items) =>
         items.map((item) =>
           item.id === id
             ? {
                 ...item,
-                nombre: d.nombre,
+                nombre,
                 descripcion: d.descripcion,
                 minutos: d.minutos,
                 precio: d.precio,
                 tipo: d.tipo,
                 sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-                fotos: d.imagen ? [d.imagen.previewUrl] : item.fotos,
+                fotos: (d.fotos ?? []).some(Boolean)
+                  ? (d.fotos ?? []).filter((f) => f !== null).map((f) => f!.previewUrl)
+                  : item.fotos,
               }
             : item,
         ),
       );
       return { ok: true };
     }
-    const resultado = await this.actualizar('productos', id, {
-      nombre: d.nombre,
-      descripcion: d.descripcion,
-      tipo: d.tipo,
-      sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-      precio: d.precio,
-      tiempo_elaboracion_min: d.minutos,
-    });
-    if (!resultado.ok || !d.imagen) return resultado;
-    return this.guardarImagenProducto(id, d.imagen);
+
+    // Al editar también se verifica la carta, excluyendo al producto que
+    // se está editando: sin esto, renombrar un plato con el nombre de
+    // otro choca contra el único de la base y vuelve como error genérico.
+    // Acá entra también un dado de baja con ese nombre: son dos filas
+    // distintas y el único no distingue activos de inactivos.
+    const otro = await this.buscarEnLaCarta(d.tipo, nombre, id);
+    if (otro) {
+      return {
+        ok: false,
+        error: otro.activo
+          ? `Ya hay otro ${comoSeLlama} llamado «${otro.nombre}» en la carta.`
+          : `Hubo otro ${comoSeLlama} llamado «${otro.nombre}» y sigue guardado: elegí otro nombre.`,
+      };
+    }
+
+    // `escribirProducto` y no `actualizar`: también recarga. Sin eso,
+    // editar solo el precio no se veía hasta recargar la página, porque
+    // `guardarFotosDelProducto` —que es quien recargaba— se va derecho
+    // cuando no hay fotos nuevas.
+    const resultado = await this.escribirProducto(
+      id,
+      {
+        nombre,
+        descripcion: d.descripcion,
+        tipo: d.tipo,
+        sector: d.tipo === 'plato' ? 'cocina' : 'bar',
+        precio: d.precio,
+        tiempo_elaboracion_min: d.minutos,
+      },
+      'guardar los cambios del producto',
+    );
+    if (!resultado.ok) return resultado;
+    return this.guardarFotosDelProducto(id, d.fotos);
   }
 
+  /**
+   * Saca un producto de la carta (baja lógica).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * EL BUG QUE ESTO ARREGLA
+   *
+   * La pantalla decía «Producto eliminado del catálogo» y el producto
+   * seguía ahí, en la lista, abajo del cartel. Dos problemas encadenados,
+   * y el primero es EL MISMO que tenía la baja de empleado:
+   *
+   *   1. NADIE VERIFICABA QUE SE HUBIERA ESCRITO. `actualizar` solo mira
+   *      `r.error`. Un `update` que RLS deniega no da error en PostgREST:
+   *      da éxito con cero filas. Hoy la política `productos_modificacion`
+   *      usa `es_staff()` y deja pasar al dueño, así que sí escribe — pero
+   *      el día que alguien ajuste esa política, la aplicación volvería a
+   *      mentir sin que nadie se entere. Se verifica y listo.
+   *
+   *   2. LA LISTA NO SE RECARGABA. `cargar()` trae solo los activos, pero
+   *      nada la volvía a llamar: `productos` no está entre las tablas del
+   *      canal de tiempo real —están mesas, pedidos, pedido_items,
+   *      lista_espera y mensajes— así que la fila vieja se quedaba en
+   *      memoria hasta que alguien recargaba la página.
+   *
+   * El `select('id')` es lo que convierte «no sé» en «sé»: PostgREST
+   * devuelve las filas afectadas, así que cero filas es cero filas.
+   */
   async eliminarProducto(id: string): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.eliminarProducto(id);
       return { ok: true };
     }
-    return this.actualizar('productos', id, { activo: false });
+    return this.escribirProducto(id, { activo: false }, 'dar de baja el producto');
+  }
+
+  /**
+   * Cambia una fila de `productos` y deja la pantalla al día.
+   *
+   * Tres cosas que las tres altas/bajas/ediciones necesitan por igual:
+   * escribir, COMPROBAR que se escribió, y recargar. Están acá juntas
+   * para que no se pueda hacer una y olvidarse de las otras dos.
+   *
+   * No se toca el `actualizar` genérico: lo usan pedidos, cuentas, mesas
+   * y lista_espera, y el `select` de vuelta depende de que cada tabla
+   * tenga una política de lectura que le sirva a quien llama. `productos`
+   * la tiene (`productos_lectura ... using (true)`); las demás hay que
+   * mirarlas una por una antes de cambiarlas.
+   */
+  private async escribirProducto(
+    id: string,
+    cambios: Partial<Producto>,
+    accion: string,
+  ): Promise<Resultado> {
+    const { data, error } = await this.cliente!.from('productos')
+      .update(cambios)
+      .eq('id', id)
+      .select('id');
+
+    if (error) return this.fallo(accion, error);
+
+    if (!data?.length) {
+      // Cero filas con éxito: o la fila ya no está, o RLS lo denegó sin
+      // decirlo. Para quien mira la pantalla son lo mismo —no pasó— y
+      // eso es lo que tiene que leer.
+      this.registrarError(accion, 'el update afectó cero filas');
+      return { ok: false, error: `No se pudo ${accion}. Puede que ya no exista o que no tengas permiso.` };
+    }
+
+    await this.cargar();
+    return { ok: true };
   }
 
   async eliminarEmpleado(id: string): Promise<Resultado> {
@@ -403,32 +662,69 @@ export class OperacionService {
     return aviso ? { ok: true, aviso } : { ok: true };
   }
 
-  private async guardarImagenProducto(
+  /**
+   * Sube las tres fotos del producto y las asocia en orden (punto 2).
+   *
+   * POR QUÉ SE SUBEN EN PARALELO PERO SE ASOCIAN DE UNA
+   * Las tres subidas a Storage no dependen entre sí, así que van juntas
+   * y el alta tarda lo que la más lenta y no la suma de las tres. El
+   * `upsert` a `producto_fotos` sí va en una sola llamada, porque son
+   * tres filas de la misma tabla y una sola ida y vuelta.
+   *
+   * EL `orden` SALE DE LA POSICIÓN EN EL ARREGLO
+   * `producto_fotos` tiene `orden smallint check (orden between 1 and 3)`
+   * y único por (producto, orden). El lugar 0 del arreglo es el orden 1.
+   * Eso hace que al editar una sola foto se reemplace la que estaba en
+   * ese lugar y no se agregue una cuarta.
+   *
+   * Un lugar en `null` significa «esta no se tocó»: se saltea.
+   */
+  private async guardarFotosDelProducto(
     id: string,
-    imagen?: AltaProductoDemo['imagen'],
+    fotos?: readonly (FotoDePersona | null)[],
   ): Promise<Resultado> {
-    if (!this.cliente || !imagen) return { ok: true };
+    if (!this.cliente || !fotos?.some(Boolean)) return { ok: true };
+
     try {
-      const archivo = await this.comprimirImagen(imagen.file);
-      const ruta = `${id}/${crypto.randomUUID()}.webp`;
-      const subida = await this.cliente.storage
-        .from('fotos-productos')
-        .upload(ruta, archivo, {
-          contentType: 'image/webp',
-          cacheControl: '31536000',
-          upsert: false,
-        });
-      if (subida.error) return { ok: false, error: 'No se pudo almacenar la imagen del producto.' };
-      const url = this.cliente.storage.from('fotos-productos').getPublicUrl(ruta).data.publicUrl;
-      const foto = await this.cliente
+      const subidas = await Promise.all(
+        fotos.map(async (foto, posicion) => {
+          if (!foto) return null;
+
+          const archivo = await this.comprimirImagen(foto.file);
+          const ruta = `${id}/${crypto.randomUUID()}.webp`;
+          const subida = await this.cliente!.storage.from('fotos-productos').upload(ruta, archivo, {
+            contentType: 'image/webp',
+            cacheControl: '31536000',
+            upsert: false,
+          });
+
+          if (subida.error) return null;
+
+          return {
+            producto_id: id,
+            url: this.cliente!.storage.from('fotos-productos').getPublicUrl(ruta).data.publicUrl,
+            orden: posicion + 1,
+          };
+        }),
+      );
+
+      const filas = subidas.filter((fila) => fila !== null);
+      if (filas.length !== fotos.filter(Boolean).length) {
+        return { ok: false, error: 'No se pudieron subir todas las imágenes del producto.' };
+      }
+
+      const guardadas = await this.cliente
         .from('producto_fotos')
-        .upsert({ producto_id: id, url, orden: 1 }, { onConflict: 'producto_id,orden' });
-      if (foto.error)
-        return { ok: false, error: 'La imagen se subió, pero no se pudo asociar al producto.' };
+        .upsert(filas, { onConflict: 'producto_id,orden' });
+
+      if (guardadas.error) {
+        return { ok: false, error: 'Las imágenes se subieron, pero no se pudieron asociar.' };
+      }
+
       await this.cargar();
       return { ok: true };
     } catch {
-      return { ok: false, error: 'No se pudo procesar la imagen del producto.' };
+      return { ok: false, error: 'No se pudieron procesar las imágenes del producto.' };
     }
   }
 

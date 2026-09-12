@@ -55,7 +55,30 @@ export class Camara {
   /** `true` cuando la foto se saca de verdad; `false` cuando se va a elegir un archivo. */
   readonly esReal = Capacitor.isNativePlatform();
 
+  /**
+   * Saca la foto del empleado: cámara y nada más (punto 1).
+   */
   async sacarFoto(): Promise<ResultadoDeFoto> {
+    return this.pedirImagen(CameraSource.Camera);
+  }
+
+  /**
+   * La imagen de un producto: cámara O galería (punto 2).
+   *
+   * El enunciado los distingue a propósito. Para el empleado dice que la
+   * foto «se tomará desde el dispositivo (no se tiene que elegir desde
+   * la galería de fotos)». Para el producto dice «tres fotos tomadas del
+   * dispositivo (se podrá optar por la elección de imágenes de la
+   * galería de fotos)».
+   *
+   * `CameraSource.Prompt` es literalmente eso: el sistema pregunta cuál
+   * de las dos.
+   */
+  async elegirImagen(): Promise<ResultadoDeFoto> {
+    return this.pedirImagen(CameraSource.Prompt);
+  }
+
+  private async pedirImagen(origen: CameraSource): Promise<ResultadoDeFoto> {
     if (!this.esReal) {
       return this.elegirArchivo();
     }
@@ -72,7 +95,7 @@ export class Camara {
       }
 
       const foto = await Camera.getPhoto({
-        source: CameraSource.Camera,
+        source: origen,
         resultType: CameraResultType.Uri,
         // No se guarda en el carrete: es la foto de un legajo, no del
         // teléfono de quien la saca.
@@ -124,6 +147,10 @@ export class Camara {
    * directamente la cámara frontal; en una computadora el atributo se
    * ignora y se abre el explorador de archivos. En los dos casos el
    * resultado queda marcado como simulado.
+   *
+   * Es el mismo para los dos orígenes: en el navegador no hay forma de
+   * distinguir cámara de galería, y marcarlo como simulado ya avisa que
+   * eso se prueba en el APK.
    */
   private elegirArchivo(): Promise<ResultadoDeFoto> {
     return new Promise((resolver) => {

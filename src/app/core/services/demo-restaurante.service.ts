@@ -19,6 +19,16 @@ import {
   TipoMesa,
 } from '../models/demo-restaurante';
 
+/** Los tres lugares de foto del punto 2, en el orden en que se ven. */
+const LUGARES_DE_FOTO = [0, 1, 2] as const;
+
+/** Qué se muestra en un lugar sin foto, en modo demostración. */
+const FOTOS_DE_RELLENO = [
+  'imagenes/logo-nombre.png',
+  'imagenes/logo.png',
+  'imagenes/logo-nombre.png',
+] as const;
+
 @Injectable({ providedIn: 'root' })
 export class DemoRestauranteService {
   readonly productos = signal<ProductoDemo[]>(this.productosIniciales());
@@ -99,9 +109,12 @@ export class DemoRestauranteService {
       sector,
       precio: datos.precio,
       minutos: datos.minutos,
-      fotos: datos.imagen
-        ? [datos.imagen.previewUrl]
-        : ['imagenes/logo-nombre.png', 'imagenes/logo.png', 'imagenes/logo-nombre.png'],
+      // Los tres lugares siempre se llenan: la carta muestra tres fotos.
+      // En demostración no hay dónde subir nada, así que el lugar vacío
+      // se cubre con el logo en vez de dejar un hueco.
+      fotos: LUGARES_DE_FOTO.map(
+        (lugar) => datos.fotos?.[lugar]?.previewUrl ?? FOTOS_DE_RELLENO[lugar],
+      ),
     };
     this.productos.update((productos) => [...productos, producto]);
     this.notificar(
