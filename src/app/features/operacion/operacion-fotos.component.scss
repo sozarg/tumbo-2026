@@ -1,0 +1,181 @@
+/**
+ * Las tres fotos del producto (punto 2 del TFI).
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * POR QUÉ ESTO VIVE EN SU PROPIO ARCHIVO
+ *
+ * `operacion.component.scss` ya está en 24,4 kB contra un presupuesto de
+ * 30 kB, y es el archivo que más manos toca. Agregarle esto lo acercaría
+ * al tope y garantizaría un conflicto en el próximo merge. El
+ * presupuesto `anyComponentStyle` de Angular se mide POR HOJA, así que
+ * un segundo archivo en `styleUrls` da aire de verdad y no es un truco.
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * QUÉ PIDE EL ENUNCIADO, LITERAL
+ *
+ * «en contenedores de forma individual, con buen tamaño, sin que se
+ * muestren partes de otras fotos, centradas y con la posibilidad de
+ * seleccionar otra imagen».
+ *
+ * Cada frase de ahí es una decisión de acá:
+ *
+ *   - CONTENEDORES INDIVIDUALES → un `.product-photo` por lugar, con su
+ *     propio borde. No es una tira de miniaturas.
+ *
+ *   - BUEN TAMAÑO → en teléfono van UNA ABAJO DE LA OTRA, no tres en
+ *     fila. Tres en fila sobre 360 px de ancho dan 100 px por foto: la
+ *     comida no se ve. Se pasa a tres columnas recién a los 620 px,
+ *     donde cada una sigue siendo grande.
+ *
+ *   - SIN PARTES DE OTRAS FOTOS → `overflow: hidden` en el contenedor.
+ *     El `border-radius` sin esto deja que la imagen se derrame por las
+ *     esquinas y toque a la vecina.
+ *
+ *   - CENTRADAS → `object-fit: cover` con `object-position: center`. Una
+ *     foto de celular es vertical y el contenedor es apaisado: `cover`
+ *     recorta en vez de deformar, y recorta desde el centro, que es
+ *     donde está el plato.
+ *
+ *   - SELECCIONAR OTRA IMAGEN → el contenedor lleno ES un botón: se
+ *     toca la foto y se vuelve a abrir la cámara o la galería. El tacho
+ *     de arriba a la derecha la deja vacía.
+ */
+
+.product-photos {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.product-photos__legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  color: var(--tumbo-azul-sombra);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.product-photos__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 620px) {
+  .product-photos__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.product-photo {
+  position: relative;
+}
+
+/**
+ * El lugar de la foto: vacío o lleno, siempre el mismo rectángulo.
+ *
+ * El `aspect-ratio` es lo que evita el salto: sin él, el hueco vacío
+ * mide lo que mide su ícono y el formulario pega un brinco de 200 px
+ * cuando entra la primera imagen.
+ */
+.product-photo__slot {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px dashed #bac5d3;
+  border-radius: 14px;
+  background: var(--tumbo-azul-brillante);
+  color: #526582;
+  cursor: pointer;
+}
+
+.product-photo__slot ion-icon {
+  font-size: 30px;
+}
+
+/**
+ * El «Foto 1» del lugar vacío es una etiqueta, no un error.
+ *
+ * Con `.product-photos` adelante por la misma razón que la nota de más
+ * abajo: `.employee-form small` los pintaba de naranja de error, y tres
+ * cajas vacías con el texto en rojo parecen tres campos mal cargados
+ * antes de que nadie haya tocado nada.
+ */
+.product-photos .product-photo__slot small {
+  color: #526582;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.product-photo__slot:focus-visible {
+  outline: 3px solid var(--tumbo-azul-accion);
+  outline-offset: 2px;
+}
+
+.product-photo__slot--llena {
+  border-style: solid;
+  border-color: var(--tumbo-azul-sombra);
+}
+
+.product-photo__slot--llena img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/**
+ * El tacho va FLOTANDO SOBRE la foto y no debajo.
+ *
+ * Debajo empujaría el contenedor y rompería la grilla pareja. Encima
+ * necesita fondo propio: sobre una foto clara, un ícono blanco
+ * desaparece.
+ */
+.product-photo__quitar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.product-photo__quitar ion-icon {
+  font-size: 17px;
+}
+
+.product-photo__quitar:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 1px;
+}
+
+/**
+ * La aclaración de abajo es una nota, no un error.
+ *
+ * Va con `.product-photos` adelante para ganarle por especificidad a
+ * `.employee-form small { color: var(--tumbo-naranja-profundo) }`, que
+ * pinta de naranja de error CUALQUIER `small` del formulario. Medido en
+ * el navegador: sin esto la nota se lee como si algo estuviera mal.
+ * Se sube la especificidad de esta regla en vez de tocar aquella, que
+ * es de otro archivo y de otra persona.
+ */
+.product-photos .product-photos__nota {
+  display: block;
+  margin-top: 8px;
+  color: #526582;
+  font-size: 11px;
+}

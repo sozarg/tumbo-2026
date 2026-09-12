@@ -70,7 +70,6 @@ import {
   AltaEmpleadoDemo,
   AltaMesaDemo,
   AltaProductoDemo,
-  ImagenProducto,
   EstadoPedido,
   ProductoDemo,
   SectorProducto,
@@ -92,7 +91,10 @@ import {
   cuilConDigitoValido,
   cuilValido,
   dniValido,
+  enteroValido,
   fotoRequerida,
+  precioValido,
+  tresFotosRequeridas,
   sinEspaciosSolos,
   validadoresDeNombre,
 } from '../../core/validacion/validadores';
@@ -138,7 +140,9 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     ReactiveFormsModule,
   ],
   selector: 'tumbo-operacion',
-  styleUrl: './operacion.component.scss',
+  // Dos hojas y no una: `operacion.component.scss` ya está a 24,4 kB del
+  // presupuesto de 30, y el de Angular se mide por hoja.
+  styleUrls: ['./operacion.component.scss', './operacion-fotos.component.scss'],
   templateUrl: './operacion.component.html',
 })
 export class Operacion implements OnInit {
@@ -284,15 +288,96 @@ export class Operacion implements OnInit {
 
   /** Los topes de la base, para el atributo `maxlength` de los inputs. */
   protected readonly limites = LIMITES;
+  /**
+   * Alta y edición de un producto (punto 2), validada igual que la base.
+   *
+   * Cada validador se corresponde con algo de `public.productos`:
+   *
+   *   nombre       largo_nombre: entre 2 y 60 caracteres
+   *   descripcion  largo_descripcion: entre 10 y 300
+   *   minutos      tiempo_elaboracion_min integer > 0
+   *   precio       numeric(10,2) > 0
+   *
+   * Antes eran `Validators.required` sueltos: un nombre de 5.000
+   * caracteres pasaba el formulario y lo rechazaba la base con un error
+   * que no decía qué campo era. El tope de 600 minutos es lo único que
+   * no sale de la base —ahí no hay máximo— pero un plato que tarda diez
+   * horas es un error de tipeo.
+   */
   protected readonly productoForm = this.formularioBuilder.nonNullable.group({
-    nombre: ['', Validators.required],
-    descripcion: ['', Validators.required],
-    minutos: [10, [Validators.required, Validators.min(1)]],
-    precio: [1000, [Validators.required, Validators.min(1)]],
+    nombre: ['', [Validators.required, sinEspaciosSolos, ...conLimite('nombreProducto')]],
+    descripcion: [
+      '',
+      [Validators.required, sinEspaciosSolos, ...conLimite('descripcionProducto')],
+    ],
+    minutos: [10, [Validators.required, enteroValido, Validators.min(1), Validators.max(600)]],
+    precio: [1000, [Validators.required, precioValido, Validators.min(1)]],
     tipo: ['plato' as TipoProducto, Validators.required],
+    /**
+     * Los tres lugares de foto. La posición ES el orden en la base.
+     *
+     * Se guardan los tres desde el principio, en vez de ir agregando a
+     * una lista: así el lugar 2 sigue siendo el lugar 2 aunque el 1 esté
+     * vacío, y al editar una sola foto se reemplaza esa y no se corre
+     * todo.
+     */
+    fotos: [[null, null, null] as (FotoTomada | null)[], tresFotosRequeridas],
   });
-  protected readonly imagenProducto = signal<ImagenProducto | undefined>(undefined);
   protected readonly errorImagen = signal('');
+
+  /** Los tres lugares de foto, para recorrerlos en la plantilla. */
+  protected readonly lugaresDeFoto = [0, 1, 2] as const;
+
+  /**
+   * LAS FOTOS QUE DIBUJA LA PLANTILLA. NO LEER EL FORMULARIO PARA ESTO.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * EL BUG QUE ESTO ARREGLA
+   *
+   * La plantilla decía `@if (productoForm.controls.fotos.value[lugar])`.
+   * Medido en un navegador de verdad, con las tres fotos cargadas una
+   * atrás de la otra, el valor del control y la pantalla no coincidían:
+   *
+   *     elegir foto 1 → valor [F,_,_]   pantalla [llena, vacía, vacía] ✓
+   *     elegir foto 2 → valor [F,F,_]   pantalla [llena, VACÍA, vacía] ✗
+   *     elegir foto 3 → valor [F,F,F]   pantalla [llena, llena, VACÍA] ✗
+   *
+   * La pantalla iba UNA FOTO ATRASADA. Para quien carga el producto eso
+   * se ve como que el segundo intento no anduvo: elige la imagen, no
+   * aparece nada, la vuelve a elegir. Y el cartel «Falta 1 foto» seguía
+   * ahí con las tres puestas.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ PASABA
+   *
+   * El valor del control SIEMPRE estuvo bien: lo que no se ejecutaba era
+   * la detección de cambios. Angular marca para revisar la vista que
+   * ATIENDE un evento; el clic en el botón marca esa vista, pero la foto
+   * no llega en el clic —llega mucho después, cuando la promesa del
+   * selector de archivo se resuelve—, y ahí ya no hay evento que marque
+   * nada. Recién el clic SIGUIENTE volvía a marcar la vista y se dibujaba
+   * lo que se había elegido la vez anterior.
+   *
+   * La foto del empleado tenía exactamente el mismo problema, y no se
+   * notaba solo porque es una sola: el primer cambio siempre se ve.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ UNA SEÑAL Y NO UN `markForCheck()`
+   *
+   * Escribir una señal que la plantilla lee avisa sola. Un
+   * `markForCheck()` arregla estas dos llamadas y deja la trampa armada
+   * para la próxima. El control sigue existiendo y sigue siendo el que
+   * valida —`tresFotosRequeridas` vive ahí—; lo único que cambia es
+   * quién le cuenta a la pantalla. `ponerFotosDeProducto` escribe los
+   * dos, así que no hay dos verdades: hay una, con dos lectores.
+   */
+  protected readonly fotosDelProducto = signal<readonly (FotoTomada | null)[]>([null, null, null]);
+
+  /** Ídem, para la única foto del empleado (punto 1). */
+  protected readonly fotoDelEmpleado = signal<FotoTomada | null>(null);
+
+  /** Lo consulta el botón de confirmar antes de abrir el cartel. */
+  protected readonly productoEsValido = (): boolean => this.validar(this.productoForm);
   protected readonly mesaForm = this.formularioBuilder.nonNullable.group({
     numero: [6, [Validators.required, Validators.min(1)]],
     comensales: [4, [Validators.required, Validators.min(1)]],
@@ -378,6 +463,9 @@ export class Operacion implements OnInit {
 
   ionViewWillEnter(): void {
     this.volver();
+    // `quitarFotoEmpleado` y no solo el `reset`: el reset limpia el
+    // control, y la foto que DIBUJA la pantalla vive en la señal.
+    this.quitarFotoEmpleado();
     this.empleadoForm.reset({ perfil: 'cocinero' });
     void this.demo.cargar();
   }
@@ -593,18 +681,43 @@ export class Operacion implements OnInit {
     )
       return;
     this.productoEditado.set(producto.id);
-    this.productoForm.reset(producto);
-    this.imagenProducto.set(undefined);
+    this.limpiarFotosDeProducto();
+    this.productoForm.reset({ ...producto, fotos: [null, null, null] });
+    this.exigirLasTresFotos(false);
     this.errorImagen.set('');
     this.creando.set(true);
+  }
+
+  /**
+   * Las tres fotos son obligatorias EN EL ALTA, no en la edición.
+   *
+   * El enunciado pide las tres «al agregar un nuevo plato». Al editar,
+   * las fotos que ya tiene el producto siguen en la base y los tres
+   * lugares arrancan vacíos porque significan «esta no la cambié»
+   * —`guardarFotosDelProducto` saltea los `null`—.
+   *
+   * Sin esto, cambiarle el precio a un plato obligaría a volver a sacar
+   * las tres fotos. Es la clase de regla que se agrega pensando en el
+   * alta y se descubre desde el otro lado una semana después.
+   */
+  private exigirLasTresFotos(exigir: boolean): void {
+    const control = this.productoForm.controls.fotos;
+    control.setValidators(exigir ? tresFotosRequeridas : []);
+    control.updateValueAndValidity();
   }
   protected alternarFormulario(): void {
     this.creando.update((valor) => !valor);
     this.paso.set(0);
     if (this.seccion() === 'productos') {
       this.productoEditado.set(null);
-      this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
-      this.imagenProducto.set(undefined);
+      this.limpiarFotosDeProducto();
+      this.productoForm.reset({
+        minutos: 10,
+        precio: 1000,
+        tipo: this.tipoDeSector() ?? 'plato',
+        fotos: [null, null, null],
+      });
+      this.exigirLasTresFotos(true);
       this.errorImagen.set('');
     }
   }
@@ -616,7 +729,7 @@ export class Operacion implements OnInit {
     }
     const datos = {
       ...this.productoForm.getRawValue(),
-      imagen: this.imagenProducto(),
+      fotos: this.productoForm.controls.fotos.value,
     } as AltaProductoDemo;
     const id = this.productoEditado();
     const resultado = id
@@ -628,12 +741,24 @@ export class Operacion implements OnInit {
       return;
     }
 
-    this.productoForm.reset({ minutos: 10, precio: 1000, tipo: this.tipoDeSector() ?? 'plato' });
-    this.imagenProducto.set(undefined);
+    this.limpiarFotosDeProducto();
+    this.productoForm.reset({
+      minutos: 10,
+      precio: 1000,
+      tipo: this.tipoDeSector() ?? 'plato',
+      fotos: [null, null, null],
+    });
+    // Se vuelve a exigir: el formulario queda listo para la próxima
+    // alta, y la edición es la excepción y no al revés.
+    this.exigirLasTresFotos(true);
     this.errorImagen.set('');
     this.productoEditado.set(null);
     this.creando.set(false);
-    this.avisarExito(id ? 'Producto actualizado.' : 'Producto agregado.');
+
+    // El aviso del alta es «estaba dado de baja y volvió a la carta».
+    // Se muestra como éxito y no como error: el producto quedó cargado,
+    // solo cambia cómo llegó ahí.
+    this.avisarExito(resultado.aviso ?? (id ? 'Producto actualizado.' : 'Producto agregado.'));
   }
 
   protected async eliminarProducto(id: string): Promise<void> {
@@ -646,23 +771,62 @@ export class Operacion implements OnInit {
     this.avisarExito('Producto eliminado del catálogo.');
   }
 
-  protected seleccionarImagen(evento: Event): void {
-    const input = evento.target;
-    if (!(input instanceof HTMLInputElement) || !input.files?.length) return;
-    const archivo = input.files[0];
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) {
-      this.errorImagen.set('La imagen debe estar en formato JPG, PNG o WebP.');
-      input.value = '';
+  /**
+   * Pone o reemplaza la foto de UN lugar (punto 2).
+   *
+   * El enunciado pide que cada foto se vea en su contenedor y que se
+   * pueda «seleccionar otra imagen». Por eso se pasa el lugar: se toca
+   * el contenedor que se quiere cambiar y se reemplaza solo ese.
+   */
+  protected async elegirFotoDeProducto(lugar: number): Promise<void> {
+    const resultado = await this.camara.elegirImagen();
+
+    if (resultado.estado === 'cancelado') return;
+
+    if (resultado.estado === 'error') {
+      await this.avisarError(resultado.mensaje);
       return;
     }
-    if (archivo.size > 5 * 1024 * 1024) {
-      this.errorImagen.set('La imagen no puede superar los 5 MB.');
-      input.value = '';
-      return;
-    }
-    this.imagenProducto.set({ file: archivo, previewUrl: URL.createObjectURL(archivo) });
+
+    this.cambiarFotoDeProducto(lugar, resultado.foto);
     this.errorImagen.set('');
-    input.value = '';
+  }
+
+  protected quitarFotoDeProducto(lugar: number): void {
+    this.cambiarFotoDeProducto(lugar, null);
+  }
+
+  /**
+   * El único lugar que toca las fotos del producto.
+   *
+   * Escribe la señal —que es lo que dibuja la pantalla— y el control
+   * —que es lo que valida y lo que se manda—, en ese orden y siempre
+   * juntos. Ver el comentario largo de `fotosDelProducto`.
+   */
+  private cambiarFotoDeProducto(lugar: number, foto: FotoTomada | null): void {
+    const fotos = [...this.fotosDelProducto()];
+    this.olvidarFoto(fotos[lugar]);
+    fotos[lugar] = foto;
+
+    this.fotosDelProducto.set(fotos);
+    this.productoForm.controls.fotos.setValue([...fotos]);
+    this.productoForm.controls.fotos.markAsTouched();
+  }
+
+  /** Libera la URL de vista previa, que el navegador retiene hasta recargar. */
+  private olvidarFoto(foto: FotoTomada | null): void {
+    if (foto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(foto.previewUrl);
+  }
+
+  /**
+   * Deja los tres lugares vacíos, liberando las vistas previas.
+   *
+   * No pasa por `cambiarFotoDeProducto` a propósito: eso escribiría el
+   * control tres veces, y quien llama acá lo resetea entero enseguida.
+   */
+  private limpiarFotosDeProducto(): void {
+    for (const foto of this.fotosDelProducto()) this.olvidarFoto(foto);
+    this.fotosDelProducto.set([null, null, null]);
   }
 
   protected async registrarMesa(): Promise<void> {
@@ -844,19 +1008,31 @@ export class Operacion implements OnInit {
       return;
     }
 
-    this.olvidarFotoEmpleado();
-    this.empleadoForm.controls.foto.setValue(resultado.foto);
-    this.empleadoForm.controls.foto.markAsTouched();
+    this.cambiarFotoDeEmpleado(resultado.foto);
   }
 
   protected quitarFotoEmpleado(): void {
+    this.cambiarFotoDeEmpleado(null);
+  }
+
+  /**
+   * El único lugar que toca la foto del empleado.
+   *
+   * Mismo criterio que `cambiarFotoDeProducto`: la señal dibuja, el
+   * control valida, se escriben juntos. Acá el atraso de una foto no se
+   * llegaba a ver —hay una sola, y el primer cambio siempre se dibuja—,
+   * pero el mecanismo roto era el mismo y la trampa quedaba armada para
+   * cuando alguien tocara «Repetir».
+   */
+  private cambiarFotoDeEmpleado(foto: FotoTomada | null): void {
     this.olvidarFotoEmpleado();
-    this.empleadoForm.controls.foto.setValue(null);
+    this.fotoDelEmpleado.set(foto);
+    this.empleadoForm.controls.foto.setValue(foto);
     this.empleadoForm.controls.foto.markAsTouched();
   }
 
   private olvidarFotoEmpleado(): void {
-    const anterior = this.empleadoForm.controls.foto.value;
+    const anterior = this.fotoDelEmpleado();
     if (anterior?.previewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(anterior.previewUrl);
     }
