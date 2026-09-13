@@ -100,6 +100,7 @@ import {
   Seccion,
   puedeAcceder,
 } from '../../core/navegacion/secciones';
+import { Platform } from '@ionic/angular';
 type GraficoDemo = 'torta' | 'barras' | 'linea';
 
 @Component({
@@ -143,6 +144,9 @@ export class Operacion implements OnInit {
   private readonly sesion = inject(SesionService);
   private readonly autenticacion = inject(AUTENTICACION);
   protected readonly demo = inject(OperacionService);
+  
+  private platform = inject(Platform);
+  private backButtonSub: any;
 
   protected readonly usuario = this.sesion.usuario;
   protected readonly modo = this.autenticacion.modo;
@@ -305,6 +309,19 @@ export class Operacion implements OnInit {
   }
 
   ngOnInit(): void {
+    this.backButtonSub = this.platform.backButton.subscribeWithPriority(10, () => {
+      // 1. Si hay un formulario abierto (creando), primero lo cierra volviendo al listado
+      if (this.creando()) {
+        this.creando.set(false);
+        return;
+      }
+
+      // 2. Si estás dentro de una sección específica, vuelve al menú principal de secciones
+      if (this.seccion()) {
+        this.seccion.set(null);
+        return;
+      }
+    });
     if (!this.sesion.estaAutenticado()) {
       void this.router.navigate(['/ingreso'], { replaceUrl: true });
     }
