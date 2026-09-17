@@ -56,7 +56,8 @@ import { helpCircleOutline } from 'ionicons/icons';
     ion-button.approve-button { --border-radius: 0.7rem; --background: #006ae7; --background-hover: #003592; --color: #f8fbfd; }
     ion-button.reject-button { --border-radius: 0.7rem; --color: #003592; --border-color: #003592; }
     ion-button.table-tile { width: 100%; --color: #003592; --background: rgb(220 91 2 / 10%); --border-radius: .9rem; }
-    ion-button.table-tile::part(native) { display: flex; flex-direction: column; align-items: flex-start; border: .1rem solid rgb(220 91 2 / 36%); padding: .85rem; color: #003592; font: inherit; text-align: left; }
+    ion-button.table-tile::part(native) { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .35rem; border: .1rem solid rgb(220 91 2 / 36%); padding: 1rem; color: #003592; font: inherit; line-height: 1.3; text-align: left; white-space: normal; }
+    ion-button.table-tile span, ion-button.table-tile strong, ion-button.table-tile small { display: block; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
     ion-button.table-tile--free { --background: rgb(0 106 231 / 9%); }
     ion-button.table-tile--free::part(native) { border-color: rgb(0 106 231 / 35%); }
     ion-button.table-tile .table-tile__number { color: #006ae7; font-size: 1.8rem; line-height: 1; }

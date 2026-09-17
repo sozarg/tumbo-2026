@@ -71,12 +71,14 @@
 />
 
 <ion-content class="operation-page" [scrollY]="!seccion() || ((seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') && creando())">
+  <tumbo-fondo-decorativo aria-hidden="true" />
   @if (usuario(); as usuarioActual) {
     <div
       class="operation-layout"
       [class.operation-layout--personal]="seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes'"
       [class.operation-layout--employee-form]="(seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') && creando()"
       [class.operation-layout--home]="!seccion()"
+      [class.operation-layout--detail]="!!seccion()"
     >
       @if (!seccion()) {
         <h1 #encabezado class="hub-title" tabindex="-1">Secciones del restaurante</h1>
@@ -575,7 +577,7 @@
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
-              <section class="section-block">
+              <section class="section-block table-section">
                 <div class="section-heading">
                   <div><h2>Gestión de mesas</h2></div>
                 </div>
@@ -588,10 +590,14 @@
                       [message]="mesa.disponible ? 'Vas a marcar la mesa como ocupada. ¿Querés continuar?' : 'Vas a liberar la mesa para recibir nuevos clientes. ¿Querés continuar?'"
                       (confirmado)="cambiarDisponibilidadMesa(mesa.numero)"
                     >
-                      <span class="table-tile__number">{{ mesa.numero }}</span>
-                      <span>{{ mesa.tipo }}</span>
-                      <strong>{{ mesa.disponible ? 'Disponible' : 'Ocupada' }}</strong>
-                      <small>{{ mesa.comensales }} comensales · QR listo</small>
+                      <div class="table-tile__heading">
+                        <span class="table-tile__number">{{ mesa.numero }}</span>
+                        <span class="table-tile__type">{{ mesa.tipo }}</span>
+                      </div>
+                      <div class="table-tile__details">
+                        <strong class="table-tile__status">{{ mesa.disponible ? 'Disponible' : 'Ocupada' }}</strong>
+                        <small class="table-tile__meta">{{ mesa.comensales }} comensales · QR listo</small>
+                      </div>
                     </tumbo-boton-confirmacion>
                   }
                 </div>

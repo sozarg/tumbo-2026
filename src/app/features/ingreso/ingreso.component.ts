@@ -16,6 +16,7 @@ import { Espera } from '../../shared/components/espera/espera.component';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
 import { conLimite, correoValido, sinEspaciosSolos } from '../../core/validacion/validadores';
+import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 
 @Component({
   imports: [
@@ -25,6 +26,7 @@ import { conLimite, correoValido, sinEspaciosSolos } from '../../core/validacion
     IonInput,
     IonNote,
     Espera,
+    FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
