@@ -8,13 +8,15 @@ ion-content {
 }
 
 .splash-page {
+  position: relative;
+  z-index: 1;
   display: grid;
   min-height: 100%;
   padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
     max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
   place-items: center;
   color: var(--tumbo-azul-sombra);
-  background: var(--tumbo-crema-fondo);
+  background: transparent;
 }
 
 .splash-page__brand {

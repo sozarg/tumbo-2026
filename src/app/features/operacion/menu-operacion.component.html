@@ -92,16 +92,35 @@
       </div>
     </section>
     @for (grupo of grupos(); track grupo.titulo) {
-      <section [attr.aria-label]="grupo.titulo">
-        <h2>{{ grupo.titulo }}</h2>
+      <section
+        class="dashboard-section"
+        [class.dashboard-section--operation]="grupo.accesos[0]?.id === 'pedidos'"
+        [class.dashboard-section--service]="grupo.accesos[0]?.id === 'cocina'"
+        [class.dashboard-section--experience]="grupo.accesos[0]?.id === 'menu' || grupo.accesos[0]?.id === 'juegos'"
+        [class.dashboard-section--tracking]="grupo.accesos[0]?.id === 'reportes'"
+        [attr.aria-label]="grupo.titulo"
+      >
+        <div
+          class="dashboard-section__heading"
+        >
+          <div>
+            <h2>{{ grupo.titulo }}</h2>
+            @if (grupo.accesos[0]?.id === 'pedidos') {
+              <p>Gestioná el funcionamiento diario</p>
+            } @else if (grupo.accesos[0]?.id === 'cocina') {
+              <p>Accedé a las áreas del restaurante</p>
+            }
+          </div>
+        </div>
         <div class="tools-list" [class.tools-list--pair]="grupo.accesos.length === 2">
           @for (acceso of grupo.accesos; track acceso.id) {
             <button
-              class="hub-tile tool-action"
+              class="hub-tile dashboard-action"
               type="button"
               (click)="seleccionar.emit(acceso.id)"
             >
-              <ion-icon [name]="acceso.icono" aria-hidden="true" /><span>{{ acceso.titulo }}</span>
+              <span class="dashboard-action__icon"><ion-icon [name]="acceso.icono" aria-hidden="true" /></span>
+              <span>{{ acceso.titulo }}</span>
             </button>
           }
         </div>

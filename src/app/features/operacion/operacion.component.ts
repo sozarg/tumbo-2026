@@ -37,6 +37,7 @@ import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
 import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
+import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 import {
   pencilOutline,
   wineOutline,
@@ -130,6 +131,7 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     Espera,
     Paginador,
     BotonConfirmacion,
+    FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
   ],
