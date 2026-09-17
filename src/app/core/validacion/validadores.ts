@@ -217,3 +217,75 @@ export const clavesCoinciden: ValidatorFn = (grupo) => {
   const repetida = grupo.get('repetirClave')?.value;
   return clave && repetida && clave !== repetida ? { clavesDistintas: true } : null;
 };
+
+/**
+ * La foto personal del empleado, que el punto 1 pide obligatoria.
+ *
+ * POR QUÉ ES UN VALIDADOR Y NO UNA COMPROBACIÓN AL ENVIAR
+ * Antes se miraba dentro de `registrarEmpleado`, o sea después de que la
+ * persona apretara Confirmar. Eso funcionaba, pero el formulario se
+ * consideraba «válido» sin foto: el cartel de confirmación se abría, y
+ * recién ahí aparecía el error. Como validador, la foto entra en el
+ * mismo `invalid` que el resto y el diálogo directamente no se abre.
+ *
+ * El valor no es texto sino el archivo con su vista previa, así que
+ * alcanza con preguntar si hay algo.
+ */
+export const fotoRequerida: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
+  control.value ? null : { fotoRequerida: true };
+
+/**
+ * Un número entero, para los campos que en la base son `integer`.
+ *
+ * POR QUÉ HACE FALTA
+ * `<ion-input type="number">` acepta decimales, así que «12,5 minutos»
+ * llega al servidor tal cual y PostgreSQL lo rechaza con un error de
+ * tipo que no dice nada útil. Acá se frena antes, en el campo.
+ */
+export const enteroValido: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  if (estaVacio(control.value)) return null;
+
+  const numero = Number(control.value);
+  return Number.isInteger(numero) ? null : { entero: true };
+};
+
+/**
+ * Un precio que entra en `numeric(10,2)`.
+ *
+ * Dos comprobaciones, las dos con su motivo:
+ *
+ *   - COMO MUCHO DOS DECIMALES. La columna los redondea en silencio, o
+ *     sea que un precio de 1000,456 se guardaría como 1000,46 sin que
+ *     nadie se entere. Mejor decirlo.
+ *   - OCHO DÍGITOS ENTEROS. Es el otro número de `numeric(10,2)`: diez
+ *     dígitos en total, dos de ellos decimales. Pasado ese tope la base
+ *     tira un error de desbordamiento.
+ */
+export const precioValido: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  if (estaVacio(control.value)) return null;
+
+  const numero = Number(control.value);
+  if (!Number.isFinite(numero)) return { precio: true };
+
+  const decimales = String(control.value).split('.')[1]?.length ?? 0;
+  if (decimales > 2) return { precioDecimales: true };
+  if (Math.abs(numero) >= 100_000_000) return { precioGrande: true };
+
+  return null;
+};
+
+/**
+ * Las tres fotos del producto, que pide el punto 2.
+ *
+ * El enunciado dice «tres (3) fotos», no «hasta tres». El valor es un
+ * arreglo de tres lugares y cada uno puede estar vacío, así que se
+ * cuenta cuántos están ocupados.
+ */
+export const tresFotosRequeridas: ValidatorFn = (
+  control: AbstractControl,
+): ValidationErrors | null => {
+  const fotos = (control.value ?? []) as readonly unknown[];
+  const cargadas = fotos.filter(Boolean).length;
+
+  return cargadas === 3 ? null : { tresFotos: { cargadas } };
+};

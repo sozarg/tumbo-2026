@@ -37,6 +37,39 @@
     </div>
   }
 </ion-header>
+<!--
+  LOS AVISOS VAN ACÁ ARRIBA, FUERA DE <ion-content>, Y NO SE PUEDEN MOVER
+  ADENTRO.
+
+  `ion-toast` se dibuja con z-index 60000 y pico, pero un z-index solo
+  compite dentro de su propio contexto de apilado. Estaban declarados
+  dentro de `.operation-layout`, que tiene `position: relative` y
+  `z-index: 1`: eso abre un contexto nuevo, y adentro de él los 60000 del
+  toast valen 1 para el mundo de afuera. Resultado: el encabezado
+  —`ion-header`, que Ionic pone en z-index 10— se dibujaba ENCIMA del
+  aviso, y el texto del toast y el título quedaban superpuestos, ninguno
+  de los dos legible.
+
+  Está verificado con el navegador: mismo alta, antes y después.
+-->
+<ion-toast
+  [isOpen]="error() !== ''"
+  [message]="error()"
+  position="top"
+  icon="alert-circle-outline"
+  [buttons]="[{ text: 'Cerrar', role: 'cancel' }]"
+  (didDismiss)="error.set('')"
+/>
+<ion-toast
+  [isOpen]="mensaje() !== ''"
+  [message]="mensaje()"
+  [duration]="3200"
+  position="top"
+  icon="checkmark-circle-outline"
+  cssClass="toast-tumbo"
+  (didDismiss)="cerrarAviso()"
+/>
+
 <ion-content class="operation-page" [scrollY]="!seccion() || ((seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') && creando())">
   <tumbo-fondo-decorativo aria-hidden="true" />
   @if (usuario(); as usuarioActual) {
@@ -75,23 +108,6 @@
           }
         </div>
         <div class="view-content">
-          <ion-toast
-            [isOpen]="error() !== ''"
-            [message]="error()"
-            position="top"
-            icon="alert-circle-outline"
-            [buttons]="[{ text: 'Cerrar', role: 'cancel' }]"
-            (didDismiss)="error.set('')"
-          />
-          <ion-toast
-            [isOpen]="mensaje() !== ''"
-            [message]="mensaje()"
-            [duration]="3200"
-            position="top"
-            icon="checkmark-circle-outline"
-            cssClass="toast-tumbo"
-            (didDismiss)="cerrarAviso()"
-          />
 
           @if (seccion() === 'personal') {
             @if (creando()) {
@@ -108,10 +124,55 @@
                     class="scan-button"
                     fill="outline"
                     type="button"
-                    aria-label="Simular lector de DNI"
-                    (click)="simularDniEmpleado()"
+                    [attr.aria-label]="lectorReal ? 'Leer el DNI con la cámara' : 'Simular lector de DNI'"
+                    (click)="leerDniEmpleado()"
                     ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
                   /></ion-button>
+                </div>
+
+                <!--
+                  La foto del empleado (punto 1). Va arriba de todo y no
+                  al final porque en el teléfono es lo primero que se
+                  hace: se saca la foto con la persona delante, y recién
+                  después se tipean los datos.
+                -->
+                <div class="employee-photo">
+                  <!-- La señal y no el control: ver `fotoDelEmpleado`. -->
+                  @if (fotoDelEmpleado(); as foto) {
+                    <img class="employee-photo__preview" [src]="foto.previewUrl" alt="Foto del empleado" />
+                    <div class="employee-photo__actions">
+                      <ion-button fill="outline" size="small" type="button" (click)="sacarFotoEmpleado()">
+                        <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                        Repetir
+                      </ion-button>
+                      <ion-button fill="clear" size="small" type="button" (click)="quitarFotoEmpleado()">
+                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                        Quitar
+                      </ion-button>
+                    </div>
+                    @if (foto.simulada) {
+                      <p class="employee-photo__note">
+                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                      </p>
+                    }
+                  } @else {
+                    <ion-button
+                      class="employee-photo__take"
+                      fill="outline"
+                      type="button"
+                      (click)="sacarFotoEmpleado()"
+                    >
+                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                      {{ camaraReal ? 'Sacar la foto' : 'Elegir una imagen' }}
+                    </ion-button>
+                    @if (campoInvalido(empleadoForm.controls.foto)) {
+                      <p class="employee-photo__error" role="alert">
+                        {{ mensajeCampo(empleadoForm.controls.foto, 'foto') }}
+                      </p>
+                    } @else {
+                      <p class="employee-photo__note">La foto personal es obligatoria.</p>
+                    }
+                  }
                 </div>
 
 <div class="employee-form__row"><div class="employee-form__field"><ion-input
@@ -221,12 +282,18 @@
                 <tumbo-boton-confirmacion
                   buttonClass="primary-action"
                   expand="block"
+                  [disabled]="enviando()"
+                  [puedeConfirmar]="empleadoEsValido"
                   title="Confirmar alta de empleado"
                   message="Vas a registrar este empleado y habilitar su acceso al sistema. ¿Querés continuar?"
                   (confirmado)="registrarEmpleado()"
                 >
-                  <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
-                  empleado
+                  @if (enviando()) {
+                    <tumbo-espera etiqueta="Registrando al empleado" />
+                  } @else {
+                    <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
+                    empleado
+                  }
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
@@ -238,15 +305,24 @@
                       <p>{{ empleado.etiquetaPerfil }}</p>
                       <p class="person-card__email">{{ empleado.correo }}</p>
                     </div>
-                    <tumbo-boton-confirmacion
-                      buttonClass="icon-danger"
-                      [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
-                      title="Confirmar baja de personal"
-                      [message]="'Vas a quitar a ' + empleado.nombres + ' ' + empleado.apellidos + ' del personal activo. ¿Querés continuar?'"
-                      (confirmado)="eliminarEmpleado(empleado.id)"
-                    >
-                      <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                    </tumbo-boton-confirmacion>
+                    @if (dandoDeBaja() === empleado.id) {
+                      <div class="person-card__espera">
+                        <tumbo-espera
+                          [etiqueta]="'Dando de baja a ' + empleado.nombres"
+                        />
+                      </div>
+                    } @else {
+                      <tumbo-boton-confirmacion
+                        buttonClass="icon-danger"
+                        [disabled]="dandoDeBaja() !== null"
+                        [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
+                        title="Confirmar baja de personal"
+                        [message]="'Vas a quitar a ' + empleado.nombres + ' ' + empleado.apellidos + ' del personal activo. ¿Querés continuar?'"
+                        (confirmado)="eliminarEmpleado(empleado.id)"
+                      >
+                        <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                      </tumbo-boton-confirmacion>
+                    }
                   </article>
                 } @empty {
                   <p class="empty-state">Todavía no hay empleados.</p>
@@ -269,14 +345,26 @@
                   label-placement="stacked"
                   formControlName="nombre"
                   fill="outline"
+                  [maxlength]="limites.nombreProducto.max"
                 />
+                @if (campoInvalido(productoForm.controls.nombre)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(productoForm.controls.nombre, 'nombre') }}
+                  </p>
+                }
                 <ion-textarea
                   label="Descripción"
                   label-placement="stacked"
                   formControlName="descripcion"
                   fill="outline"
                   auto-grow="true"
+                  [maxlength]="limites.descripcionProducto.max"
                 />
+                @if (campoInvalido(productoForm.controls.descripcion)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(productoForm.controls.descripcion, 'descripción') }}
+                  </p>
+                }
                 <div class="employee-form__row">
                   <ion-input
                     label="Minutos"
@@ -284,6 +372,7 @@
                     formControlName="minutos"
                     fill="outline"
                     type="number"
+                    min="1"
                   />
                   <ion-input
                     label="Precio"
@@ -293,19 +382,74 @@
                     type="number"
                   />
                 </div>
-                <div class="product-image-field">
-                  <label class="product-image-upload" for="imagen-producto">
-                    @if (imagenProducto(); as imagen) {
-                      <img [src]="imagen.previewUrl" alt="Vista previa de la imagen del producto" />
-                    } @else {
-                      <span aria-hidden="true">+</span>
-                      <strong>Agregar imagen</strong>
+                <!--
+                  LAS TRES FOTOS DEL PRODUCTO (punto 2).
+
+                  El enunciado pide que se vean «en contenedores de forma
+                  individual, con buen tamaño, sin que se muestren partes
+                  de otras fotos, centradas y con la posibilidad de
+                  seleccionar otra imagen». De ahí que sean tres cajas
+                  separadas —una abajo de la otra en el teléfono, para
+                  que se vean grandes—, con `object-fit: cover`, que
+                  recorta sin deformar y sin dejar entrar a la vecina, y
+                  que tocar cualquiera la reemplace.
+
+                  El detalle visual está en `operacion-fotos.component.scss`.
+                -->
+                <fieldset class="product-photos">
+                  <legend class="product-photos__legend">Fotos del producto</legend>
+
+                  <div class="product-photos__grid">
+                    @for (lugar of lugaresDeFoto; track lugar) {
+                      <div class="product-photo">
+                        <!-- La señal y no el control: ver `fotosDelProducto`. -->
+                        @if (fotosDelProducto()[lugar]; as foto) {
+                          <button
+                            class="product-photo__slot product-photo__slot--llena"
+                            type="button"
+                            [attr.aria-label]="'Cambiar la foto ' + (lugar + 1)"
+                            (click)="elegirFotoDeProducto(lugar)"
+                          >
+                            <img [src]="foto.previewUrl" [alt]="'Foto ' + (lugar + 1) + ' del producto'" />
+                          </button>
+                          <button
+                            class="product-photo__quitar"
+                            type="button"
+                            [attr.aria-label]="'Quitar la foto ' + (lugar + 1)"
+                            (click)="quitarFotoDeProducto(lugar)"
+                          >
+                            <ion-icon name="trash-outline" aria-hidden="true" />
+                          </button>
+                        } @else {
+                          <button
+                            class="product-photo__slot"
+                            type="button"
+                            [attr.aria-label]="'Agregar la foto ' + (lugar + 1)"
+                            (click)="elegirFotoDeProducto(lugar)"
+                          >
+                            <ion-icon name="camera-outline" aria-hidden="true" />
+                            <small>Foto {{ lugar + 1 }}</small>
+                          </button>
+                        }
+                      </div>
                     }
-                    <small>JPG, PNG o WebP · máximo 5 MB</small>
-                  </label>
-                  <input id="imagen-producto" type="file" accept="image/jpeg,image/png,image/webp" (change)="seleccionarImagen($event)" />
+                  </div>
+
+                  @if (campoInvalido(productoForm.controls.fotos)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(productoForm.controls.fotos, 'foto') }}
+                    </p>
+                  } @else if (productoEditado()) {
+                    <small class="product-photos__nota">
+                      Las que no toques quedan como están.
+                    </small>
+                  } @else {
+                    <small class="product-photos__nota">
+                      {{ camaraReal ? 'Se toman con la cámara o se eligen de la galería.' : 'En el teléfono se toman con la cámara o se eligen de la galería.' }}
+                    </small>
+                  }
                   @if (errorImagen()) { <p class="field-error" role="alert">{{ errorImagen() }}</p> }
-                </div>
+                </fieldset>
                 @if (!tipoDeSector()) {
                   <ion-select
                     label="Tipo"
@@ -317,16 +461,31 @@
                     <ion-select-option value="bebida">Bebida · bar</ion-select-option>
                   </ion-select>
                 }
-                @if (productoForm.touched && productoForm.invalid) {
-                  <p class="field-error" role="alert">Completá los datos: nombre, descripción, tiempo y precio válidos.</p>
+                @if (campoInvalido(productoForm.controls.minutos)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(productoForm.controls.minutos, 'tiempo') }}
+                  </p>
+                }
+                @if (campoInvalido(productoForm.controls.precio)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(productoForm.controls.precio, 'precio') }}
+                  </p>
                 }
                 <tumbo-boton-confirmacion
                   buttonClass="primary-action"
                   expand="block"
+                  [disabled]="enviando()"
+                  [puedeConfirmar]="productoEsValido"
                   [title]="productoEditado() ? 'Confirmar modificación' : 'Confirmar alta de producto'"
                   [message]="productoEditado() ? 'Vas a guardar los cambios de este producto. ¿Querés continuar?' : 'Vas a agregar este producto al catálogo. ¿Querés continuar?'"
                   (confirmado)="registrarProducto()"
-                >{{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}</tumbo-boton-confirmacion>
+                >
+                  @if (enviando()) {
+                    <tumbo-espera etiqueta="Guardando el producto" />
+                  } @else {
+                    {{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}
+                  }
+                </tumbo-boton-confirmacion>
               </form>
             } @else {
               <section class="person-list product-list" tabindex="0" aria-label="Lista de productos">
@@ -339,16 +498,29 @@
                     }
                     <div class="catalog-item__details"><h2>{{ producto.nombre }}</h2><p>{{ producto.tipo === 'plato' ? 'Plato' : 'Bebida' }} · {{ producto.minutos }} min</p><strong>{{ formatearPrecio(producto.precio) }}</strong></div>
                     <div class="catalog-item__actions">
-                      <button class="catalog-item__edit" type="button" [attr.aria-label]="'Editar ' + producto.nombre" (click)="editarProducto(producto)"><ion-icon name="pencil-outline" aria-hidden="true" /></button>
-                      <tumbo-boton-confirmacion
-                        buttonClass="icon-danger"
-                        [ariaLabel]="'Eliminar ' + producto.nombre"
-                        title="Confirmar baja de producto"
-                        [message]="'Vas a quitar ' + producto.nombre + ' del catálogo. ¿Querés continuar?'"
-                        (confirmado)="eliminarProducto(producto.id)"
-                      >
-                        <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                      </tumbo-boton-confirmacion>
+                      <!--
+                        Mientras se da de baja, la tarjeta muestra el
+                        spinner en lugar de los botones: igual que el
+                        personal. Antes la pantalla no daba ninguna señal
+                        de que estuviera pasando algo.
+                      -->
+                      @if (dandoDeBaja() === producto.id) {
+                        <div class="catalog-item__espera">
+                          <tumbo-espera [etiqueta]="'Quitando ' + producto.nombre + ' de la carta'" />
+                        </div>
+                      } @else {
+                        <button class="catalog-item__edit" type="button" [disabled]="dandoDeBaja() !== null" [attr.aria-label]="'Editar ' + producto.nombre" (click)="editarProducto(producto)"><ion-icon name="pencil-outline" aria-hidden="true" /></button>
+                        <tumbo-boton-confirmacion
+                          buttonClass="icon-danger"
+                          [disabled]="dandoDeBaja() !== null"
+                          [ariaLabel]="'Eliminar ' + producto.nombre"
+                          title="Confirmar baja de producto"
+                          [message]="'Vas a quitar ' + producto.nombre + ' del catálogo. ¿Querés continuar?'"
+                          (confirmado)="eliminarProducto(producto.id)"
+                        >
+                          <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                        </tumbo-boton-confirmacion>
+                      }
                     </div>
                   </article>
                 } @empty { <p>No hay productos.</p> }
@@ -442,6 +614,15 @@
                     <h2>Alta de cliente</h2>
                     <p>Queda pendiente de aprobación.</p>
                   </div>
+
+                  <ion-button
+                    class="scan-button"
+                    fill="outline"
+                    type="button"
+                    [attr.aria-label]="lectorReal ? 'Leer el DNI con la cámara' : 'Simular lector de DNI'"
+                    (click)="leerDniCliente()"
+                    ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
+                  /></ion-button>
                 </div>
 <div class="employee-form__row">                <ion-input
                   label="Nombres"

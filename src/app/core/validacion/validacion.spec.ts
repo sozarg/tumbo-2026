@@ -11,6 +11,7 @@ import {
   soloLetras,
   soloNumeros,
   validadoresDeNombre,
+  fotoRequerida,
 } from './validadores';
 
 /**
@@ -349,5 +350,18 @@ describe('coherencia con la base de datos', () => {
     expect(LIMITES.motivoRechazo).toEqual({ min: 5, max: 300 });
     expect(LIMITES.mensaje.max).toBe(500);
     expect(LIMITES.preguntaEncuesta).toEqual({ min: 5, max: 200 });
+  });
+});
+
+describe('fotoRequerida', () => {
+  const control = (valor: unknown) => new FormControl(valor);
+
+  it('rechaza cuando no hay foto', () => {
+    expect(fotoRequerida(control(null))).toEqual({ fotoRequerida: true });
+  });
+
+  it('acepta cuando hay una', () => {
+    const foto = { file: new File([], 'f.webp'), previewUrl: 'blob:x', simulada: false };
+    expect(fotoRequerida(control(foto))).toBeNull();
   });
 });

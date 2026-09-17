@@ -143,6 +143,30 @@ function mensajeDeError(crudo: string): string {
     return 'Faltan datos obligatorios: nombres, apellidos y DNI.';
   }
 
+  /**
+   * EL MENSAJE QUE NO DICE NADA.
+   *
+   * Cuando el trigger `manejar_usuario_nuevo` falla —un DNI repetido, un
+   * CHECK que no cierra—, la violación ocurre DENTRO del `createUser` de
+   * Supabase Auth. Auth la envuelve y devuelve siempre la misma frase,
+   * sin el nombre del constraint:
+   *
+   *     Database error creating new user
+   *
+   * O sea que justo el caso más común del alta —cargar dos veces a la
+   * misma persona— llegaba a la pantalla como un error en inglés que no
+   * le dice a nadie qué campo mirar.
+   *
+   * La comprobación previa de más abajo evita que se llegue acá en los
+   * casos conocidos. Esto es la red por si aparece uno nuevo.
+   */
+  if (c.includes('database error creating new user')) {
+    return (
+      'La base rechazó el alta. Suele ser un DNI o un correo ya cargado; ' +
+      'si no, fijate en los registros de la función.'
+    );
+  }
+
   // Lo que no sabemos traducir se devuelve tal cual: es preferible un
   // mensaje feo a uno inventado que mande a buscar el problema al lugar
   // equivocado. Justamente eso pasaba antes con el DNI repetido.
@@ -217,10 +241,39 @@ Deno.serve(async (peticion: Request) => {
   // la fila de `public.usuarios` leyendo estos metadatos. Corre en la
   // MISMA transacción: si un CHECK falla, se cae también el usuario de
   // auth y no quedan huérfanos.
+  /**
+   * ¿Ya existe esta persona? Se pregunta ANTES de crear la cuenta.
+   *
+   * POR QUÉ NO ALCANZA CON DEJAR QUE FALLE
+   * Si se deja que reviente el insert, la violación pasa adentro del
+   * `createUser` y Auth la devuelve como 'Database error creating new
+   * user', sin decir qué columna. Preguntando antes, la persona recibe
+   * 'Ya existe un empleado con ese DNI' y sabe exactamente qué cambiar.
+   *
+   * NO REEMPLAZA AL CONSTRAINT, LO ACOMPAÑA
+   * Entre esta consulta y el insert hay una ventana en la que otro
+   * dispositivo podría cargar el mismo DNI. La unicidad de la base sigue
+   * siendo la que garantiza que no entren dos; esto solo hace que el
+   * caso normal tenga un mensaje entendible.
+   */
+  const dni = (datos.dni ?? '').trim();
+  if (!dni) return error('Falta el DNI.', 400);
+
+  // Dos consultas con `eq` y no una sola con `or`: el filtro `or` de
+  // PostgREST se arma concatenando texto, así que un correo con una coma
+  // adentro rompería la condición. Acá el valor viaja como parámetro.
+  const [porDni, porCorreo] = await Promise.all([
+    admin.from('usuarios').select('id').eq('dni', dni).maybeSingle(),
+    admin.from('usuarios').select('id').eq('correo', correo).maybeSingle(),
+  ]);
+
+  if (porDni.data) return error('Ya existe un empleado con ese DNI.', 400);
+  if (porCorreo.data) return error('Ya existe una cuenta con ese correo electrónico.', 400);
+
   const metadatosDePersona = {
     nombres: (datos.nombres ?? '').trim(),
     apellidos: (datos.apellidos ?? '').trim(),
-    dni: (datos.dni ?? '').trim(),
+    dni,
     cuil: (datos.cuil ?? '').trim(),
     foto_url: (datos.fotoUrl ?? '').trim(),
   };
@@ -236,6 +289,10 @@ Deno.serve(async (peticion: Request) => {
   });
 
   if (errorAlta || !creado.user) {
+    // El crudo va a los registros de la función: es lo único que queda
+    // del error de PostgreSQL cuando Auth lo envuelve, y sin esto hay
+    // que adivinar mirando la base.
+    console.error('crear-empleado · createUser falló:', errorAlta);
     return error(mensajeDeError(errorAlta?.message ?? 'No se pudo crear la cuenta.'), 400);
   }
 

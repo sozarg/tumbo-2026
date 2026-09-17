@@ -75,6 +75,29 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
     return 'El CUIL tiene que ser de 11 números, con guiones o sin ellos.';
   }
 
+  if (errores['fotoRequerida']) {
+    return 'Falta la foto personal: el alta la pide tomada con la cámara.';
+  }
+
+  if (errores['entero']) {
+    return `${El} tiene que ser un número entero, sin decimales.`;
+  }
+
+  if (errores['precioDecimales']) {
+    return 'El precio puede tener como mucho dos decimales.';
+  }
+
+  if (errores['precioGrande'] || errores['precio']) {
+    return 'Ingresá un precio válido, menor a 100.000.000.';
+  }
+
+  if (errores['tresFotos']) {
+    const cargadas = errores['tresFotos'].cargadas as number;
+    return cargadas === 0
+      ? 'Faltan las tres fotos del producto.'
+      : `Falta${3 - cargadas === 1 ? '' : 'n'} ${3 - cargadas} foto${3 - cargadas === 1 ? '' : 's'}: el punto pide tres.`;
+  }
+
   if (errores['soloNumeros']) {
     return `${El} solo puede tener números.`;
   }
