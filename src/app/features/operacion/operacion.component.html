@@ -1,4 +1,4 @@
-<ion-header class="operation-top" [class.operation-top--home]="!seccion()">
+<ion-header class="operation-top">
   @if (usuario(); as usuarioActual) {
     <div class="operation-header" [class.operation-header--detail]="seccion()">
       @if (seccion()) {
@@ -31,7 +31,7 @@
       </div>
       <ion-button
         class="logout-button"
-        [fill]="seccion() ? 'outline' : 'clear'"
+        fill="clear"
         aria-label="Cerrar sesión"
         (click)="cerrarSesion()"
         ><ion-icon aria-hidden="true" slot="icon-only" name="log-out-outline"
@@ -425,56 +425,41 @@
                     type="number"
                   />
                 </div>
-                <!--
-                  LAS TRES FOTOS DEL PRODUCTO (punto 2).
-
-                  El enunciado pide que se vean «en contenedores de forma
-                  individual, con buen tamaño, sin que se muestren partes
-                  de otras fotos, centradas y con la posibilidad de
-                  seleccionar otra imagen». De ahí que sean tres cajas
-                  separadas —una abajo de la otra en el teléfono, para
-                  que se vean grandes—, con `object-fit: cover`, que
-                  recorta sin deformar y sin dejar entrar a la vecina, y
-                  que tocar cualquiera la reemplace.
-
-                  El detalle visual está en `operacion-fotos.component.scss`.
-                -->
                 <fieldset class="product-photos">
-                  <legend class="product-photos__legend">Fotos del producto</legend>
+                  <legend class="product-photos__legend">Imagen del producto</legend>
 
                   <div class="product-photos__grid">
                     @for (lugar of lugaresDeFoto; track lugar) {
                       <div class="product-photo">
                         <!-- La señal y no el control: ver `fotosDelProducto`. -->
-                        @if (fotosDelProducto()[lugar]; as foto) {
+                        @if (imagenActualDelProducto(); as foto) {
                           <button
                             class="product-photo__slot product-photo__slot--llena"
                             type="button"
-                            [attr.aria-label]="'Cambiar la foto ' + (lugar + 1)"
+                            [attr.aria-label]="'Reemplazar imagen del producto'"
                             (click)="elegirFotoDeProducto(lugar)"
                           >
-                            <img
-                              [src]="foto.previewUrl"
-                              [alt]="'Foto ' + (lugar + 1) + ' del producto'"
-                            />
+                            <img [src]="foto" [alt]="'Imagen del producto'" />
                           </button>
-                          <button
-                            class="product-photo__quitar"
-                            type="button"
-                            [attr.aria-label]="'Quitar la foto ' + (lugar + 1)"
-                            (click)="quitarFotoDeProducto(lugar)"
-                          >
-                            <ion-icon name="trash-outline" aria-hidden="true" />
-                          </button>
+                          @if (fotosDelProducto()[0]) {
+                            <button
+                              class="product-photo__quitar"
+                              type="button"
+                              [attr.aria-label]="'Descartar imagen seleccionada'"
+                              (click)="quitarFotoDeProducto(lugar)"
+                            >
+                              <ion-icon name="trash-outline" aria-hidden="true" />
+                            </button>
+                          }
                         } @else {
                           <button
                             class="product-photo__slot"
                             type="button"
-                            [attr.aria-label]="'Agregar la foto ' + (lugar + 1)"
+                            [attr.aria-label]="'Elegir imagen del producto'"
                             (click)="elegirFotoDeProducto(lugar)"
                           >
                             <ion-icon name="camera-outline" aria-hidden="true" />
-                            <small>Foto {{ lugar + 1 }}</small>
+                            <small>Elegir imagen</small>
                           </button>
                         }
                       </div>
@@ -487,14 +472,14 @@
                     </p>
                   } @else if (productoEditado()) {
                     <small class="product-photos__nota">
-                      Las que no toques quedan como están.
+                      Si no elegís otra imagen, se conserva la actual.
                     </small>
                   } @else {
                     <small class="product-photos__nota">
                       {{
                         camaraReal
-                          ? 'Se toman con la cámara o se eligen de la galería.'
-                          : 'En el teléfono se toman con la cámara o se eligen de la galería.'
+                          ? 'Se toma con la cámara o se elige de la galería.'
+                          : 'En el teléfono se toma con la cámara o se elige de la galería.'
                       }}
                     </small>
                   }

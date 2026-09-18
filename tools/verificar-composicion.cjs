@@ -139,7 +139,13 @@ fs.mkdirSync(output, { recursive: true });
                   r.left < -1 ||
                   r.right > innerWidth + 1 ||
                   r.bottom > innerHeight + 1 ||
-                  (e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1)
+                  (e.clientWidth > 0 &&
+                    e.scrollWidth > e.clientWidth + 1 &&
+                    !(
+                      getComputedStyle(e).textOverflow === 'ellipsis' &&
+                      getComputedStyle(e).overflowX === 'hidden' &&
+                      e.getAttribute('title')
+                    ))
                 );
               })
               .map((e) => ({ tag: e.tagName, cls: e.className }));

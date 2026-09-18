@@ -1,3 +1,74 @@
+/* Una sola topbar; la variante interna agrega únicamente la columna de volver. */
+.operation-top {
+  --topbar-action-size: 44px;
+  --topbar-row-size: 48px;
+  --topbar-brand-size: 40px;
+  padding: max(8px, env(safe-area-inset-top)) 14px 8px;
+  background: color-mix(in srgb, var(--tumbo-crema-brillante) 50%, var(--tumbo-crema-fondo));
+  box-shadow: none;
+}
+.operation-top::after {
+  display: none;
+}
+.operation-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--topbar-action-size);
+  align-items: center;
+  gap: 10px;
+  height: var(--topbar-row-size);
+  max-width: 42rem;
+  margin: auto;
+}
+.operation-header--detail {
+  grid-template-columns: var(--topbar-action-size) minmax(0, 1fr) var(--topbar-action-size);
+}
+.operation-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.operation-brand__lockup {
+  width: var(--topbar-brand-size);
+  height: var(--topbar-brand-size);
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.operation-brand__text {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.operation-brand strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.operation-brand span {
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--tumbo-azul-sombra);
+}
+.operation-header ion-button {
+  margin: 0;
+  width: var(--topbar-action-size);
+  min-width: var(--topbar-action-size);
+  height: var(--topbar-action-size);
+  min-height: var(--topbar-action-size);
+  --border-width: 0;
+  --border-radius: 50%;
+  --color: var(--tumbo-azul-sombra);
+  --padding-start: 10px;
+  --padding-end: 10px;
+}
+.operation-header ion-icon {
+  font-size: 20px;
+}
+
 /* Shell compartido de Operación: Ionic reparte el viewport entre header y
    contenido. El panel es el único dueño del scroll de las vistas internas.
    Se conserva la familia de superficies de Personal y los umbrales existentes. */
@@ -5,42 +76,6 @@
 .back-button,
 .logout-button {
   margin: 0;
-}
-
-.back-button {
-  --color: #003592;
-}
-
-.operation-brand {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-self: start;
-  flex-direction: row;
-  gap: 0.75rem;
-}
-
-.logout-button {
-  --border-color: #003592;
-  --border-radius: 10px;
-  --color: #003592;
-  --border-color: #a59b7f;
-  font-size: 0.7rem;
-}
-
-.operation-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 0.3rem;
-  flex: 0 0 48px;
-  min-height: 48px;
-}
-
-.operation-brand span {
-  font-size: 10px;
-  font-weight: 500;
-  color: #003592;
 }
 
 .view-heading {
@@ -119,30 +154,6 @@
   min-width: 60px;
 }
 
-.operation-header--detail .logout-button {
-  --border-width: 0;
-  --border-radius: 50%;
-}
-
-.operation-header--detail .operation-brand span {
-  font-size: 12px;
-}
-
-.operation-top {
-  background: #fbf1d5;
-  box-shadow: none;
-  padding: max(8px, env(safe-area-inset-top)) 14px 4px;
-}
-
-.operation-top .operation-header {
-  max-width: 42rem;
-  margin: auto;
-}
-
-.operation-header ion-button {
-  min-width: 48px;
-}
-
 .view-content > .section-block {
   display: flex;
   flex-direction: column;
@@ -162,78 +173,14 @@
   min-height: 0;
 }
 
-.operation-top::after {
-  display: none;
-}
-
 .operation-layout--home {
   height: 100%;
   min-height: 0;
   padding-top: 6px;
 }
 
-.operation-brand__text {
-  display: grid;
-  gap: 1px;
-}
-
-.operation-top--home .logout-button {
-  min-width: 44px;
-  width: 44px;
-  height: 44px;
-  --border-radius: 50%;
-  --padding-start: 10px;
-  --padding-end: 10px;
-}
-
-.operation-top--home .logout-button ion-icon {
-  font-size: 20px;
-}
-
 .operation-layout--home > tumbo-menu-operacion {
   flex: 1;
-}
-
-.operation-top--home {
-  padding-bottom: 8px;
-  padding-top: max(8px, env(safe-area-inset-top));
-  background: color-mix(in srgb, var(--tumbo-crema-brillante) 50%, var(--tumbo-crema-fondo));
-}
-
-.operation-top--home .operation-header {
-  grid-template-columns: minmax(0, 1fr) 44px;
-  gap: 10px;
-}
-
-.operation-top--home .operation-brand {
-  gap: 10px;
-  width: 100%;
-}
-
-.operation-top--home .operation-brand__lockup {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.operation-top--home .operation-brand__text {
-  min-width: 0;
-  gap: 4px;
-}
-
-.operation-top--home .operation-brand strong {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.operation-top--home .operation-brand span {
-  font-size: 11px;
 }
 
 .add-person-icon {
@@ -263,17 +210,6 @@
   gap: 10px;
   padding-top: 6px;
   overflow: hidden;
-}
-
-.operation-header--detail {
-  grid-template-columns: 48px minmax(0, 1fr) 48px;
-}
-
-.operation-brand__lockup {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  flex-shrink: 0;
 }
 
 .view-heading ion-button {
