@@ -1,4 +1,10 @@
 /* Estilos de presentación exclusivos de la feature Operación. */
+.operation-layout button {
+  /* Los controles propios usan la superficie de Tumbo, sin apariencia nativa
+     heredada de normalize.css de Ionic. No afecta a los campos del formulario. */
+  appearance: none;
+}
+
 .operation-layout > :not(tumbo-fondo-decorativo) {
   position: relative;
   z-index: 1;
