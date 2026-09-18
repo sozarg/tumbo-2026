@@ -3,6 +3,24 @@ import { PerfilUsuario, Usuario } from './usuario';
 export type TipoProducto = 'plato' | 'bebida';
 export type SectorProducto = 'cocina' | 'bar';
 export type TipoMesa = 'estándar' | 'VIP' | 'movilidad_reducida';
+
+/**
+ * El tipo de mesa como se le muestra a una persona.
+ *
+ * `movilidad_reducida` es la forma que viaja: la comparte con el enum
+ * `tipo_mesa` de la base y no se puede cambiar sin una migración. Pero
+ * la pantalla lo estaba imprimiendo tal cual, con el guion bajo y todo,
+ * y encima partido en dos renglones —«movilidad / _reducida»—.
+ *
+ * Las otras dos ya se leen bien; están igual acá para que el día que
+ * alguien agregue un tipo nuevo tenga un solo lugar donde ponerle
+ * nombre, y para que TypeScript avise si se olvida.
+ */
+export const ETIQUETA_DE_TIPO_MESA: Readonly<Record<TipoMesa, string>> = {
+  estándar: 'Estándar',
+  VIP: 'VIP',
+  movilidad_reducida: 'Movilidad reducida',
+};
 export type EstadoPedido =
   | 'pendiente_confirmacion'
   | 'rechazado'
@@ -31,6 +49,8 @@ export interface MesaDemo {
   readonly tipo: TipoMesa;
   readonly disponible: boolean;
   readonly qrToken: string;
+  /** La foto de la mesa (punto 4). `null` mientras no le sacaron una. */
+  readonly fotoUrl: string | null;
 }
 
 export interface ClientePendienteDemo {
@@ -160,6 +180,14 @@ export interface AltaMesaDemo {
   readonly numero: number;
   readonly comensales: number;
   readonly tipo: TipoMesa;
+  /**
+   * La foto de la mesa, tomada con la cámara (punto 4).
+   *
+   * Opcional en el tipo y obligatoria en el ALTA del formulario, igual
+   * que la del empleado: el modo demostración no tiene dónde subirla, y
+   * al modificar una mesa el lugar vacío significa «esta no la cambié».
+   */
+  readonly foto?: FotoDePersona;
 }
 
 export interface AltaClienteDemo {

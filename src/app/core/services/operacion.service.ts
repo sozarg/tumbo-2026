@@ -325,13 +325,11 @@ export class OperacionService {
       const archivo = await this.comprimirImagen(foto.file);
       const ruta = `${id}/${crypto.randomUUID()}.webp`;
 
-      const subida = await this.cliente.storage
-        .from('fotos-usuarios')
-        .upload(ruta, archivo, {
-          contentType: 'image/webp',
-          cacheControl: '31536000',
-          upsert: false,
-        });
+      const subida = await this.cliente.storage.from('fotos-usuarios').upload(ruta, archivo, {
+        contentType: 'image/webp',
+        cacheControl: '31536000',
+        upsert: false,
+      });
 
       if (subida.error) {
         return 'El empleado se creó, pero la foto no se pudo subir.';
@@ -631,7 +629,10 @@ export class OperacionService {
       // decirlo. Para quien mira la pantalla son lo mismo —no pasó— y
       // eso es lo que tiene que leer.
       this.registrarError(accion, 'el update afectó cero filas');
-      return { ok: false, error: `No se pudo ${accion}. Puede que ya no exista o que no tengas permiso.` };
+      return {
+        ok: false,
+        error: `No se pudo ${accion}. Puede que ya no exista o que no tengas permiso.`,
+      };
     }
 
     await this.cargar();
@@ -758,13 +759,47 @@ export class OperacionService {
       ),
     );
   }
+  /**
+   * Da de alta una mesa (punto 4).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * «SE VERIFICA LA EXISTENCIA DE LA NUEVA MESA (LISTADO)»
+   *
+   * `mesas.numero` es `unique` en la base. Sin control previo, repetir
+   * un número llegaba al `insert` y volvía como «No se pudo guardar
+   * datos. Revisá la conexión», que además manda a mirar la conexión,
+   * que no tiene nada que ver.
+   *
+   * Es el mismo problema que tenía la carta en el punto 2 y se resuelve
+   * igual: se pregunta antes y se contesta con el número a la vista.
+   *
+   * A diferencia de los productos, acá NO hay baja lógica —las mesas no
+   * tienen `activo`— así que alcanza con mirar el listado que ya está
+   * cargado, sin ir de nuevo a la base.
+   */
   async registrarMesa(d: AltaMesaDemo): Promise<Resultado> {
+    const repetida = this.mesas().some((mesa) => mesa.numero === d.numero);
+    if (repetida) {
+      return { ok: false, error: `Ya existe la mesa ${d.numero}.` };
+    }
+
     if (!this.cliente) return { ok: this.mock.registrarMesa(d) };
-    return this.insertar('mesas', {
+
+    const alta = await this.insertarConFila('mesas', {
       numero: d.numero,
       cantidad_comensales: d.comensales,
       tipo: this.tipoMesa(d.tipo),
+      // `estado` no se manda: la base lo pone en 'libre' por defecto, que
+      // es la «disponibilidad vacía por defecto» que pide el enunciado.
+      // El `qr_token` también sale solo, con su propio default.
     });
+
+    if (!alta.ok || !alta.fila) return { ok: false, error: alta.error };
+
+    const aviso = await this.guardarFotoDeMesa(alta.fila.id, d.foto);
+
+    await this.cargar();
+    return aviso ? { ok: true, aviso } : { ok: true };
   }
   async registrarCliente(d: AltaClienteDemo): Promise<Resultado> {
     // La creación de auth.users requiere service_role, que nunca se expone al navegador.
@@ -779,15 +814,221 @@ export class OperacionService {
     }
     return this.actualizar('usuarios', id, { estado });
   }
+  /**
+   * Cambia los datos de una mesa (punto 4, «gestión de mesas»).
+   *
+   * El enunciado pide poder modificar la disponibilidad; editar el resto
+   * no lo pide, pero es lo que resuelve el caso real de reconfigurar el
+   * salón —partir una mesa grande en una más chica— sin borrar nada ni
+   * perder el historial de pedidos que cuelga de ella.
+   *
+   * El número se verifica igual que en el alta, excluyendo a la propia
+   * mesa: `mesas.numero` es `unique` y renumerar una mesa al número de
+   * otra tiene que avisar, no explotar.
+   */
+  async actualizarMesa(id: string, d: AltaMesaDemo): Promise<Resultado> {
+    const chocada = this.mesas().some((mesa) => mesa.id !== id && mesa.numero === d.numero);
+    if (chocada) {
+      return { ok: false, error: `Ya existe la mesa ${d.numero}.` };
+    }
+
+    if (!this.cliente) {
+      this.mock.actualizarMesa(id, d);
+      return { ok: true };
+    }
+
+    const guardada = await this.escribirMesa(
+      id,
+      {
+        numero: d.numero,
+        cantidad_comensales: d.comensales,
+        tipo: this.tipoMesa(d.tipo),
+      },
+      'guardar los cambios de la mesa',
+    );
+
+    if (!guardada.ok || !d.foto) return guardada;
+
+    const aviso = await this.guardarFotoDeMesa(id, d.foto);
+    if (aviso) return { ok: true, aviso };
+
+    await this.cargar();
+    return { ok: true };
+  }
+
+  /**
+   * Sube la foto de la mesa y la asocia (punto 4).
+   *
+   * Devuelve un AVISO y no un error: si la mesa se creó y la foto no
+   * subió, decir `ok: false` sería mentir —invitaría a repetir el alta y
+   * a chocar contra el número duplicado— y decir `ok: true` a secas
+   * escondería que falta la foto. Es el mismo criterio que la foto del
+   * empleado.
+   *
+   * El bucket `fotos-mesas` ya existía en la migración de storage, con
+   * sus políticas: no hubo que crear nada.
+   */
+  private async guardarFotoDeMesa(id: string, foto?: FotoDePersona): Promise<string | undefined> {
+    if (!this.cliente || !foto) return undefined;
+
+    try {
+      const archivo = await this.comprimirImagen(foto.file);
+      const ruta = `${id}/${crypto.randomUUID()}.webp`;
+
+      const subida = await this.cliente.storage.from('fotos-mesas').upload(ruta, archivo, {
+        contentType: 'image/webp',
+        cacheControl: '31536000',
+        upsert: false,
+      });
+
+      if (subida.error) return 'La mesa se guardó, pero la foto no se pudo subir.';
+
+      const url = this.cliente.storage.from('fotos-mesas').getPublicUrl(ruta).data.publicUrl;
+      const asociada = await this.cliente.from('mesas').update({ foto_url: url }).eq('id', id);
+
+      return asociada.error ? 'La foto se subió, pero no se pudo asociar a la mesa.' : undefined;
+    } catch {
+      return 'La mesa se guardó, pero no se pudo procesar la foto.';
+    }
+  }
+
+  /**
+   * Saca una mesa del salón (punto 4, «gestión de mesas»).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ ACÁ SÍ SE BORRA DE VERDAD
+   *
+   * Es el único borrado real del proyecto, y se puede por dos cosas que
+   * el resto de las tablas no tienen:
+   *
+   *   1. LA POLÍTICA EXISTE. `mesas_escritura` es `for all`, que incluye
+   *      DELETE. En `usuarios` y `productos` no hay ninguna política de
+   *      borrado —por eso esas bajas son una Edge Function y una baja
+   *      lógica—.
+   *
+   *   2. LAS CLAVES FORÁNEAS SON LA RED. `sesiones_mesa.mesa_id` y
+   *      `lista_espera.mesa_id` apuntan acá SIN `on delete cascade`, así
+   *      que PostgreSQL se niega a borrar una mesa con historial. No hay
+   *      forma de perder pedidos por accidente: lo peor que pasa es que
+   *      el borrado se rechace, y eso hay que contarlo bien.
+   *
+   * El 23503 es la violación de clave foránea. Sin traducirlo, la
+   * pantalla mostraría «No se pudo dar de baja la mesa. Revisá la
+   * conexión», que manda a mirar la conexión cuando el problema es que
+   * la mesa tiene pedidos.
+   */
+  async eliminarMesa(id: string): Promise<Resultado> {
+    const mesa = this.mesas().find((m) => m.id === id);
+    if (!mesa) return { ok: false, error: 'Esa mesa ya no existe.' };
+
+    // Una mesa ocupada tiene gente sentada. Se avisa antes de llegar a
+    // la base, que rechazaría igual pero con peor mensaje.
+    if (!mesa.disponible) {
+      return {
+        ok: false,
+        error: `La mesa ${mesa.numero} está ocupada: liberala antes de sacarla.`,
+      };
+    }
+
+    if (!this.cliente) {
+      this.mock.eliminarMesa(id);
+      return { ok: true };
+    }
+
+    const { data, error } = await this.cliente.from('mesas').delete().eq('id', id).select('id');
+
+    if (error) {
+      const codigo = (error as { code?: string }).code;
+      if (codigo === '23503') {
+        return {
+          ok: false,
+          error: `La mesa ${mesa.numero} tiene pedidos o clientes asociados, así que no se puede borrar. Se puede marcar como ocupada.`,
+        };
+      }
+      return this.fallo('dar de baja la mesa', error);
+    }
+
+    if (!data?.length) {
+      this.registrarError('dar de baja la mesa', 'el delete afectó cero filas');
+      return {
+        ok: false,
+        error: `No se pudo borrar la mesa ${mesa.numero}. Puede que ya no exista o que no tengas permiso.`,
+      };
+    }
+
+    await this.cargar();
+    return { ok: true };
+  }
+
+  /**
+   * Cambia una fila de `mesas` y deja la pantalla al día.
+   *
+   * El mismo trío que `escribirProducto`: escribir, COMPROBAR que se
+   * escribió, y recargar. Un `update` que RLS deniega devuelve éxito con
+   * cero filas, así que sin el `select('id')` la pantalla no puede
+   * distinguir «lo hice» de «no hice nada».
+   */
+  private async escribirMesa(
+    id: string,
+    cambios: Partial<Tablas<'mesas'>>,
+    accion: string,
+  ): Promise<Resultado> {
+    const { data, error } = await this.cliente!.from('mesas')
+      .update(cambios)
+      .eq('id', id)
+      .select('id');
+
+    if (error) return this.fallo(accion, error);
+
+    if (!data?.length) {
+      this.registrarError(accion, 'el update afectó cero filas');
+      return {
+        ok: false,
+        error: `No se pudo ${accion}. Puede que ya no exista o que no tengas permiso.`,
+      };
+    }
+
+    await this.cargar();
+    return { ok: true };
+  }
+
+  /**
+   * Libera u ocupa una mesa (punto 4, «gestión de mesas»).
+   *
+   * Pasa por el mismo control que las escrituras de productos: se
+   * comprueba con `select('id')` que el `update` haya afectado una fila
+   * y se recarga. Sin eso, un `update` que RLS deniega devuelve éxito
+   * con cero filas y la pantalla dice que la mesa cambió de estado
+   * cuando no cambió nada — el mismo bug que tuvimos en la baja de
+   * producto y en la de empleado.
+   */
   async cambiarDisponibilidadMesa(numero: number): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.cambiarDisponibilidadMesa(numero);
       return { ok: true };
     }
+
     const mesa = this.mesas().find((m) => m.numero === numero);
-    return mesa
-      ? this.actualizar('mesas', mesa.id, { estado: mesa.disponible ? 'ocupada' : 'libre' })
-      : { ok: false, error: 'Mesa inexistente.' };
+    if (!mesa) return { ok: false, error: 'Mesa inexistente.' };
+
+    const { data, error } = await this.cliente
+      .from('mesas')
+      .update({ estado: mesa.disponible ? 'ocupada' : 'libre' })
+      .eq('id', mesa.id)
+      .select('id');
+
+    if (error) return this.fallo('cambiar la disponibilidad de la mesa', error);
+
+    if (!data?.length) {
+      this.registrarError('cambiar la disponibilidad de la mesa', 'el update afectó cero filas');
+      return {
+        ok: false,
+        error: `No se pudo cambiar el estado de la mesa ${numero}. Puede que ya no exista o que no tengas permiso.`,
+      };
+    }
+
+    await this.cargar();
+    return { ok: true };
   }
   async anotarEnEspera(nombre: string): Promise<Resultado> {
     if (!this.cliente) {
@@ -1203,6 +1444,7 @@ export class OperacionService {
       tipo: this.tipoDemo(m.tipo),
       disponible: m.estado === 'libre',
       qrToken: m.qr_token,
+      fotoUrl: m.foto_url ?? null,
     };
   }
   private aUsuario(f: Tablas<'usuarios'>): Usuario {

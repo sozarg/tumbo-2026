@@ -50,6 +50,38 @@ export const LIMITES = {
   comentario: { min: 0, max: 500 },
 } as const;
 
+/**
+ * Rangos de los campos NUMÉRICOS, espejo de los CHECK de la base.
+ *
+ * `LIMITES` es para largos de texto; esto es para cantidades. Están
+ * separados porque se validan distinto —`minLength` contra `min`— y
+ * mezclarlos hacía que `conLimite()` tuviera que adivinar cuál era cuál.
+ *
+ * Mismo contrato que `LIMITES`: si cambia un número acá, cambia allá, y
+ * al revés. Al lado de cada uno va el CHECK que espeja, o la aclaración
+ * de que el tope es nuestro y no de la base.
+ */
+export const RANGOS = {
+  /**
+   * `productos.tiempo_elaboracion_min > 0`.
+   *
+   * El techo de 600 (diez horas) es NUESTRO: la base no lo tiene. No
+   * está para impedir un plato lento sino para atajar el error de tipeo
+   * —un cero de más— antes de que llegue a la carta.
+   */
+  minutosProducto: { min: 1, max: 600 },
+  /** `mesas.cantidad_comensales between 1 and 20` — este sí es de la base. */
+  comensalesMesa: { min: 1, max: 20 },
+  /**
+   * `mesas.numero` es `unique` y NO tiene tope en la base.
+   *
+   * El 999 es nuestro, por el mismo motivo que los minutos: un
+   * restaurante no tiene la mesa 100000, y sin tope un cero de más entra
+   * sin que nadie lo note.
+   */
+  numeroMesa: { min: 1, max: 999 },
+} as const;
+
 export type CampoConLimite = keyof typeof LIMITES;
 
 /**
