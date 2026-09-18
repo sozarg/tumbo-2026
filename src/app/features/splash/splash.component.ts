@@ -5,7 +5,6 @@ import { IonButton } from '@ionic/angular/ion-button';
 import { IonContent } from '@ionic/angular/ion-content';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
 import { SesionService } from '../../core/services/sesion.service';
-import { SonidosService } from '../../core/services/sonidos.service';
 
 const DURACION = 3_000;
 const DURACION_REDUCIDA = 600;
@@ -20,7 +19,6 @@ const ESPERA_IMAGEN = 1_500;
 export class Splash implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly sesion = inject(SesionService);
-  private readonly sonidos = inject(SonidosService);
   private readonly precarga = inject(PrecargaDiferida);
   private temporizador?: ReturnType<typeof setTimeout>;
   private respaldo?: ReturnType<typeof setTimeout>;
@@ -80,7 +78,7 @@ export class Splash implements OnInit, OnDestroy {
       const completo = await this.router.navigate([destino], { replaceUrl: true });
       if (completo) {
         this.precarga.liberar();
-        this.sonidos.sonarApertura();
+       
       } else {
         this.error.set(true);
       }
