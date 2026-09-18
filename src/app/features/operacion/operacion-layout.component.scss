@@ -1,0 +1,399 @@
+/* Shell compartido de Operación: Ionic reparte el viewport entre header y
+   contenido. El panel es el único dueño del scroll de las vistas internas.
+   Se conserva la familia de superficies de Personal y los umbrales existentes. */
+
+.back-button,
+.logout-button {
+  margin: 0;
+}
+
+.back-button {
+  --color: #003592;
+}
+
+.operation-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-self: start;
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
+.logout-button {
+  --border-color: #003592;
+  --border-radius: 10px;
+  --color: #003592;
+  --border-color: #a59b7f;
+  font-size: 0.7rem;
+}
+
+.operation-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 48px;
+  min-height: 48px;
+}
+
+.operation-brand span {
+  font-size: 10px;
+  font-weight: 500;
+  color: #003592;
+}
+
+.view-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  gap: 10px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.view-heading h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+}
+
+.view-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bac5d3 transparent;
+  scrollbar-gutter: stable;
+  border: 1px solid #d4d7d5;
+  border-radius: 16px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--tumbo-crema-fondo) 65%, var(--tumbo-azul-brillante));
+  box-shadow: inset 0 1px 4px rgb(0 53 146 / 5%);
+  overflow-wrap: anywhere;
+}
+
+.view-content:focus-visible {
+  outline: 2px solid var(--tumbo-azul-sombra);
+  outline-offset: -2px;
+}
+
+.view-content > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 8px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  color: #003592;
+  font-size: 18px;
+}
+
+.page-controls span {
+  font-size: 12px;
+}
+
+.page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 52px;
+}
+
+.page-controls ion-button {
+  min-width: 60px;
+}
+
+.operation-header--detail .logout-button {
+  --border-width: 0;
+  --border-radius: 50%;
+}
+
+.operation-header--detail .operation-brand span {
+  font-size: 12px;
+}
+
+.operation-top {
+  background: #fbf1d5;
+  box-shadow: none;
+  padding: max(8px, env(safe-area-inset-top)) 14px 4px;
+}
+
+.operation-top .operation-header {
+  max-width: 42rem;
+  margin: auto;
+}
+
+.operation-header ion-button {
+  min-width: 48px;
+}
+
+.view-content > .section-block {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+:host {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.operation-page {
+  --background: #fbf1d5;
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+
+.operation-top::after {
+  display: none;
+}
+
+.operation-layout--home {
+  height: 100%;
+  min-height: 0;
+  padding-top: 6px;
+}
+
+.operation-brand__text {
+  display: grid;
+  gap: 1px;
+}
+
+.operation-top--home .logout-button {
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  --border-radius: 50%;
+  --padding-start: 10px;
+  --padding-end: 10px;
+}
+
+.operation-top--home .logout-button ion-icon {
+  font-size: 20px;
+}
+
+.operation-layout--home > tumbo-menu-operacion {
+  flex: 1;
+}
+
+.operation-top--home {
+  padding-bottom: 8px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--tumbo-crema-brillante) 50%, var(--tumbo-crema-fondo));
+}
+
+.operation-top--home .operation-header {
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 10px;
+}
+
+.operation-top--home .operation-brand {
+  gap: 10px;
+  width: 100%;
+}
+
+.operation-top--home .operation-brand__lockup {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.operation-top--home .operation-brand__text {
+  min-width: 0;
+  gap: 4px;
+}
+
+.operation-top--home .operation-brand strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.operation-top--home .operation-brand span {
+  font-size: 11px;
+}
+
+.add-person-icon {
+  font-size: 20px;
+  margin-right: 5px;
+  font-weight: 400;
+}
+
+.operation-layout,
+.operation-brand__text,
+.view-heading > *,
+.view-content :where(article, section, form, div, ion-card, ion-input, ion-select, ion-textarea) {
+  min-width: 0;
+}
+
+.operation-layout {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  color: #003592;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 44rem);
+  height: 100%;
+  min-height: 0;
+  padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
+  gap: 10px;
+  padding-top: 6px;
+  overflow: hidden;
+}
+
+.operation-header--detail {
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+}
+
+.operation-brand__lockup {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.view-heading ion-button {
+  --border-radius: 10px;
+  --border-width: 1px;
+  --border-color: #bac5d3;
+  --background: var(--tumbo-azul-brillante);
+  --color: var(--tumbo-azul-sombra);
+  --box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 44px;
+  max-width: 100%;
+}
+
+.view-content :where(ion-button, button) {
+  max-width: 100%;
+}
+
+.section-heading,
+.bill-card__header,
+.bill-total,
+.product-card__meta,
+.cart-bar {
+  flex-wrap: wrap;
+}
+
+.section-heading > div {
+  flex: 1 1 9rem;
+}
+
+.view-content
+  :is(
+    .person-card,
+    .catalog-item,
+    .wait-row,
+    ion-card,
+    .demo-form,
+    .anonymous-entry,
+    .chat-card,
+    .tip-card,
+    .bill-card,
+    .survey-card,
+    .game-card,
+    .chart-card,
+    .payment-staff-card,
+    .product-card
+  ) {
+  --background: var(--tumbo-azul-brillante);
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
+  background: var(--tumbo-azul-brillante);
+  box-shadow: 0 4px 12px rgb(0 53 146 / 5%);
+}
+
+.view-content .client-slot {
+  border-style: dashed;
+}
+
+.view-content :is(ion-input, ion-textarea, ion-select) {
+  --background: var(--tumbo-azul-brillante);
+  --border-color: #bac5d3;
+}
+
+@media (max-height: 650px) {
+  .operation-layout {
+    gap: 6px;
+  }
+}
+
+/* Listados compartidos de gestión. */
+.person-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.person-card + .person-card {
+  margin-top: 0;
+}
+
+.person-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
+  padding: 18px;
+  background: var(--tumbo-azul-brillante);
+  overflow-wrap: anywhere;
+}
+
+.person-card h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.person-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.person-card .person-card__email {
+  margin-top: 10px;
+  color: #526582;
+}
+
+.person-card__espera {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.person-card__details {
+  flex: 1;
+  min-width: 0;
+}

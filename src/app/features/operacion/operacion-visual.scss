@@ -31,14 +31,12 @@
   content: '';
 }
 
-.operation-layout--detail .view-content { gap: 18px; }
+.operation-layout--detail .view-content {
+  gap: 12px;
+}
 
 .operation-layout--detail .section-block {
-  border: 1px solid rgb(0 53 146 / 11%);
-  border-radius: 20px;
-  padding: clamp(14px, 4vw, 20px);
-  background: color-mix(in srgb, var(--tumbo-crema-brillante) 82%, var(--tumbo-crema-fondo));
-  box-shadow: 0 8px 22px rgb(0 53 146 / 7%);
+  padding: 0;
 }
 
 .operation-layout--detail .section-heading {
@@ -75,25 +73,14 @@
   font-weight: 700;
 }
 
-.operation-layout--detail ion-card,
-.operation-layout--detail .demo-form,
-.operation-layout--detail .anonymous-entry,
-.operation-layout--detail .chat-card,
-.operation-layout--detail .tip-card,
-.operation-layout--detail .bill-card,
-.operation-layout--detail .survey-card {
-  border: 1px solid rgb(0 53 146 / 11%);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--tumbo-crema-fondo) 75%, var(--tumbo-azul-brillante));
-  box-shadow: 0 5px 16px rgb(0 53 146 / 6%);
-}
-
 .operation-layout--detail ion-card-header {
   border-bottom: 1px solid rgb(0 53 146 / 10%);
   padding: 16px 18px 12px;
 }
 
-.operation-layout--detail ion-card-content { padding: 16px 18px 18px; }
+.operation-layout--detail ion-card-content {
+  padding: 16px 18px 18px;
+}
 
 .operation-layout--detail ion-card-title {
   color: var(--tumbo-azul-sombra);
@@ -135,7 +122,9 @@
   padding: clamp(16px, 4vw, 24px);
 }
 
-.operation-layout--detail .form-title { padding-bottom: 4px; }
+.operation-layout--detail .form-title {
+  padding-bottom: 4px;
+}
 
 .operation-layout--detail .form-title > ion-icon {
   display: grid;
@@ -185,15 +174,20 @@
 .operation-layout--detail .wait-row,
 .operation-layout--detail .catalog-item,
 .operation-layout--detail .table-tile {
-  border: 1px solid rgb(0 53 146 / 12%);
-  border-radius: 15px;
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
   background: var(--tumbo-azul-brillante);
   box-shadow: 0 4px 12px rgb(0 53 146 / 5%);
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .operation-layout--detail .person-card,
-.operation-layout--detail .wait-row { padding: 14px; }
+.operation-layout--detail .wait-row {
+  padding: 14px;
+}
 
 .operation-layout--detail .person-card:focus-within,
 .operation-layout--detail .wait-row:focus-within,
@@ -214,7 +208,9 @@
   }
 }
 
-.operation-layout--detail .wait-row { grid-template-columns: auto minmax(0, 1fr); }
+.operation-layout--detail .wait-row {
+  grid-template-columns: auto minmax(0, 1fr);
+}
 
 .operation-layout--detail .wait-row img {
   width: 48px;
@@ -223,7 +219,9 @@
   border-radius: 14px;
 }
 
-.operation-layout--detail .assign-actions { gap: 8px; }
+.operation-layout--detail .assign-actions {
+  gap: 8px;
+}
 
 .operation-layout--detail .assigned-chip {
   --background: rgb(0 106 231 / 12%);
@@ -298,7 +296,9 @@
 }
 
 .operation-layout--detail .sector-items,
-.operation-layout--detail .compact-list { gap: 8px; }
+.operation-layout--detail .compact-list {
+  gap: 8px;
+}
 
 .operation-layout--detail .sector-items li,
 .operation-layout--detail .compact-list li,
@@ -308,7 +308,9 @@
 }
 
 .operation-layout--detail .sector-items li strong,
-.operation-layout--detail .compact-list li strong { color: var(--tumbo-azul-accion); }
+.operation-layout--detail .compact-list li strong {
+  color: var(--tumbo-azul-accion);
+}
 
 .operation-layout--detail .progress-track {
   height: 9px;
@@ -316,10 +318,11 @@
   background: rgb(0 53 146 / 10%);
 }
 
-.operation-layout--detail .progress-track__fill { background: var(--tumbo-azul-accion); }
+.operation-layout--detail .progress-track__fill {
+  background: var(--tumbo-azul-accion);
+}
 
-/* Pedidos necesita altura natural: el paginador y las cuatro acciones no
-   deben comprimirse dentro del espacio restante del viewport. */
+/* La tarjeta conserva su altura natural dentro del panel desplazable común. */
 .operation-layout--detail .staff-order-card {
   flex: 0 0 auto;
   min-height: max-content;
@@ -410,22 +413,32 @@
 @media (min-width: 700px) {
   .operation-layout--detail .table-grid,
   .operation-layout--detail .menu-grid,
-  .operation-layout--detail .games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .operation-layout--detail .games-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-  .operation-layout--detail .product-card__image { height: clamp(150px, 24dvh, 230px); }
+  .operation-layout--detail .product-card__image {
+    height: clamp(150px, 24dvh, 230px);
+  }
 }
 
 @media (max-width: 380px) {
-  .operation-layout--detail .section-block { padding: 14px; }
-  .operation-layout--detail .wait-row { gap: 9px; padding: 11px; }
-  .operation-layout--detail .button-row ion-button { flex-basis: 100%; }
+  .operation-layout--detail .wait-row {
+    gap: 9px;
+    padding: 11px;
+  }
+  .operation-layout--detail .button-row ion-button {
+    flex-basis: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .operation-layout--detail .person-card,
   .operation-layout--detail .wait-row,
   .operation-layout--detail .catalog-item,
-  .operation-layout--detail .table-tile { transition: none; }
+  .operation-layout--detail .table-tile {
+    transition: none;
+  }
 }
 
 /* En escritorio el escenario necesita respirar: el fondo acompaña al
@@ -485,22 +498,21 @@
   }
 }
 
-/* Eliminar conserva su acción y aria-label, pero gana una forma de cápsula
-   más fácil de identificar y tocar en una fila de espera. */
+/* La acción mantiene la misma superficie táctil que Personal y Productos. */
 .operation-layout--detail .wait-row tumbo-boton-confirmacion ion-button.icon-danger {
   grid-column: 1 / -1;
   justify-self: end;
-  width: 118px !important;
-  height: 42px;
-  min-height: 42px;
-  --border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  --border-radius: 50%;
 }
 
 .operation-layout--detail .wait-row tumbo-boton-confirmacion ion-button.icon-danger::part(native) {
   width: 100%;
-  height: 42px;
-  min-height: 42px;
-  padding: 0 16px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
 }
 
 /* Entrada usa una composición estable: el campo no cambia de eje ni empuja

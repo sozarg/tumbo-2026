@@ -22,7 +22,9 @@
         />
         <div class="operation-brand__text">
           @if (!seccion()) {
-            <strong>Hola, {{ usuarioActual.nombres }} {{ usuarioActual.apellidos }}</strong>
+            <strong [attr.title]="'Hola, ' + usuarioActual.nombres + ' ' + usuarioActual.apellidos"
+              >Hola, {{ usuarioActual.nombres }} {{ usuarioActual.apellidos }}</strong
+            >
           }
           <span>{{ usuarioActual.etiquetaPerfil }}</span>
         </div>
@@ -70,26 +72,11 @@
   (didDismiss)="cerrarAviso()"
 />
 
-<ion-content
-  class="operation-page"
-  [scrollY]="
-    !seccion() ||
-    seccion() === 'mesas' ||
-    ((seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') &&
-      creando())
-  "
->
+<ion-content class="operation-page" [scrollY]="false">
   <tumbo-fondo-decorativo aria-hidden="true" />
   @if (usuario(); as usuarioActual) {
     <div
       class="operation-layout"
-      [class.operation-layout--personal]="
-        seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes'
-      "
-      [class.operation-layout--employee-form]="
-        (seccion() === 'personal' || seccion() === 'productos' || seccion() === 'clientes') &&
-        creando()
-      "
       [class.operation-layout--home]="!seccion()"
       [class.operation-layout--detail]="!!seccion()"
     >
@@ -104,7 +91,7 @@
         />
       } @else {
         <div class="view-heading">
-          <h1 #encabezado tabindex="-1">{{ titulo() }}</h1>
+          <h1 #encabezado id="operation-title" tabindex="-1">{{ titulo() }}</h1>
           @if (
             seccion() === 'productos' ||
             (seccion() === 'mesas' && gestiona()) ||
@@ -126,7 +113,7 @@
             </ion-button>
           }
         </div>
-        <div class="view-content">
+        <div class="view-content" role="region" aria-labelledby="operation-title" tabindex="0">
           @if (seccion() === 'personal') {
             @if (creando()) {
               <form
@@ -345,7 +332,7 @@
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
-              <section class="person-list" tabindex="0" aria-label="Lista de personal">
+              <section class="person-list" aria-label="Lista de personal">
                 @for (empleado of demo.empleados(); track empleado.id) {
                   <article class="person-card">
                     <div class="person-card__details">
@@ -559,11 +546,7 @@
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
-              <section
-                class="person-list product-list"
-                tabindex="0"
-                aria-label="Lista de productos"
-              >
+              <section class="person-list product-list" aria-label="Lista de productos">
                 @for (producto of productosDelSector(); track producto.id) {
                   <article class="catalog-item">
                     @if (producto.fotos[0]; as foto) {
@@ -624,7 +607,7 @@
                     </div>
                   </article>
                 } @empty {
-                  <p>No hay productos.</p>
+                  <p class="empty-state">No hay productos.</p>
                 }
               </section>
             }
@@ -1075,12 +1058,7 @@
                 <div class="section-heading">
                   <div><h2>Clientes pendientes</h2></div>
                 </div>
-                <section
-                  class="person-list client-slots"
-                  [class.client-slots--scroll]="demo.clientesPendientes().length > 3"
-                  tabindex="0"
-                  aria-label="Clientes pendientes"
-                >
+                <section class="person-list client-slots" aria-label="Clientes pendientes">
                   @for (cliente of demo.clientesPendientes(); track cliente.id) {
                     <article class="person-card client-entry">
                       <div>
@@ -1163,7 +1141,7 @@
                       fill="clear"
                       title="Confirmar baja de la lista"
                       message="Vas a quitar a esta persona de la lista de espera. ¿Querés continuar?"
-                      aria-label="Eliminar de la lista"
+                      ariaLabel="Eliminar de la lista"
                       (confirmado)="eliminarDeEspera(persona.id)"
                     >
                       <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
@@ -1245,7 +1223,7 @@
                       </div>
                       <ion-icon aria-hidden="true" name="restaurant-outline" />
                     </div>
-                    <div class="progress-track" aria-label="Avance del pedido">
+                    <div class="progress-track" role="img" aria-label="Avance del pedido">
                       <span
                         class="progress-track__fill"
                         [class.progress-track__fill--half]="
@@ -1270,13 +1248,19 @@
                   </ion-card-content>
                 </ion-card>
               </section>
-              <ion-button
-                class="primary-action"
-                [disabled]="demo.pedidoActivo().estado !== 'entregado'"
+              <tumbo-boton-confirmacion
+                buttonClass="primary-action"
+                [disabled]="confirmandoRecepcion() || demo.pedidoActivo().estado !== 'entregado'"
                 title="Confirmar recepción"
                 message="Vas a confirmar que recibiste el pedido. ¿Querés continuar?"
-                >Confirmar recepción</ion-button
+                (confirmado)="recibirPedido()"
               >
+                @if (confirmandoRecepcion()) {
+                  <tumbo-espera etiqueta="Confirmando recepción" />
+                } @else {
+                  Confirmar recepción
+                }
+              </tumbo-boton-confirmacion>
             } @else {
               <section class="section-block">
                 <div class="section-heading">
@@ -1634,6 +1618,7 @@
                 <form [formGroup]="mensajeForm" (ngSubmit)="enviarMensaje()" class="chat-form">
                   <ion-input
                     formControlName="texto"
+                    aria-label="Consulta al mozo"
                     fill="outline"
                     placeholder="Escribí una consulta..."
                   /><ion-button type="submit" aria-label="Enviar consulta"
