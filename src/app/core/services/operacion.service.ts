@@ -123,10 +123,23 @@ export function paraIlike(texto: string): string {
   return texto.replace(/[\\%_]/g, (caracter) => `\\${caracter}`);
 }
 
-/** Cómo se nombra cada tipo en los mensajes al usuario. */
-const NOMBRE_DEL_TIPO: Readonly<Record<TipoProducto, string>> = {
-  plato: 'plato',
-  bebida: 'bebida',
+/**
+ * Cómo se nombra cada tipo en los mensajes, CON SU ARTÍCULO.
+ *
+ * No alcanza con guardar el sustantivo. La primera versión de esto
+ * guardaba solo «plato» y «bebida», y los mensajes escribían el artículo
+ * a mano: el cantinero veía «Ya hay UN BEBIDA con ese nombre en la
+ * carta». En castellano el artículo cambia con el género y el enunciado
+ * tiene los dos tipos, así que las formas se escriben acá una sola vez y
+ * los mensajes las usan enteras.
+ *
+ * `ese` va en mayúscula porque siempre abre la oración.
+ */
+const COMO_SE_LLAMA: Readonly<
+  Record<TipoProducto, { readonly un: string; readonly otro: string; readonly Ese: string }>
+> = {
+  plato: { un: 'un plato', otro: 'otro plato', Ese: 'Ese plato' },
+  bebida: { un: 'una bebida', otro: 'otra bebida', Ese: 'Esa bebida' },
 };
 
 @Injectable({ providedIn: 'root' })
@@ -424,11 +437,11 @@ export class OperacionService {
    */
   async registrarProducto(d: AltaProductoDemo): Promise<Resultado> {
     const nombre = comoSeGuarda(d.nombre);
-    const comoSeLlama = NOMBRE_DEL_TIPO[d.tipo];
+    const comoSeLlama = COMO_SE_LLAMA[d.tipo];
 
     if (!this.cliente) {
       if (this.mock.productos().some((p) => p.tipo === d.tipo && mismoNombre(p.nombre, nombre))) {
-        return { ok: false, error: `Ya hay un ${comoSeLlama} con ese nombre en la carta.` };
+        return { ok: false, error: `Ya hay ${comoSeLlama.un} con ese nombre en la carta.` };
       }
       this.mock.registrarProducto({ ...d, nombre });
       return { ok: true };
@@ -460,7 +473,7 @@ export class OperacionService {
 
       return {
         ok: true,
-        aviso: `Ese ${comoSeLlama} estaba dado de baja: volvió a la carta con los datos nuevos.`,
+        aviso: `${comoSeLlama.Ese} estaba dado de baja: volvió a la carta con los datos nuevos.`,
       };
     }
 
@@ -488,7 +501,7 @@ export class OperacionService {
   }
   async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
     const nombre = comoSeGuarda(d.nombre);
-    const comoSeLlama = NOMBRE_DEL_TIPO[d.tipo];
+    const comoSeLlama = COMO_SE_LLAMA[d.tipo];
 
     if (!this.cliente) {
       if (
@@ -496,7 +509,7 @@ export class OperacionService {
           .productos()
           .some((p) => p.id !== id && p.tipo === d.tipo && mismoNombre(p.nombre, nombre))
       ) {
-        return { ok: false, error: `Ya hay otro ${comoSeLlama} con ese nombre en la carta.` };
+        return { ok: false, error: `Ya hay ${comoSeLlama.otro} con ese nombre en la carta.` };
       }
       this.mock.productos.update((items) =>
         items.map((item) =>
@@ -529,8 +542,8 @@ export class OperacionService {
       return {
         ok: false,
         error: otro.activo
-          ? `Ya hay otro ${comoSeLlama} llamado «${otro.nombre}» en la carta.`
-          : `Hubo otro ${comoSeLlama} llamado «${otro.nombre}» y sigue guardado: elegí otro nombre.`,
+          ? `Ya hay ${comoSeLlama.otro} llamado «${otro.nombre}» en la carta.`
+          : `Hubo ${comoSeLlama.otro} llamado «${otro.nombre}» y sigue guardado: elegí otro nombre.`,
       };
     }
 

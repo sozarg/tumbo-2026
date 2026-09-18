@@ -99,6 +99,13 @@ De yapa arregló algo que nadie había reportado: editar solo el precio tampoco 
 - [x] Nombre repetido rechazado
 - [x] Desde un **cliente**, el plato nuevo aparece en el Menú
 
+**En el APK, en un teléfono de verdad:**
+
+- [x] El menú del sistema preguntando **cámara o galería** en cada uno de los tres lugares
+- [x] Las fotos apareciendo al instante (que es donde el problema del redibujado se habría notado más, porque el WebView de Android tiene las mismas reglas de foco que el navegador)
+
 ### Falta
 
-Nada del enunciado en la web. Queda la corrida en el APK para ver el menú de cámara/galería del sistema operativo, que es lo único que el navegador no puede mostrar.
+**Nada.** El punto está cumplido y probado de punta a punta, en la web y en el teléfono.
+
+Lo único que queda es de coordinación, no de este punto: que los cuatro dispositivos tengan la misma versión instalada antes de la revisión.
