@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
 // TUMBO · Tipos de la base de datos
 //
-// ARCHIVO GENERADO — no editar a mano.
+// Contratos 01–04 sincronizados con generación CLI del proyecto de desarrollo (18/09/2026).
+// Se preservan contratos históricos fuera de alcance; recibido_en sigue pendiente (punto 19).
 // Se regenera con el CLI de Supabase, desde la raíz del proyecto:
 //
 //   supabase gen types typescript --linked > src/app/core/models/base-de-datos.ts
@@ -214,40 +215,92 @@ export interface Database {
           enviado_en?: string;
         };
       };
-      mesas: {
+      solicitudes_alta: {
         Row: {
+          actor: string;
+          bloqueo_hasta: string;
+          clase: string;
+          creada_en: string;
+          destino: string | null;
+          finalizada: boolean;
           id: string;
-          numero: number;
-          cantidad_comensales: number;
-          tipo: Enums<'tipo_mesa'>;
-          estado: Enums<'estado_mesa'>;
-          foto_url: string | null;
-          qr_token: string;
-          creado_en: string;
-          actualizado_en: string;
+          recurso: string;
         };
         Insert: {
-          id?: string;
-          numero: number;
-          cantidad_comensales: number;
-          tipo: Enums<'tipo_mesa'>;
-          estado?: Enums<'estado_mesa'>;
-          foto_url?: string | null;
-          qr_token?: string;
-          creado_en?: string;
-          actualizado_en?: string;
+          actor: string;
+          bloqueo_hasta?: string;
+          clase: string;
+          creada_en?: string;
+          destino?: string | null;
+          finalizada?: boolean;
+          id: string;
+          recurso?: string;
         };
         Update: {
+          actor?: string;
+          bloqueo_hasta?: string;
+          clase?: string;
+          creada_en?: string;
+          destino?: string | null;
+          finalizada?: boolean;
+          id?: string;
+          recurso?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'solicitudes_alta_actor_fkey';
+            columns: ['actor'];
+            isOneToOne: false;
+            referencedRelation: 'accesos_rapidos';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'solicitudes_alta_actor_fkey';
+            columns: ['actor'];
+            isOneToOne: false;
+            referencedRelation: 'usuarios';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      mesas: {
+        Row: {
+          actualizado_en: string;
+          bloqueada_administrativamente: boolean;
+          cantidad_comensales: number;
+          creado_en: string;
+          estado: Database['public']['Enums']['estado_mesa'];
+          foto_url: string | null;
+          id: string;
+          numero: number;
+          qr_token: string;
+          tipo: Database['public']['Enums']['tipo_mesa'];
+        };
+        Insert: {
+          actualizado_en?: string;
+          bloqueada_administrativamente?: boolean;
+          cantidad_comensales: number;
+          creado_en?: string;
+          estado?: Database['public']['Enums']['estado_mesa'];
+          foto_url?: string | null;
+          id?: string;
+          numero: number;
+          qr_token?: string;
+          tipo: Database['public']['Enums']['tipo_mesa'];
+        };
+        Update: {
+          actualizado_en?: string;
+          bloqueada_administrativamente?: boolean;
+          cantidad_comensales?: number;
+          creado_en?: string;
+          estado?: Database['public']['Enums']['estado_mesa'];
+          foto_url?: string | null;
           id?: string;
           numero?: number;
-          cantidad_comensales?: number;
-          tipo?: Enums<'tipo_mesa'>;
-          estado?: Enums<'estado_mesa'>;
-          foto_url?: string | null;
           qr_token?: string;
-          creado_en?: string;
-          actualizado_en?: string;
+          tipo?: Database['public']['Enums']['tipo_mesa'];
         };
+        Relationships: [];
       };
       niveles_propina: {
         Row: {
@@ -610,6 +663,38 @@ export interface Database {
       };
     };
     Functions: {
+      cuil_coherente: {
+        Args: { p_cuil: string; p_dni: string };
+        Returns: boolean;
+      };
+      finalizar_alta: {
+        Args: { p_datos: Json; p_fotos: Json; p_id: string };
+        Returns: string;
+      };
+      reservar_alta: {
+        Args: {
+          p_actor: string;
+          p_clase: string;
+          p_destino?: string;
+          p_id: string;
+        };
+        Returns: {
+          actor: string;
+          bloqueo_hasta: string;
+          clase: string;
+          creada_en: string;
+          destino: string | null;
+          finalizada: boolean;
+          id: string;
+          recurso: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'solicitudes_alta';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       calcular_cuenta: {
         Args: { p_sesion_id: string };
         Returns: {

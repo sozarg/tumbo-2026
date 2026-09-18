@@ -9,6 +9,9 @@ import {
   OnInit,
   afterNextRender,
   computed,
+  effect,
+  untracked,
+  DestroyRef,
   inject,
   signal,
   viewChild,
@@ -93,6 +96,7 @@ import { LIMITES, RANGOS } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
 import {
   clavesCoinciden,
+  claveEnBytes,
   conLimite,
   correoValido,
   cuilCoincideConDni,
@@ -101,6 +105,7 @@ import {
   dniValido,
   enteroValido,
   fotoRequerida,
+  tresFotosRequeridas,
   precioValido,
   sinEspaciosSolos,
   validadoresDeNombre,
@@ -132,7 +137,7 @@ import {
  * duplicado —en la plantilla y en `totalPaginas`— y cambiar uno solo
  * hacía que el paginador dijera una cantidad de páginas que no existía.
  */
-const MESAS_POR_PAGINA = 3;
+const MESAS_POR_PAGINA = 1;
 
 type GraficoDemo = 'torta' | 'barras' | 'linea';
 
@@ -351,7 +356,7 @@ export class Operacion implements OnInit {
       dni: ['', [Validators.required, dniValido]],
       cuil: ['', [Validators.required, cuilValido, cuilConDigitoValido]],
       correo: ['', [Validators.required, sinEspaciosSolos, correoValido, ...conLimite('correo')]],
-      clave: ['', [Validators.required, ...conLimite('clave')]],
+      clave: ['', [Validators.required, sinEspaciosSolos, claveEnBytes, ...conLimite('clave')]],
       repetirClave: ['', Validators.required],
       perfil: ['cocinero' as Extract<AltaEmpleadoDemo['perfil'], string>, Validators.required],
       /**
@@ -363,7 +368,7 @@ export class Operacion implements OnInit {
        * no se exige: si no, la aplicación no se podría probar sin
        * Supabase configurado.
        */
-      foto: [null as FotoTomada | null, this.modo === 'demo' ? [] : [fotoRequerida]],
+      foto: [null as FotoTomada | null, [fotoRequerida]],
     },
     {
       // Cruza DNI y CUIL: los ocho dígitos del medio del CUIL son el DNI.
@@ -406,17 +411,17 @@ export class Operacion implements OnInit {
     precio: [1000, [Validators.required, precioValido, Validators.min(1)]],
     tipo: ['plato' as TipoProducto, Validators.required],
     // El contrato conserva el array; esta UI solo gestiona la primera posición.
-    fotos: [[] as (FotoTomada | null)[], Validators.required],
+    fotos: [[] as (FotoTomada | null)[], tresFotosRequeridas],
   });
   protected readonly errorImagen = signal('');
-  protected readonly lugaresDeFoto = [0] as const;
+  protected readonly lugaresDeFoto = [0, 1, 2] as const;
   protected readonly fotosDelProducto = signal<readonly (FotoTomada | null)[]>([]);
-  protected readonly imagenActualDelProducto = computed(
-    () =>
-      this.fotosDelProducto()[0]?.previewUrl ??
-      this.productosDelSector().find((producto) => producto.id === this.productoEditado())
-        ?.fotos[0],
-  );
+  protected imagenActualDelProducto(lugar: number): string | undefined {
+    return (
+      this.fotosDelProducto()[lugar]?.previewUrl ??
+      this.productosDelSector().find((p) => p.id === this.productoEditado())?.fotos[lugar]
+    );
+  }
 
   /** Ídem, para la única foto del empleado (punto 1). */
   protected readonly fotoDelEmpleado = signal<FotoTomada | null>(null);
@@ -475,7 +480,12 @@ export class Operacion implements OnInit {
 
   /** Saca o reemplaza la foto de la mesa (punto 4: se TOMA, no se elige). */
   protected async sacarFotoDeMesa(): Promise<void> {
+    const actor = this.usuario()?.id;
     const resultado = await this.camara.sacarFoto();
+    if (actor !== this.usuario()?.id) {
+      if (resultado.estado === 'tomada') this.olvidarFoto(resultado.foto);
+      return;
+    }
 
     if (resultado.estado === 'cancelado') return;
 
@@ -516,6 +526,32 @@ export class Operacion implements OnInit {
   });
 
   constructor() {
+    effect(() => {
+      this.usuario();
+      untracked(() => {
+        this.fotoEnCarga.set(null);
+        this.limpiarFotosDeProducto();
+        this.quitarFotoEmpleado();
+        this.cambiarFotoDeMesa(null);
+        this.empleadoForm.reset({ perfil: 'cocinero' });
+        this.productoForm.reset({
+          tipo: this.tipoDeSector() ?? 'plato',
+          minutos: 10,
+          precio: 1000,
+          fotos: [],
+        });
+        this.mesaForm.reset({ numero: 1, comensales: 4, tipo: 'estándar', foto: null });
+        this.creando.set(false);
+        this.productoEditado.set(null);
+        this.mesaEditada.set(null);
+      });
+    });
+    inject(DestroyRef).onDestroy(() => {
+      this.limpiarFotosDeProducto();
+      this.olvidarFotoEmpleado();
+      const foto = this.fotoDeLaMesa();
+      if (foto) this.olvidarFoto(foto);
+    });
     addIcons({
       pencilOutline,
       wineOutline,
@@ -645,9 +681,9 @@ export class Operacion implements OnInit {
   protected readonly totalPaginas = computed(() => {
     switch (this.seccion()) {
       case 'personal':
-        return 1;
+        return this.demo.empleados().length;
       case 'productos':
-        return 1;
+        return this.productosDelSector().length;
       case 'menu':
         return this.demo.productos().length;
       case 'mesas':
@@ -761,6 +797,7 @@ export class Operacion implements OnInit {
   protected readonly empleadoEsValido = (): boolean => this.validar(this.empleadoForm);
 
   protected async registrarEmpleado(): Promise<void> {
+    const actor = this.usuario()?.id;
     // El alta tarda: crea la cuenta, sube la foto y recarga el listado.
     // Sin este guarda, dos envíos superpuestos crean la misma persona dos
     // veces; el segundo choca contra el DNI único y muestra un error que
@@ -789,6 +826,7 @@ export class Operacion implements OnInit {
       this.enviando.set(false);
     }
 
+    if (actor !== this.usuario()?.id) return;
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo registrar el empleado.');
       return;
@@ -857,7 +895,17 @@ export class Operacion implements OnInit {
   /** En edición, un array vacío conserva la imagen almacenada. */
   private exigirFotoDeProducto(exigir: boolean): void {
     const control = this.productoForm.controls.fotos;
-    control.setValidators(exigir ? Validators.required : []);
+    control.setValidators(
+      exigir
+        ? tresFotosRequeridas
+        : (campo) => {
+            const anteriores =
+              this.demo.productos().find((p) => p.id === this.productoEditado())?.fotos ?? [];
+            const nuevas = campo.value as readonly (FotoTomada | null)[];
+            const cargadas = [0, 1, 2].filter((pos) => nuevas[pos] || anteriores[pos]).length;
+            return nuevas.length <= 3 && cargadas === 3 ? null : { tresFotos: { cargadas } };
+          },
+    );
     control.updateValueAndValidity();
   }
   protected alternarFormulario(): void {
@@ -882,6 +930,7 @@ export class Operacion implements OnInit {
     }
   }
   protected async registrarProducto(): Promise<void> {
+    const actor = this.usuario()?.id;
     // Mismo guarda que el alta de empleado: el alta sube la imagen y
     // recarga el catálogo, así que tarda. Sin esto, dos envíos
     // superpuestos crean el producto dos veces y el segundo choca contra
@@ -911,6 +960,7 @@ export class Operacion implements OnInit {
       this.enviando.set(false);
     }
 
+    if (actor !== this.usuario()?.id) return;
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo agregar el producto.');
       return;
@@ -971,8 +1021,19 @@ export class Operacion implements OnInit {
    * pueda «seleccionar otra imagen». Por eso se pasa el lugar: se toca
    * el contenedor que se quiere cambiar y se reemplaza solo ese.
    */
+  protected readonly fotoEnCarga = signal<number | null>(null);
+
   protected async elegirFotoDeProducto(lugar: number): Promise<void> {
-    const resultado = await this.camara.elegirImagen();
+    if (this.fotoEnCarga() !== null) return;
+    this.fotoEnCarga.set(lugar);
+    const actor = this.usuario()?.id;
+    const resultado = await this.camara.elegirImagen().finally(() => {
+      if (actor === this.usuario()?.id) this.fotoEnCarga.set(null);
+    });
+    if (actor !== this.usuario()?.id) {
+      if (resultado.estado === 'tomada') this.olvidarFoto(resultado.foto);
+      return;
+    }
 
     if (resultado.estado === 'cancelado') return;
 
@@ -1004,7 +1065,7 @@ export class Operacion implements OnInit {
     fotos[lugar] = foto;
 
     this.fotosDelProducto.set(fotos);
-    this.productoForm.controls.fotos.setValue(fotos.filter((foto) => foto !== null));
+    this.productoForm.controls.fotos.setValue(fotos);
     this.productoForm.controls.fotos.markAsTouched();
   }
 
@@ -1091,6 +1152,7 @@ export class Operacion implements OnInit {
    * `role="alert"` y su vibración, y dice lo que realmente pasó.
    */
   protected async registrarMesa(): Promise<void> {
+    const actor = this.usuario()?.id;
     if (!this.gestiona() || this.enviando()) return;
     if (!this.validar(this.mesaForm)) {
       return;
@@ -1109,6 +1171,7 @@ export class Operacion implements OnInit {
       this.enviando.set(false);
     }
 
+    if (actor !== this.usuario()?.id) return;
     if (!resultado.ok) {
       await this.avisarError(resultado.error ?? 'No se pudo guardar la mesa.');
       return;
@@ -1221,7 +1284,7 @@ export class Operacion implements OnInit {
     });
     // Al modificar, la foto que ya tiene la mesa sigue en la base: el
     // lugar vacío significa «esta no la cambié».
-    this.exigirLaFotoDeLaMesa(false);
+    this.exigirLaFotoDeLaMesa(!mesa.fotoUrl);
     this.creando.set(true);
   }
 
@@ -1340,17 +1403,19 @@ export class Operacion implements OnInit {
    * que es comodidad para probar y no fidelidad al documento.
    */
   protected async leerDniEmpleado(): Promise<void> {
+    const actor = this.usuario()?.id;
     const lectura = await this.lector.leer();
+    if (actor !== this.usuario()?.id) return;
     if (!(await this.aplicarLectura(lectura))) return;
     if (lectura.estado !== 'leido') return;
 
-    this.empleadoForm.patchValue({
-      nombres: lectura.datos.nombres,
-      apellidos: lectura.datos.apellidos,
-      dni: lectura.datos.dni,
-      cuil: lectura.datos.cuil ?? '',
-      correo: this.correoPropuesto(lectura.datos),
-    });
+    const campos = this.empleadoForm.controls;
+    const datos = lectura.datos;
+    for (const campo of ['nombres', 'apellidos', 'dni', 'cuil', 'correo'] as const) {
+      const valor = datos[campo];
+      if (valor && !campos[campo].value.trim()) campos[campo].setValue(valor);
+    }
+    this.empleadoForm.updateValueAndValidity();
   }
 
   /** Igual que el del empleado, para el alta de cliente (punto 5). */
@@ -1382,11 +1447,17 @@ export class Operacion implements OnInit {
         this.avisarExito(
           lectura.datos.correo
             ? 'Datos leídos del código. Revisalos antes de registrar.'
-            : 'DNI leído. El documento no trae correo: revisá el propuesto.',
+            : 'DNI leído. Completá manualmente los datos ausentes; se conservaron los campos ya ingresados.',
         );
         return true;
 
       case 'cancelado':
+        return false;
+
+      case 'malformado':
+        await this.avisarError(
+          'El código del documento está incompleto o malformado. Volvé a leerlo o completá los datos manualmente.',
+        );
         return false;
 
       case 'otro-codigo':
@@ -1401,40 +1472,9 @@ export class Operacion implements OnInit {
     }
   }
 
-  /**
-   * Un correo PROPUESTO a partir del documento.
-   *
-   * EL DNI NO TRAE CORREO
-   * Ni el PDF417 del documento argentino ni ningún otro campo del código
-   * lo tienen: adentro hay trámite, apellidos, nombres, sexo, número,
-   * ejemplar, fechas y CUIL. Nada más. Así que después de escanear, ese
-   * campo quedaba obligatoriamente vacío.
-   *
-   * POR QUÉ SE PROPONE UNO IGUAL
-   * Porque el campo es obligatorio y tipear una dirección entera con el
-   * teléfono en la mano, delante de la persona que se está dando de
-   * alta, es la parte más lenta del alta. Se arma con el nombre, el
-   * apellido y los últimos cuatro dígitos del DNI, así que no choca con
-   * el de otra persona.
-   *
-   * ES UNA PROPUESTA, NO UN DATO DEL DOCUMENTO. El campo queda editable
-   * y el aviso de la lectura pide expresamente que se revise: si la
-   * persona tiene un correo de verdad, se escribe encima.
-   *
-   * Si el código SÍ trae un correo —los de prueba lo traen— se usa ese y
-   * no se inventa nada.
-   */
+  /** Solo devuelve el correo presente en el código leído. */
   private correoPropuesto(datos: DatosDeDni): string {
-    if (datos.correo) return datos.correo;
-
-    const parte = (texto: string) =>
-      texto
-        .toLocaleLowerCase('es-AR')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z]/g, '');
-
-    return `${parte(datos.nombres)}.${parte(datos.apellidos)}.${datos.dni.slice(-4)}@tumbo.demo`;
+    return datos.correo ?? '';
   }
 
   /**
@@ -1445,7 +1485,12 @@ export class Operacion implements OnInit {
    * fotos seguidas dejaría cinco imágenes enteras en memoria.
    */
   protected async sacarFotoEmpleado(): Promise<void> {
+    const actor = this.usuario()?.id;
     const resultado = await this.camara.sacarFoto();
+    if (actor !== this.usuario()?.id) {
+      if (resultado.estado === 'tomada') this.olvidarFoto(resultado.foto);
+      return;
+    }
 
     if (resultado.estado === 'cancelado') return;
 

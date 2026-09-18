@@ -2,6 +2,10 @@
 
 ## A. Alcance y resumen ejecutivo
 
+**Actualización de implementación 01–04, 18/09/2026:** código integrado y desplegado en Supabase de desarrollo `weeemajondwqstaoldtu` (`tumbo`, uso confirmado por el usuario). Ver [H. Cierre de implementación](#h-cierre-de-implementación-0104). Las matrices 01–04 y evidencias indicadas describen esta intervención. **05–22 mantienen el diagnóstico histórico y no se reauditaron.** Las observaciones iniciales sobre ausencia de acceso remoto/despliegues y una sola foto quedaron superadas exclusivamente en este alcance. No se declara listo todo el sistema.
+
+**Contexto histórico de la auditoría inicial:**
+
 **Fecha:** 18/09/2026, America/Montevideo. **Dictamen:** hay implementación parcial, incumplimientos funcionales y de autorización comprobados, y verificaciones pendientes. **No puede declararse listo el recorrido obligatorio 01–22.** Una compilación correcta y tests verdes no demuestran aceptación del sistema.
 
 Repositorio: [sozarg/tumbo-2026](https://github.com/sozarg/tumbo-2026), carpeta local TUMBO 2026. Rama **terrile**, commit **ef8f6c0cd98cec3f26d88b84857a0d9315371a85**. Al inicio, git status --short no mostraba cambios. Se leyeron AGENTS.md y las instrucciones del proyecto, y se buscaron instrucciones en los directorios ascendentes: no se encontraron otras. No hay AGENTS.md anidados en los archivos inspeccionados. Se consultaron las skills Angular, Ionic, Supabase y Supabase Postgres Best Practices.
@@ -23,7 +27,7 @@ Repositorio: [sozarg/tumbo-2026](https://github.com/sozarg/tumbo-2026), carpeta 
 2. **P0 — Autorización y dinero:** el esquema local permite autoasignación sin metre, encuesta en estadía ajena, precio 0,01 para un producto de 100, premio 99 % en una derrota posterior, confirmación de cuenta por el cliente y confirmación de pedido por cocinero. Son pruebas locales, no ataques al proyecto remoto.
 3. **P0 — Recepción desalineada:** recibido_en aparece en modelos/servicio, pero no en las migraciones; SQL08 da 42703. Aun añadiéndola, pedidos_actualizar no habilita al cliente a actualizar un pedido entregado. actualizar() no comprueba cuántas filas afectó.
 4. **P0/P1 — Flujos incompletos:** alta real de cliente y anónimo ausentes; juegos son simuladores de victoria/derrota; opiniones no se guardan y gráficos son estáticos; no hay pipeline de push ni de correo en el alcance local.
-5. **P1 — Fotos y experiencia:** alta de productos exige solo una foto; a 320 px se corta personal y no está visible todo el resumen del carrito. La cuenta presenta bien el total, pero la acción queda fuera del área inicial en teléfono angosto.
+5. **P1 — Fotos y experiencia, actualización 01–04:** tres posiciones obligatorias y reemplazables; Personal, Productos y Mesas paginados por unidad completa. Carrito/cuenta y demás observaciones mantienen el diagnóstico histórico fuera del alcance.
 6. **P0 — Sesiones:** en la misma SPA, un cliente anónimo hereda el carrito de un registrado tras logout/login; los signals operativos no se limpian. No confundir con persistencia del token Auth, que se evalúa aparte.
 
 ### Métricas y reglas de recuento
@@ -34,22 +38,22 @@ Se identificaron 293 filas funcionales/de control: 5 son referencias sin segundo
 
 | Estado | Criterios funcionales únicos |
 | --- | --- |
-| CUMPLE | 29 |
-| IMPLEMENTADO SIN VERIFICAR | 104 |
-| PARCIAL | 37 |
-| NO CUMPLE | 64 |
+| CUMPLE | 83 |
+| IMPLEMENTADO SIN VERIFICAR | 65 |
+| PARCIAL | 32 |
+| NO CUMPLE | 56 |
 | NO IMPLEMENTADO | 46 |
-| NO VERIFICABLE | 7 |
+| NO VERIFICABLE | 5 |
 
-- **Cumplimiento funcional verificado:** 29 / 287 = 10,1 %.
-- **Cobertura funcional de ejecución:** 118 / 287 = 41,1 %. Alcance de cada ejecución en E; el resto tiene inspección de código o bloqueo documentado.
+- **Cumplimiento funcional verificado:** 83 / 287 = 28,9 %. Recuento desde C: 01–04 actualizado; 05–22 histórico.
+- **Cobertura funcional de ejecución:** 153 / 287 = 53,3 %. Filas C marcadas «Prueba ejecutada»; alcance E histórico/H actual, sin equiparar prueba automática con física.
 - Los criterios visuales se cuentan separadamente en D. Las recomendaciones adicionales de G no entran en ningún denominador obligatorio.
 
 ### Navegación y evidencias
 
 [B. Matriz de 22 puntos](#b-matriz-general) · [C. Detalle](#c-matrices-detalladas) · [D. Visual](#d-auditoría-visual) · [E. Registros](#e-registros-transversales) · [F. Recorrido](#f-recorrido-de-punta-a-punta) · [G. Propuestas](#g-correcciones-propuestas-y-bloqueos).
 
-Las abreviaturas siguientes se usan como **archivo:línea**; los rangos indican bloques revisados, no resultados inferidos de comentarios. Los símbolos mencionados permiten localizarlos aunque cambien las líneas. Todas corresponden al commit indicado.
+Las abreviaturas siguientes se usan como **archivo:línea**; los rangos indican bloques revisados, no resultados inferidos de comentarios. Los símbolos mencionados permiten localizarlos aunque cambien las líneas. Las referencias originales corresponden al commit histórico. Para 01–04 se usan los símbolos y archivos actuales de H; sus líneas cambiaron durante la intervención.
 
 | Alias | Archivo |
 | --- | --- |
@@ -85,10 +89,10 @@ U01 = suite original; AUD01–AUD12 = caracterizaciones temporales detalladas en
 
 | Punto | Flujo y perfiles | Dictamen | Criterios cumplidos / total | Qué está hecho y principal faltante o bloqueo |
 | --- | --- | --- | --- | --- |
-| 01 | Alta de empleado · D1, dueño y supervisor | NO CUMPLE | 1 / 20 | Alta real conectada a crear-empleado, con validación extensa; cámara física y persistencia no verificadas, DNI propone datos no presentes. (01.01–01.20) |
-| 02 | Alta de plato · D2, cocinero | NO CUMPLE | 0 / 15 | Formulario y persistencia compartidos, con tipo por rol; solo una foto y sin verificación del alta remota de plato. (02.01–02.15) |
-| 03 | Alta de bebida · D3, cantinero | NO CUMPLE | 0 / 15 | Formulario y persistencia compartidos, con tipo por rol; solo una foto y sin verificación del alta remota de bebida. (03.01–03.15) |
-| 04 | Alta y gestión de mesa · D4, dueño y supervisor | NO CUMPLE | 1 / 14 | QR dinámico y alta conectados; disponibilidad se cambia sin comprobar estadía activa y asignación no es atómica. (04.01–04.14) |
+| 01 | Alta de empleado · D1, dueño y supervisor | PARCIAL | 16 / 20 | Implementación e integración real terminadas; aceptación nativa/física pendiente en los criterios indicados. Ver H. |
+| 02 | Alta de plato · D2, cocinero | PARCIAL | 14 / 15 | Implementación e integración real terminadas; aceptación nativa/física pendiente en los criterios indicados. Ver H. |
+| 03 | Alta de bebida · D3, cantinero | PARCIAL | 14 / 15 | Implementación e integración real terminadas; aceptación nativa/física pendiente en los criterios indicados. Ver H. |
+| 04 | Alta y gestión de mesa · D4, dueño y supervisor | PARCIAL | 12 / 14 | Implementación e integración real terminadas; aceptación nativa/física pendiente en los criterios indicados. Ver H. |
 | 05 | Alta de cliente registrado · D2, cliente o metre | NO CUMPLE | 0 / 17 | El alta solo agrega un cliente a memoria; faltan contraseña, foto y vía pública, y no hay correo de resolución. (05.01–05.17) |
 | 06 | Clientes pendientes · D1, dueño y supervisor | NO CUMPLE | 1 / 10 | Listado, foto y controles presentes; falta actualización tras cambios y no hay push implementada. (06.01–06.10) |
 | 07 | Rechazo de cliente · D1 gerencia, D2 cliente | NO CUMPLE | 0 / 14 | Cambio de estado conectado; no existen plantillas ni envío de correo de resolución en el código inspeccionado. (07.01–07.14) |
@@ -117,85 +121,85 @@ No se implementó ninguna propuesta. “Ejecutada” en una fila remite al alcan
 
 | ID | Requisito y condición para aprobar | Estado | Evidencia y prueba realizada | Qué está hecho, qué falta y corrección concreta | Prioridad |
 | --- | --- | --- | --- | --- | --- |
-| 01.01 | Acceso del dueño al alta | CUMPLE | NAV:88, UI Personal, V01 — Prueba ejecutada, alcance E | Sin corrección necesaria en acceso de interfaz; autorización servidor se evalúa por separado. | P2 |
-| 01.02 | Acceso del supervisor al alta | IMPLEMENTADO SIN VERIFICAR | NAV:25 y 28; EDGE:205 — Inspección; ejecución específica pendiente | Ruta y autorización previstas; ejecutar alta con supervisor en entorno seguro. | P1 |
-| 01.03 | Denegación de altas a otros perfiles | IMPLEMENTADO SIN VERIFICAR | EDGE:192–218, NAV:128 — Inspección; ejecución específica pendiente | getUser y perfil/estado se verifican; probar peticiones con cliente, mozo y pendiente. | P0 |
-| 01.04 | Persistencia de nombres, apellidos, DNI, CUIL, correo y perfil cocinero | IMPLEMENTADO SIN VERIFICAR | OPS:274–306; EDGE:274–326 — Inspección; ejecución específica pendiente | Alta Auth y perfil conectados; verificar filas y acceso posterior sin publicar datos personales. | P1 |
-| 01.05 | Contraseña almacenada por Auth y utilizable para ingreso | IMPLEMENTADO SIN VERIFICAR | EDGE:281, AUTH:123 — Inspección; ejecución específica pendiente | Se usa admin.createUser; probar alta/login en proyecto de prueba. | P1 |
-| 01.06 | Foto tomada exclusivamente por cámara nativa | IMPLEMENTADO SIN VERIFICAR | CAM:69–113, CMP:1447 — Inspección; ejecución específica pendiente | CameraSource.Camera; navegador usa archivo simulado. Requiere APK y permiso de cámara. | P1 |
-| 01.07 | Foto personal subida y asociada persistentemente | IMPLEMENTADO SIN VERIFICAR | OPS:317–345 — Inspección; ejecución específica pendiente | Carga en fotos-usuarios y update foto_url separados; simular fallo de subida y recuperar foto faltante. | P1 |
-| 01.08 | Lectura real de PDF417/QR de DNI | IMPLEMENTADO SIN VERIFICAR | DNI:44–83; PARSER:90; U01 — Prueba ejecutada, alcance E | Parser probado con cadenas; no hubo documento ni cámara física. Probar ambas variantes reales autorizadas. | P1 |
-| 01.09 | Autocompletar únicamente datos presentes en el documento | NO CUMPLE | CMP:1347 y 1427; PARSER:113 — Inspección; ejecución específica pendiente | Se propone correo @tumbo.demo y se calcula CUIL ausente; dejar esos campos vacíos o pedir confirmación separada, sin presentarlos como leídos. | P1 |
-| 01.10 | Cancelar/denegar cámara y recuperar el flujo | IMPLEMENTADO SIN VERIFICAR | CAM:91–149; CMP:1447 — Inspección; ejecución específica pendiente | Ramas diferenciadas localizadas; probar permiso denegado, cancelación y nuevo intento en Android. | P1 |
-| 01.11 | Datos visibles de foto centrada y sin recortes | NO VERIFICABLE | UI alta Personal; CAM — Inspección; ejecución específica pendiente | Se inspeccionó el contenedor vacío; falta una foto autorizada y comparación de proporciones en dispositivo. | P2 |
-| 01.12 | Mensajes fieles ante error de alta y carga parcial | IMPLEMENTADO SIN VERIFICAR | CMP:763–813; OPS:301 — Inspección; ejecución específica pendiente | Se devuelve aviso si cuenta existe sin foto; ejecutar errores de Auth/Storage y comprobar que no se anuncie éxito completo. | P1 |
-| 01.13 | Validaciones de nombres | IMPLEMENTADO SIN VERIFICAR | CMP:349; VAL; EDGE:275; BASE:12; LEN:29; U01 — Prueba ejecutada, alcance E | Ver registro V-01-nombres: frontend probado; validar la misma entrada en endpoint real. | P1 |
-| 01.14 | Validaciones de apellidos | IMPLEMENTADO SIN VERIFICAR | CMP:350; VAL; LEN:36; U01 — Prueba ejecutada, alcance E | Ver V-01-apellidos; confirmar errores servidor y nombres compuestos. | P1 |
-| 01.15 | Validaciones de DNI | IMPLEMENTADO SIN VERIFICAR | CMP:351; OPS:67; BASE:38; U01 — Prueba ejecutada, alcance E | Ver V-01-dni; frontend normaliza separadores, falta petición real con tipos incorrectos. | P1 |
-| 01.16 | Validaciones de CUIL | PARCIAL | CMP:352,370; BASE:39; U01 — Prueba ejecutada, alcance E | Frontend controla dígito y coincidencia DNI; CHECK servidor solo formato. Reforzar dígito y vínculo con DNI en capa confiable. | P1 |
-| 01.17 | Validaciones de correo | IMPLEMENTADO SIN VERIFICAR | CMP:353; EDGE:233–271; BASE:35; LEN7:24; U01 — Prueba ejecutada, alcance E | Ver V-01-correo; probar error exacto y duplicado en alta real. | P1 |
-| 01.18 | Validaciones de contraseña y repetición | IMPLEMENTADO SIN VERIFICAR | CMP:354–370; EDGE:234; U01 — Prueba ejecutada, alcance E | 6–72 y coincidencia en UI; Auth configura política separada. Verificar límites, espacios y tipos en endpoint. | P1 |
-| 01.19 | Validación del perfil cocinero y enumeración | IMPLEMENTADO SIN VERIFICAR | CMP:356; EDGE:225–231 — Inspección; ejecución específica pendiente | Enum validado en Edge; ejecutar valor fuera de lista y perfil no autorizado. | P1 |
-| 01.20 | Validación de foto requerida y archivo válido | PARCIAL | CMP:366; VAL:234; CAM:177; OPS:746 — Inspección; ejecución específica pendiente | Foto omitible en demo, truthiness en UI y nullable en BD. Exigir foto completa y validar contenido/MIME/tamaño confiablemente. | P1 |
+| 01.01 | Acceso del dueño al alta | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Ingreso UI y alta remota como dueño; sesión gerencial conservada. | P2 |
+| 01.02 | Acceso del supervisor al alta | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Ingreso UI y alta remota como supervisor; empleado creado puede ingresar. | P1 |
+| 01.03 | Denegación de altas a otros perfiles | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | JWT cliente/cocinero y anónimo rechazados; rol privilegiado adulterado rechazado. | P0 |
+| 01.04 | Persistencia de nombres, apellidos, DNI, CUIL, correo y perfil cocinero | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Auth, perfil aprobado y foto asociados al mismo UUID por finalización controlada. | P1 |
+| 01.05 | Contraseña almacenada por Auth y utilizable para ingreso | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Login real del empleado creado por ambos perfiles. Contraseña fuera de bitácora y metadatos. | P1 |
+| 01.06 | Foto tomada exclusivamente por cámara nativa | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | CameraSource.Camera obligatorio; web indica que requiere Android y no sustituye cámara por galería. | P1 |
+| 01.07 | Foto personal subida y asociada persistentemente | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Foto persistida con perfil; fallo parcial y recuperación sin identidad duplicada comprobados en handler. | P1 |
+| 01.08 | Lectura real de PDF417/QR de DNI | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | Plugin distingue QR/PDF417; parser y ramas probados, sin acreditar lectura óptica. | P1 |
+| 01.09 | Autocompletar únicamente datos presentes en el documento | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Solo campos presentes y vacíos: sin correo inventado ni CUIL derivado ausente, preserva datos manuales. | P1 |
+| 01.10 | Cancelar/denegar cámara y recuperar el flujo | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | Cancelación, permiso denegado y reintento cubiertos con dobles del plugin; falta el dispositivo. | P1 |
+| 01.11 | Datos visibles de foto centrada y sin recortes | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | Contenedor individual y proporción conservados; falta comprobar la foto tomada y teclado en Android. | P2 |
+| 01.12 | Mensajes fieles ante error de alta y carga parcial | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Cuenta parcial bloqueada hasta finalizar; fallo controlado no anuncia éxito, reintento activa la misma identidad. | P1 |
+| 01.13 | Validaciones de nombres | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Tipos antes de trim, 2–50, letras/tildes/ñ/compuestos/apóstrofo/guion; límites y espacios probados. | P1 |
+| 01.14 | Validaciones de apellidos | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Misma política 2–50 para apellidos; límites y tipos inválidos probados. | P1 |
+| 01.15 | Validaciones de DNI | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 7–8 dígitos normalizados, unicidad existente; JSON no textual rechazado. | P1 |
+| 01.16 | Validaciones de CUIL | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Dígito verificador y vínculo DNI en UI, Edge y CHECK; casos válidos e inválidos probados. | P1 |
+| 01.17 | Validaciones de correo | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 5–80, formato y unicidad Auth/DB; correo inválido rechazado remotamente. | P1 |
+| 01.18 | Validaciones de contraseña y repetición | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 6–72 caracteres, hasta 72 bytes UTF-8 y no solo espacios. Auth remoto mínimo 6; repetición en UI. | P1 |
+| 01.19 | Validación del perfil cocinero y enumeración | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Cocinero creado con ambos perfiles. Enum metre/mozo/cocinero/cantinero; sin alta de gerencia. | P1 |
+| 01.20 | Validación de foto requerida y archivo válido | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Foto obligatoria; decodificación JPEG/PNG y límites antes de mutar. Toma física se evalúa en 01.06. | P1 |
 
 ### 02. Alta de plato · D2, cocinero
 
 | ID | Requisito y condición para aprobar | Estado | Evidencia y prueba realizada | Qué está hecho, qué falta y corrección concreta | Prioridad |
 | --- | --- | --- | --- | --- | --- |
-| 02.01 | Acceso del perfil cocinero | IMPLEMENTADO SIN VERIFICAR | NAV:30–38, CMP:556; RLS:69 — Inspección; ejecución específica pendiente | Existe acceso y tipo derivado; probar alta completa con cocinero, sin sustituirla por otro rol. | P1 |
-| 02.02 | Denegación de alta a perfil no autorizado | IMPLEMENTADO SIN VERIFICAR | RLS:69–75 — Inspección; ejecución específica pendiente | Política distingue tipo; ejecutar insert directo fuera de sector y verificar rechazo remoto. | P0 |
-| 02.03 | Persistencia de plato y aparición en carta | IMPLEMENTADO SIN VERIFICAR | OPS:436–496,202; U01 OperacionService — Prueba ejecutada, alcance E | Inserción y recarga conectadas; pruebas existentes usan mock. Crear plato con tres fotos y leer desde otra sesión. | P1 |
-| 02.04 | Uso de cámara para imágenes | IMPLEMENTADO SIN VERIFICAR | CAM:85,110; CMP:974 — Inspección; ejecución específica pendiente | CameraSource.Prompt conectado; falta Android y foto autorizada. | P1 |
-| 02.05 | Elección desde galería permitida | IMPLEMENTADO SIN VERIFICAR | CAM:85,161; CMP:974 — Inspección; ejecución específica pendiente | Selector nativo/web existe; probar galería, cancelación y archivo inválido por separado. | P1 |
-| 02.06 | Exactamente tres fotos en alta | NO CUMPLE | CMP:408–412; TPL:455; AUD02 — Prueba ejecutada, alcance E | Solo posición 0; una foto vuelve válido el formulario. Exponer tres posiciones y conectar tresFotosRequeridas y validación confiable. | P1 |
-| 02.07 | Imágenes individuales centradas y navegables | PARCIAL | CMP:414; TPL:1360; V01 — Prueba ejecutada, alcance E | Carta muestra una imagen a la vez; alta administra una sola. Ampliar alta sin fragmentos vecinos y verificar tres imágenes reales. | P1 |
-| 02.08 | Reemplazo individual de las tres fotos | NO CUMPLE | CMP:412,974,1001; OPS:696 — Inspección; ejecución específica pendiente | Hay reemplazo de primera imagen, no controles para las otras dos. Incorporar selector de posición y probar persistencia. | P1 |
-| 02.09 | Persistencia de las tres imágenes | IMPLEMENTADO SIN VERIFICAR | OPS:696–739; BASE:113 — Inspección; ejecución específica pendiente | Servicio admite array y upsert por orden; UI no lo completa. Verificar tres filas, objetos y recuperación parcial en entorno seguro. | P1 |
-| 02.10 | Validación de nombre | IMPLEMENTADO SIN VERIFICAR | CMP:395; LEN:78; U01 — Prueba ejecutada, alcance E | 2–60 y no espacios en UI; CHECK con trim en BD. Probar casos del registro de validación en alta de plato. | P1 |
-| 02.11 | Validación de descripción | IMPLEMENTADO SIN VERIFICAR | CMP:396; LEN:82 — Inspección; ejecución específica pendiente | 10–300 y no espacios; falta ejecutar límites y mensajes en ambos extremos. | P1 |
-| 02.12 | Validación de minutos | IMPLEMENTADO SIN VERIFICAR | CMP:397–404; BASE:92 — Inspección; ejecución específica pendiente | Entero 1–600 en UI, BD entero >0. El máximo es política local, no consigna. Probar negativos, fracciones y tipos. | P1 |
-| 02.13 | Validación de precio | IMPLEMENTADO SIN VERIFICAR | CMP:406; VAL:261; BASE:93 — Inspección; ejecución específica pendiente | UI mínimo 1 y dos decimales; BD >0 numeric(10,2). Alinear diferencias y probar límites/formatos. | P1 |
-| 02.14 | Validación de tipo y coherencia de sector | IMPLEMENTADO SIN VERIFICAR | NAV:93; BASE:101; RLS:69 — Inspección; ejecución específica pendiente | La BD impone bebida/bar y plato/cocina. Probar manipulación y tipo fuera del enum. | P1 |
-| 02.15 | Validación de fotos vacías, cantidad, formato y carga fallida | NO CUMPLE | CMP:409; VAL:284; CAM:177; AUD02 — Prueba ejecutada, alcance E | Validador de tres fotos existe pero no se usa. Exigir 3 y comprobar binario, extensión, cancelación y fallo de Storage. | P1 |
+| 02.01 | Acceso del perfil cocinero | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Ingreso UI y alta real con el perfil de su sector. | P1 |
+| 02.02 | Denegación de alta a perfil no autorizado | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Sector ajeno y manipulación de ID/tipo rechazados; escritura directa revocada. | P0 |
+| 02.03 | Persistencia de plato y aparición en carta | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Formulario real, recarga y carta de otra sesión con datos y tres imágenes. | P1 |
+| 02.04 | Uso de cámara para imágenes | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | CameraSource.Prompt permite cámara/galería; falta captura física. | P1 |
+| 02.05 | Elección desde galería permitida | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Selector web de archivos reales probado; galería nativa pendiente en Android. | P1 |
+| 02.06 | Exactamente tres fotos en alta | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Tres posiciones y finalización DB: 0/1/2/4 rechazadas, 3 aceptadas. | P1 |
+| 02.07 | Imágenes individuales centradas y navegables | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Contenedores individuales, proporción, numeración y estado de carga; carta navegable. | P1 |
+| 02.08 | Reemplazo individual de las tres fotos | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Reemplazo de cada posición: cambia solo su URL; UI conserva huecos y otras fotos. | P1 |
+| 02.09 | Persistencia de las tres imágenes | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Tres asociaciones ordenadas y GET de objetos reales. Reintento mismo ID y URLs nuevas sin caché vieja. | P1 |
+| 02.10 | Validación de nombre | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 2–60, no espacios solos, normalización y tipos. Baja lógica puede reactivarse sin nueva fila. | P1 |
+| 02.11 | Validación de descripción | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 10–300, rechaza vacíos/espacios/tipos y límites externos. | P1 |
+| 02.12 | Validación de minutos | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Entero 1–600 unificado UI/Edge/CHECK; máximo existente del proyecto. | P1 |
+| 02.13 | Validación de precio | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Mínimo 1, máximo 99999999,99 y hasta dos decimales; Edge rechaza precisión extra. | P1 |
+| 02.14 | Validación de tipo y coherencia de sector | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Cocina para plato/postre, bar para bebida; servidor deriva sector y conserva gerencia legítima. | P1 |
+| 02.15 | Validación de fotos vacías, cantidad, formato y carga fallida | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Cantidad/bytes corruptos rechazados remotamente; fallo de segunda subida compensado y reintento probado con fallo controlado. | P1 |
 
 ### 03. Alta de bebida · D3, cantinero
 
 | ID | Requisito y condición para aprobar | Estado | Evidencia y prueba realizada | Qué está hecho, qué falta y corrección concreta | Prioridad |
 | --- | --- | --- | --- | --- | --- |
-| 03.01 | Acceso del perfil cantinero | IMPLEMENTADO SIN VERIFICAR | NAV:30–38, CMP:556; RLS:69 — Inspección; ejecución específica pendiente | Existe acceso y tipo derivado; probar alta completa con cantinero, sin sustituirla por otro rol. | P1 |
-| 03.02 | Denegación de alta a perfil no autorizado | IMPLEMENTADO SIN VERIFICAR | RLS:69–75 — Inspección; ejecución específica pendiente | Política distingue tipo; ejecutar insert directo fuera de sector y verificar rechazo remoto. | P0 |
-| 03.03 | Persistencia de bebida y aparición en carta | IMPLEMENTADO SIN VERIFICAR | OPS:436–496,202; U01 OperacionService — Prueba ejecutada, alcance E | Inserción y recarga conectadas; pruebas existentes usan mock. Crear bebida con tres fotos y leer desde otra sesión. | P1 |
-| 03.04 | Uso de cámara para imágenes | IMPLEMENTADO SIN VERIFICAR | CAM:85,110; CMP:974 — Inspección; ejecución específica pendiente | CameraSource.Prompt conectado; falta Android y foto autorizada. | P1 |
-| 03.05 | Elección desde galería permitida | IMPLEMENTADO SIN VERIFICAR | CAM:85,161; CMP:974 — Inspección; ejecución específica pendiente | Selector nativo/web existe; probar galería, cancelación y archivo inválido por separado. | P1 |
-| 03.06 | Exactamente tres fotos en alta | NO CUMPLE | CMP:408–412; TPL:455; AUD02 — Prueba ejecutada, alcance E | Solo posición 0; una foto vuelve válido el formulario. Exponer tres posiciones y conectar tresFotosRequeridas y validación confiable. | P1 |
-| 03.07 | Imágenes individuales centradas y navegables | PARCIAL | CMP:414; TPL:1360; V01 — Prueba ejecutada, alcance E | Carta muestra una imagen a la vez; alta administra una sola. Ampliar alta sin fragmentos vecinos y verificar tres imágenes reales. | P1 |
-| 03.08 | Reemplazo individual de las tres fotos | NO CUMPLE | CMP:412,974,1001; OPS:696 — Inspección; ejecución específica pendiente | Hay reemplazo de primera imagen, no controles para las otras dos. Incorporar selector de posición y probar persistencia. | P1 |
-| 03.09 | Persistencia de las tres imágenes | IMPLEMENTADO SIN VERIFICAR | OPS:696–739; BASE:113 — Inspección; ejecución específica pendiente | Servicio admite array y upsert por orden; UI no lo completa. Verificar tres filas, objetos y recuperación parcial en entorno seguro. | P1 |
-| 03.10 | Validación de nombre | IMPLEMENTADO SIN VERIFICAR | CMP:395; LEN:78; U01 — Prueba ejecutada, alcance E | 2–60 y no espacios en UI; CHECK con trim en BD. Probar casos del registro de validación en alta de bebida. | P1 |
-| 03.11 | Validación de descripción | IMPLEMENTADO SIN VERIFICAR | CMP:396; LEN:82 — Inspección; ejecución específica pendiente | 10–300 y no espacios; falta ejecutar límites y mensajes en ambos extremos. | P1 |
-| 03.12 | Validación de minutos | IMPLEMENTADO SIN VERIFICAR | CMP:397–404; BASE:92 — Inspección; ejecución específica pendiente | Entero 1–600 en UI, BD entero >0. El máximo es política local, no consigna. Probar negativos, fracciones y tipos. | P1 |
-| 03.13 | Validación de precio | IMPLEMENTADO SIN VERIFICAR | CMP:406; VAL:261; BASE:93 — Inspección; ejecución específica pendiente | UI mínimo 1 y dos decimales; BD >0 numeric(10,2). Alinear diferencias y probar límites/formatos. | P1 |
-| 03.14 | Validación de tipo y coherencia de sector | IMPLEMENTADO SIN VERIFICAR | NAV:93; BASE:101; RLS:69 — Inspección; ejecución específica pendiente | La BD impone bebida/bar y plato/cocina. Probar manipulación y tipo fuera del enum. | P1 |
-| 03.15 | Validación de fotos vacías, cantidad, formato y carga fallida | NO CUMPLE | CMP:409; VAL:284; CAM:177; AUD02 — Prueba ejecutada, alcance E | Validador de tres fotos existe pero no se usa. Exigir 3 y comprobar binario, extensión, cancelación y fallo de Storage. | P1 |
+| 03.01 | Acceso del perfil cantinero | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Ingreso UI y alta real con el perfil de su sector. | P1 |
+| 03.02 | Denegación de alta a perfil no autorizado | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Sector ajeno y manipulación de ID/tipo rechazados; escritura directa revocada. | P0 |
+| 03.03 | Persistencia de bebida y aparición en carta | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Formulario real, recarga y carta de otra sesión con datos y tres imágenes. | P1 |
+| 03.04 | Uso de cámara para imágenes | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | Integración nativa compartida y flujo de bebida independiente; falta captura física. | P1 |
+| 03.05 | Elección desde galería permitida | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Selector web de archivos reales probado; galería nativa pendiente en Android. | P1 |
+| 03.06 | Exactamente tres fotos en alta | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Tres posiciones y finalización DB: 0/1/2/4 rechazadas, 3 aceptadas. | P1 |
+| 03.07 | Imágenes individuales centradas y navegables | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Contenedores individuales, proporción, numeración y estado de carga; carta navegable. | P1 |
+| 03.08 | Reemplazo individual de las tres fotos | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Reemplazo de cada posición: cambia solo su URL; UI conserva huecos y otras fotos. | P1 |
+| 03.09 | Persistencia de las tres imágenes | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Tres asociaciones ordenadas y GET de objetos reales. Reintento mismo ID y URLs nuevas sin caché vieja. | P1 |
+| 03.10 | Validación de nombre | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 2–60, no espacios solos, normalización y tipos. Baja lógica puede reactivarse sin nueva fila. | P1 |
+| 03.11 | Validación de descripción | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | 10–300, rechaza vacíos/espacios/tipos y límites externos. | P1 |
+| 03.12 | Validación de minutos | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Entero 1–600 unificado UI/Edge/CHECK; máximo existente del proyecto. | P1 |
+| 03.13 | Validación de precio | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Mínimo 1, máximo 99999999,99 y hasta dos decimales; Edge rechaza precisión extra. | P1 |
+| 03.14 | Validación de tipo y coherencia de sector | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Cocina para plato/postre, bar para bebida; servidor deriva sector y conserva gerencia legítima. | P1 |
+| 03.15 | Validación de fotos vacías, cantidad, formato y carga fallida | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Cantidad/bytes corruptos rechazados remotamente; fallo de segunda subida compensado y reintento probado con fallo controlado. | P1 |
 
 ### 04. Alta y gestión de mesa · D4, dueño y supervisor
 
 | ID | Requisito y condición para aprobar | Estado | Evidencia y prueba realizada | Qué está hecho, qué falta y corrección concreta | Prioridad |
 | --- | --- | --- | --- | --- | --- |
-| 04.01 | Acceso del dueño | CUMPLE | NAV:128; V01 Mesas — Prueba ejecutada, alcance E | Sin corrección necesaria para acceso UI; persistencia se evalúa aparte. | P2 |
-| 04.02 | Acceso del supervisor | IMPLEMENTADO SIN VERIFICAR | NAV:39–43 — Inspección; ejecución específica pendiente | Ruta prevista; probar creación y gestión con supervisor real. | P1 |
-| 04.03 | Denegación a perfiles no autorizados | IMPLEMENTADO SIN VERIFICAR | RLS:65; CMP:1093 — Inspección; ejecución específica pendiente | RLS gerencia para escritura; validar llamadas directas como cliente/metre. | P0 |
-| 04.04 | Validación del número | IMPLEMENTADO SIN VERIFICAR | CMP:436; BASE:68; U01 — Prueba ejecutada, alcance E | Entero 1–999 en UI y UNIQUE en BD; BD no limita positividad de número. Alinear dominio y probar vacíos/decimales/duplicados. | P1 |
-| 04.05 | Validación de comensales | IMPLEMENTADO SIN VERIFICAR | CMP:446; BASE:69 — Inspección; ejecución específica pendiente | Entero 1–20, probar inválidos y persistencia en ambos perfiles. | P1 |
-| 04.06 | Validación de tipo VIP/estándar/movilidad reducida | IMPLEMENTADO SIN VERIFICAR | CMP:455; OPS:1506; ENUM — Inspección; ejecución específica pendiente | Opciones y enum presentes; probar valor adulterado, tipo nulo y traducción. | P1 |
-| 04.07 | Estado libre por defecto persistido | IMPLEMENTADO SIN VERIFICAR | OPS:788–795; BASE:71 — Inspección; ejecución específica pendiente | Se omite estado y default libre lo completa; falta alta remota. | P1 |
-| 04.08 | Foto desde cámara del dispositivo | IMPLEMENTADO SIN VERIFICAR | CMP:477; CAM:69 — Inspección; ejecución específica pendiente | Cámara nativa; web simula con archivo. Probar cámara y permisos. | P1 |
-| 04.09 | Validación de foto y recuperación de carga fallida | PARCIAL | CMP:463; OPS:871–892 — Inspección; ejecución específica pendiente | UI exige objeto, BD permite NULL y alta puede quedar sin foto. Completar recuperación y validar archivo real. | P1 |
-| 04.10 | Foto individual centrada y de tamaño adecuado | NO VERIFICABLE | V01 Mesas-alta; CMP:285 — Inspección; ejecución específica pendiente | Contenedor inspeccionado sin foto; verificar imagen real en 320–768 px. | P2 |
-| 04.11 | Persistencia y aparición en listado | IMPLEMENTADO SIN VERIFICAR | OPS:780–802 — Inspección; ejecución específica pendiente | Insert, foto y cargar conectados; pruebas de servicio son mock. Verificar fila y segundo dispositivo. | P1 |
-| 04.12 | Generación QR automática con token de mesa | IMPLEMENTADO SIN VERIFICAR | QR:53–70; CMP:1157; BASE:76; U01 — Prueba ejecutada, alcance E | Generador usa token de fila, no número fijo; probar alta+decodificación+lectura física. | P1 |
-| 04.13 | Cambio de disponibilidad coherente con estadía activa | NO CUMPLE | OPS:1005–1031; RLS:65; FUN:246 — Inspección; ejecución específica pendiente | Toggle directo ocupado/libre sin verificar estadía; impedir liberar mesa con estadía activa por este camino. | P0 |
-| 04.14 | Cambio reflejado en asignación de otros dispositivos | IMPLEMENTADO SIN VERIFICAR | OPS:1333,1054 — Inspección; ejecución específica pendiente | Suscripción a mesas conectada; falta publicación Realtime remota y sesiones compartidas reales. | P1 |
+| 04.01 | Acceso del dueño | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Acceso UI y creación real como dueño. | P2 |
+| 04.02 | Acceso del supervisor | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Acceso UI y creación real como supervisor. | P1 |
+| 04.03 | Denegación a perfiles no autorizados | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Endpoint niega cocinero; grants/RLS impiden inserción directa no autorizada. | P0 |
+| 04.04 | Validación del número | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Entero 1–999 y UNIQUE; inválidos/duplicado rechazados en servidor. | P1 |
+| 04.05 | Validación de comensales | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Entero 1–20 en UI, Edge y DB; límites/fracción probados. | P1 |
+| 04.06 | Validación de tipo VIP/estándar/movilidad reducida | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Tres tipos creados; valor desconocido rechazado sin conversión silenciosa. | P1 |
+| 04.07 | Estado libre por defecto persistido | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Alta remota libre por defecto, equivalente a vacía. | P1 |
+| 04.08 | Foto desde cámara del dispositivo | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | CameraSource.Camera obligatorio; permisos/toma/repetición físicos pendientes. | P1 |
+| 04.09 | Validación de foto y recuperación de carga fallida | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Sin éxito antes de foto/fila. Edición de histórica sin foto exige completar la imagen. | P1 |
+| 04.10 | Foto individual centrada y de tamaño adecuado | IMPLEMENTADO SIN VERIFICAR | CAM/DNI/CMP, H-NAT — Inspección y pruebas de ramas; física pendiente | Vista y Storage verificados; previsualización de una captura física pendiente. | P2 |
+| 04.11 | Persistencia y aparición en listado | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Consulta independiente tras alta/reintento y listado real en navegador; toma física pendiente separada. | P1 |
+| 04.12 | Generación QR automática con token de mesa | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | qrcode genera TUMBO://mesa/token; jsQR independiente verifica tres tokens distintos y estables. | P1 |
+| 04.13 | Cambio de disponibilidad coherente con estadía activa | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Trigger y bloqueo de fila impiden liberar estadía activa. Marca administrativa separada y carrera real probada. | P0 |
+| 04.14 | Cambio reflejado en asignación de otros dispositivos | CUMPLE | H-U/H-EDGE/H-SQL/H-REAL/H-VIS, alcance descrito en H — Prueba ejecutada | Publicación Realtime habilitada, evento recibido por otro JWT y lectura independiente consistente. | P1 |
 
 ### 05. Alta de cliente registrado · D2, cliente o metre
 
@@ -518,6 +522,8 @@ No se implementó ninguna propuesta. “Ejecutada” en una fila remite al alcan
 
 ## D. Auditoría visual
 
+H-VIS actualiza los listados/selectores 01–04. Las otras pantallas conservan la evaluación histórica.
+
 Las referencias originales no estaban disponibles; se siguió su descripción. Medición de estilos computados, composición de fondos planos y geometría DOM; revisión directa de capturas de Personal 320, Menú 320, alta de Producto 390 y Cuenta 320, entre otras muestras. No se trasladó una aprobación de escritorio a teléfono.
 
 Fuentes: [WCAG 2.2, contraste mínimo](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html) y [contraste no textual](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html). Texto normal 4,5:1; grande 3:1 (24 CSS px normal o aproximadamente 18,67 px en negrita); información visual necesaria de controles/gráficos 3:1 en su alcance. Se compararon valores sin redondear; los redondeos siguientes son de presentación. Logos, decoración y controles inactivos tienen excepciones normativas; no se usaron para excusar texto activo.
@@ -526,23 +532,23 @@ AXE-core con etiquetas wcag2a/wcag2aa/wcag21aa/wcag22aa no reportó violaciones 
 
 | ID | Pantalla/componente | Estado | Dimensiones, medición y evidencia | Corrección o límite |
 | --- | --- | --- | --- | --- |
-| UI-L.01 | Personal, vista inicial | NO CUMPLE | 320×568: tercera tarjeta y=445,72, h=137,16, termina en 582,88; contenedor se corta antes del borde inferior. 360/390/768 también medidos. | Tarjetas incompletas en reposo, no captura durante scroll. Ajustar unidades por página/altura útil; permitir desplazamiento accesible de contenido largo. |
-| UI-L.02 | Productos y carta | PARCIAL | V01 320/360/390/768: un producto por página; en 320 tarjeta menú x=25,y=184,19,w=260,h=276,28. | Unidad completa en muestra, pero datos largos y catálogo con tres fotos reales pendientes. No reducir letra para forzar encaje. |
+| UI-L.01 | Personal, vista inicial | CUMPLE | H-VIS/H-REAL: Personal 320×568: tarjeta y=196,19–330,14; unidad completa. | Una unidad por página, scroll para contenido largo. |
+| UI-L.02 | Productos y carta | CUMPLE | H-VIS/H-REAL: Productos 320: y=196,19–318,19. Carta real de otra sesión con tres fotos navegables. | Carrito fuera de esta intervención. |
 | UI-L.03 | Clientes pendientes | IMPLEMENTADO SIN VERIFICAR | V01 Clientes a los cuatro tamaños, datos demo y logo. | Composición inspeccionada, falta foto real y varias altas nuevas con textos largos/estado actualizado. |
 | UI-L.04 | Lista de espera | IMPLEMENTADO SIN VERIFICAR | V01 a cuatro tamaños y V02 con metre a 390×844: una persona y selector de mesa. | Verificar cola real, nombres largos, eliminación y todos los estados. |
-| UI-L.05 | Mesas | IMPLEMENTADO SIN VERIFICAR | V01 Mesas a cuatro tamaños; paginación y QR localizado. | Faltan fotos reales, distintos tipos y consistencia de ocupación durante otras sesiones. |
+| UI-L.05 | Mesas | CUMPLE | H-VIS/H-REAL: Mesa 320: y=186–344,25; unidad completa en cuatro tamaños. | Foto/estado/QR remotos comprobados; cámara física pendiente. |
 | UI-L.06 | Pedidos de cocina | PARCIAL | V01 cuatro tamaños; V02 390×844 con cocinero: mesa, fecha y un ítem de cocina. | Tarjeta de muestra completa; la colección multi-mesa no existe. Crear lista agrupada y probar más de un pedido. |
 | UI-L.07 | Pedidos de bar | PARCIAL | V01 cuatro tamaños; V02 390×844 cantinero, solo bebida visible. | Separación de sector en muestra; no acredita listado multi-mesa completo. |
 | UI-L.08 | Pedidos de mozos | PARCIAL | V01 cuatro tamaños con acceso dueño a Pedidos; TPL:1253. | Pedido único y controles presentes; falta recorrido con mozo real y colección de mesas. |
 | UI-L.09 | Contenedor de imagen en carta | CUMPLE | V01 Menú cuatro tamaños: una imagen centrada por tarjeta, sin fracción de imagen vecina. | Sin corrección necesaria en esta composición de muestra; cantidad/persistencia de fotos se cuenta en 02/03/11. |
 | UI-D.01 | Importe acumulado del menú | NO CUMPLE | 320×568: cart-bar y=470,47,h=161,39, termina en 631,86; total/acción fuera del área útil. CSS:1057 position:static. | Mover resumen a región persistente respetando footer y áreas seguras. |
 | UI-D.02 | Total final y cuenta | PARCIAL | V02 cuenta en 320×568,360×640,390×844,768×1024. Total 24px, peso 800; en 320 acción inferior cortada. | Mantener jerarquía del total; hacer pago accesible sin recorte por contenedor. |
-| UI-D.03 | Alta de producto | IMPLEMENTADO SIN VERIFICAR | 390×844: el selector de imagen ocupa gran parte de la vista y confirmar queda fuera de la vista inicial; V01. Esto no demuestra que sea inaccesible mediante scroll. | Verificar acceso a todos los campos y confirmación mediante scroll, foco y teclado físico antes de declarar un fallo de distribución. |
+| UI-D.03 | Alta de producto | CUMPLE | H-VIS/H-REAL: Formulario y errores en cuatro tamaños; confirmar alcanzable con scroll y a 390×480. | No se exige que todos los campos entren sin scroll. |
 | UI-D.04 | Ingreso y errores | CUMPLE | V01 ingreso/vacío cuatro tamaños; V02 mensajes Completá el correo y Completá la clave a 390×844. Sin overflow horizontal del documento. | Sin corrección necesaria para la distribución de esos estados probados; teclado real no acreditado. |
 | UI-D.05 | Navegación horizontal global | CUMPLE | 88 estados medidos: scrollWidth del documento no excedió viewport en 320,360,390,768. | Sin corrección necesaria para ese control; no descarta recortes verticales o internos. |
 | UI-D.06 | Altura reducida y teclado | PARCIAL | V02 390×480 simula menos espacio; no se abrió teclado Android ni se midieron barras nativas. | Probar teclado real, safe areas y foco de último campo. Reducción de viewport solo cubre una aproximación. |
 | UI-D.07 | Zoom y textos variables | NO VERIFICABLE | No se ejecutó zoom real 200 %, lector de pantalla ni registros largos de todas las vistas. | Probar esos casos tras corregir alturas/overflow; no certificar accesibilidad completa. |
-| UI-D.08 | Carruseles de tres fotos y reemplazo | NO CUMPLE | CMP:412: un solo slot; V01 alta de producto muestra selector único. | Completar tres posiciones; verificar reemplazo, persistencia y proporción de cada imagen. |
+| UI-D.08 | Carruseles de tres fotos y reemplazo | CUMPLE | H-VIS/H-REAL: Tres posiciones identificadas y reemplazo independiente; carta navega las tres imágenes. | Fixtures sintéticos no acreditan cámara nativa. |
 | UI-C.01 | Ingreso, etiquetas normales | CUMPLE | 390×844, Correo electrónico/Clave: #003592 sobre #FBF1D5, 13px/500, 9,6891:1 ≥4,5. | Sin corrección necesaria para esas etiquetas medidas. |
 | UI-C.02 | Ingreso, texto de campos | CUMPLE | 390×844, input: #003592 sobre #F8FBFD, 15px/400, 10,5017:1 ≥4,5. | Sin corrección necesaria para texto normal de campo. |
 | UI-C.03 | Ingreso, errores | CUMPLE | 390×844, errores vacíos: #A84402 sobre #FBF1D5, 12px/400, 5,3382:1 ≥4,5. | Sin corrección necesaria en mensajes medidos. |
@@ -559,13 +565,15 @@ AXE-core con etiquetas wcag2a/wcag2aa/wcag21aa/wcag22aa no reportó violaciones 
 | UI-C.14 | Estado Confirmado en cocina | CUMPLE | 390×844: #984000, fondo efectivo aproximado #F7E5CC tras composición alfa, 10,4px/700; relación sin redondeo 5,557965:1 ≥4,5. | Sin corrección necesaria para este estado; pendientes los demás estados reales. |
 
 
-**Métrica visual separada:** 15 / 31 = 48,4 % CUMPLE; cobertura de ejecución 28 / 31 = 90,3 %. Conteos: CUMPLE: 15; IMPLEMENTADO SIN VERIFICAR: 4; PARCIAL: 6; NO CUMPLE: 3; NO IMPLEMENTADO: 0; NO VERIFICABLE: 3. No se suma a la métrica funcional porque hay pantallas compartidas y referencias de contexto.
+**Métrica visual separada, calculada desde las 31 filas D:** 20 / 31 = 64,5 % CUMPLE. CUMPLE: 20; IMPLEMENTADO SIN VERIFICAR: 2; PARCIAL: 5; NO CUMPLE: 1; NO VERIFICABLE: 3. Cobertura histórica 28/31; H-VIS amplía evidencia 01–04 sin certificar WCAG global.
 
 **Conflicto de composición literal:** UI-L exige unidades completas en reposo, pero textos largos/zoom necesitan desplazamiento. La propuesta es paginar por unidad compleja y permitir scroll accesible dentro de esa unidad, con encabezado/resumen sin superposición. No reducir texto ni ocultar información para que una captura parezca correcta. Una tarjeta parcialmente visible durante un scroll intermedio no se confundió con el recorte inicial observado.
 
 ## E. Registros transversales
 
 ### E1. Pruebas realmente ejecutadas
+
+U01/AUD/SQL/V01 son registros históricos. Las pruebas actuales de 01–04 están en H; AUD02 ya no describe el formulario vigente.
 
 Se creó una copia temporal mediante git archive del HEAD fuera del repositorio y una unión a node_modules existente. El build y todos sus prebuilds corrieron en esa copia, de modo que generar-entorno/generar-ilustraciones no tocaron los archivos originales. No se instalaron dependencias en el proyecto. Playwright, axe-core y PGlite se instalaron únicamente en el directorio temporal. La configuración demo tenía claves de Supabase vacías y el navegador bloqueó solicitudes externas.
 
@@ -633,31 +641,31 @@ Los límites siguientes son **política implementada**, no límites inventados d
 
 | ID funcional | Campo | Regla esperada/política actual | Interfaz | Capa confiable | Casos ejecutados y pendientes | Mensaje y acción concreta |
 | --- | --- | --- | --- | --- | --- | --- |
-| 01.13 | Nombres | 2–50; Unicode, compuestos; no vacío/espacios | validadoresDeNombre | CHECK trim/largo y formato, Edge trim | U01: tildes, ñ, 1/2/50/51, números/símbolos/espacios; endpoint pendiente | mensajes.ts traduce requerido/largo/letras; no verificar solo maxlength |
-| 01.14 | Apellidos | 2–50; compuestos, guion/apóstrofo | validadoresDeNombre | CHECK formato/largo | U01 apóstrofo/guion y conjunto nombre; endpoint pendiente | Mensaje por control; probar apellido vacío y error servidor |
-| 01.15 | DNI | 7–8 dígitos; normalización de puntos/espacios | dniValido | CHECK regex y UNIQUE | U01 formato; tipos JSON y duplicado endpoint pendientes | No aceptar letras como dígitos; mensaje de DNI localizado |
-| 01.16 | CUIL | 11 dígitos, formato, verificador y coincidencia DNI | cuilValido+cuilConDigitoValido+grupo | Solo regex/CUIL no nulo para empleados | U01 verificador y vínculo; backend acepta formato sin checksum por inspección | Rechazar dígito o DNI discordante también en servidor |
-| 01.17 | Correo | Requerido, formato, 5–80; normalización | correoValido+limites | CHECK formato/largo, UNIQUE; Edge preconsulta | U01 inválidos/formato; endpoint pendiente | mensajes.ts correo válido; Edge duplicado; no publicar direcciones |
-| 01.18 | Contraseña | 6–72 según UI; confirmar igualdad | required, longitud; repetirClave | Auth valida según configuración remota no leída; Edge solo requerido | U01 coincidencia; probar vacío/espacios/5/6/72/73 y tipos en endpoint | Mensaje de mínimo/máximo y coincidencia; no registrar contraseña |
-| 01.19 | Perfil | Enum de empleado, caso obligatorio cocinero | required y selector | Edge enum metre/mozo/cocinero/cantinero y gerencia aprobada | Inspección; inválido/rol manipulados pendientes | Edge indica lista admitida y 403 para no gerencia |
-| 01.20 | Foto | Requerida, cámara real, archivo válido | fotoRequerida solo fuera de demo, truthiness | foto_url nullable; subida Storage posterior | Permisos/cancelación/archivo vacío/MIME falso/subida fallida pendientes | CAM y OPS devuelven error o aviso parcial; no decir alta completa si falta foto |
-| 02.10 | Plato: nombre | 2–60; no espacios solos | required/sinEspacios/conLimite | CHECK trim/largo; unique(tipo,nombre) | U01 normalización/duplicados del servicio mock; límites del flujo específico pendientes | No confundir duplicados con requisito de aparecer en carta |
-| 02.11 | Plato: descripción | 10–300; no vacío/espacios | required/sinEspacios/conLimite | CHECK trim/largo | Casos 9/10/300/301 y Unicode pendientes por flujo | mensajeCampo requerido/largo; probar visualización |
-| 02.12 | Plato: minutos | Entero positivo; UI 1–600 | enteroValido+min/max | integer y >0, sin máximo600 | Negativo/cero/1/600/601/1.5/NaN pendientes | Distinguir entero de límite; 600 es decisión local |
-| 02.13 | Plato: precio | UI ≥1, ≤2 decimales, <100000000 | precioValido+min1 | numeric(10,2), >0; SQL redondea fracciones extra | Límites/0.01/1.001/exponente pendientes | Alinear 0.01 válido BD vs UI y explicar formato monetario |
-| 02.14 | Plato: tipo/sector | Cocinero→plato/cocina; cantinero→bebida/bar | Derivado por rol; required | Enum+sector_coherente+policy alta | SQL04 prueba sector ítem corregido; alta de producto adulterada pendiente | Error de permisos no debe anunciar éxito |
-| 02.15 | Plato: fotos | Exactamente 3; archivos válidos y reemplazables | required de array, solo slot0; tresFotosRequeridas no conectado | orden1–3+unique; no exige 3 filas ni MIME/tamaño en bucket | AUD02 una foto aceptada; 0/2/4, extensión falsa, fallo/reemplazo real pendientes | Completar validación numérica, binario y recuperación; duplicar prueba para bebida |
-| 03.10 | Bebida: nombre | 2–60; no espacios solos | required/sinEspacios/conLimite | CHECK trim/largo; unique(tipo,nombre) | U01 normalización/duplicados del servicio mock; límites del flujo específico pendientes | No confundir duplicados con requisito de aparecer en carta |
-| 03.11 | Bebida: descripción | 10–300; no vacío/espacios | required/sinEspacios/conLimite | CHECK trim/largo | Casos 9/10/300/301 y Unicode pendientes por flujo | mensajeCampo requerido/largo; probar visualización |
-| 03.12 | Bebida: minutos | Entero positivo; UI 1–600 | enteroValido+min/max | integer y >0, sin máximo600 | Negativo/cero/1/600/601/1.5/NaN pendientes | Distinguir entero de límite; 600 es decisión local |
-| 03.13 | Bebida: precio | UI ≥1, ≤2 decimales, <100000000 | precioValido+min1 | numeric(10,2), >0; SQL redondea fracciones extra | Límites/0.01/1.001/exponente pendientes | Alinear 0.01 válido BD vs UI y explicar formato monetario |
-| 03.14 | Bebida: tipo/sector | Cocinero→plato/cocina; cantinero→bebida/bar | Derivado por rol; required | Enum+sector_coherente+policy alta | SQL04 prueba sector ítem corregido; alta de producto adulterada pendiente | Error de permisos no debe anunciar éxito |
-| 03.15 | Bebida: fotos | Exactamente 3; archivos válidos y reemplazables | required de array, solo slot0; tresFotosRequeridas no conectado | orden1–3+unique; no exige 3 filas ni MIME/tamaño en bucket | AUD02 una foto aceptada; 0/2/4, extensión falsa, fallo/reemplazo real pendientes | Completar validación numérica, binario y recuperación; duplicar prueba para bebida |
-| 04.04 | Mesa: número | Entero 1–999 según UI; único | required/entero/min/max | integer UNIQUE, sin CHECK >0 | U01 duplicado en mock; 0/negativo/fracción/tipo API pendientes | Servicio mensaje de mesa repetida; alineación de rango servidor pendiente |
-| 04.05 | Mesa: comensales | Entero 1–20 | required/entero/min/max | integer CHECK1–20 | 0,21,1.5,null y tipo pendientes | mensajeCampo entero/rango, comprobar render |
-| 04.06 | Mesa: tipo | VIP, estándar, movilidad reducida | required+selector | Enum; traductor de tipo | Enum inválido/nulo pendiente | No mapear silenciosamente valor desconocido a movilidad reducida |
-| 04.07 | Mesa: disponibilidad | Libre por defecto; transición coherente | No se pide al alta; toggle luego | default libre; falta verificación estadía activa | Inspección, carrera y toggle con estadía pendientes | No permitir liberar por toggle una mesa en uso |
-| 04.09 | Mesa: foto | Requerida en alta y archivo válido | fotoRequerida, opcional al editar | foto_url nullable, Storage posterior | Archivo/cancelación/subida/reintento pendientes | OPS devuelve aviso parcial; mostrar y permitir reparación |
+| 01.13 | Nombres | 2–50; Unicode, compuestos; no vacío/espacios | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Tipos antes de trim, 2–50, letras/tildes/ñ/compuestos/apóstrofo/guion; límites y espacios probados. |
+| 01.14 | Apellidos | 2–50; compuestos, guion/apóstrofo | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Misma política 2–50 para apellidos; límites y tipos inválidos probados. |
+| 01.15 | DNI | 7–8 dígitos; normalización de puntos/espacios | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 7–8 dígitos normalizados, unicidad existente; JSON no textual rechazado. |
+| 01.16 | CUIL | 11 dígitos, formato, verificador y coincidencia DNI | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Dígito verificador y vínculo DNI en UI, Edge y CHECK; casos válidos e inválidos probados. |
+| 01.17 | Correo | Requerido, formato, 5–80; normalización | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 5–80, formato y unicidad Auth/DB; correo inválido rechazado remotamente. |
+| 01.18 | Contraseña | 6–72 según UI; confirmar igualdad | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 6–72 caracteres, hasta 72 bytes UTF-8 y no solo espacios. Auth remoto mínimo 6; repetición en UI. |
+| 01.19 | Perfil | Enum de empleado, caso obligatorio cocinero | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Cocinero creado con ambos perfiles. Enum metre/mozo/cocinero/cantinero; sin alta de gerencia. |
+| 01.20 | Foto | Requerida, cámara real, archivo válido | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Foto obligatoria; decodificación JPEG/PNG y límites antes de mutar. Toma física se evalúa en 01.06. |
+| 02.10 | Plato: nombre | 2–60; no espacios solos | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 2–60, no espacios solos, normalización y tipos. Baja lógica puede reactivarse sin nueva fila. |
+| 02.11 | Plato: descripción | 10–300; no vacío/espacios | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 10–300, rechaza vacíos/espacios/tipos y límites externos. |
+| 02.12 | Plato: minutos | Entero positivo; UI 1–600 | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Entero 1–600 unificado UI/Edge/CHECK; máximo existente del proyecto. |
+| 02.13 | Plato: precio | UI ≥1, ≤2 decimales, <100000000 | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Mínimo 1, máximo 99999999,99 y hasta dos decimales; Edge rechaza precisión extra. |
+| 02.14 | Plato: tipo/sector | Cocinero→plato/cocina; cantinero→bebida/bar | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Cocina para plato/postre, bar para bebida; servidor deriva sector y conserva gerencia legítima. |
+| 02.15 | Plato: fotos | Exactamente 3; archivos válidos y reemplazables | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Cantidad/bytes corruptos rechazados remotamente; fallo de segunda subida compensado y reintento probado con fallo controlado. |
+| 03.10 | Bebida: nombre | 2–60; no espacios solos | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 2–60, no espacios solos, normalización y tipos. Baja lógica puede reactivarse sin nueva fila. |
+| 03.11 | Bebida: descripción | 10–300; no vacío/espacios | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | 10–300, rechaza vacíos/espacios/tipos y límites externos. |
+| 03.12 | Bebida: minutos | Entero positivo; UI 1–600 | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Entero 1–600 unificado UI/Edge/CHECK; máximo existente del proyecto. |
+| 03.13 | Bebida: precio | UI ≥1, ≤2 decimales, <100000000 | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Mínimo 1, máximo 99999999,99 y hasta dos decimales; Edge rechaza precisión extra. |
+| 03.14 | Bebida: tipo/sector | Cocinero→plato/cocina; cantinero→bebida/bar | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Cocina para plato/postre, bar para bebida; servidor deriva sector y conserva gerencia legítima. |
+| 03.15 | Bebida: fotos | Exactamente 3; archivos válidos y reemplazables | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Cantidad/bytes corruptos rechazados remotamente; fallo de segunda subida compensado y reintento probado con fallo controlado. |
+| 04.04 | Mesa: número | Entero 1–999 según UI; único | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Entero 1–999 y UNIQUE; inválidos/duplicado rechazados en servidor. |
+| 04.05 | Mesa: comensales | Entero 1–20 | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Entero 1–20 en UI, Edge y DB; límites/fracción probados. |
+| 04.06 | Mesa: tipo | VIP, estándar, movilidad reducida | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Tres tipos creados; valor desconocido rechazado sin conversión silenciosa. |
+| 04.07 | Mesa: disponibilidad | Libre por defecto; transición coherente | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Alta remota libre por defecto, equivalente a vacía. |
+| 04.09 | Mesa: foto | Requerida en alta y archivo válido | Validadores conectados y mensajes por campo, CMP/VAL | VALALT + ALTA + MIG; política actual en H | H-U/H-EDGE/H-REAL; alcance por capa en H | Sin éxito antes de foto/fila. Edición de histórica sin foto exige completar la imagen. |
 | 05.03 | Cliente: nombres | Misma política de nombre necesaria | Solo required | Alta mock, no llamada confiable | AUD01 espacios aceptados | Validadores comunes y mensajes por campo faltantes |
 | 05.04 | Cliente: apellidos | Nombre compuesto/Unicode, no vacío | Solo required | Alta mock | AUD01 espacios aceptados | Rechazar con mensaje asociado al control |
 | 05.05 | Cliente: DNI | Formato 7–8 dígitos | required/minLength7 | Alta mock; CHECK de usuarios no se alcanza | AUD01 abcdefg aceptado | Usar dniValido; probar tildes en nombre no en DNI |
@@ -706,8 +714,8 @@ En todos los eventos siguientes: **destinatarios observados en dispositivos: nin
 | Registro pendiente→aprobado/rechazado | Dueño/supervisor | CMP gestiona + usuarios_actualizar + trigger PROTECT | Cambiar estado no dispara correo ni recarga lista; probar ambos perfiles y rechazo con sesión ya abierta. |
 | Anónimo→aprobado | Alta anónima | manejar_usuario_nuevo lo contempla | No hay signInAnonymously conectado; implementar sin pedir DNI/correo/clave. |
 | Espera→asignado/eliminado | Metre; baja propia según política | RLS espera_actualizar también permite cliente | Cliente puede cambiar columnas de asignación de su fila; limitar columnas/transiciones y resolver RPC. |
-| Mesa libre→estadía activa | Metre tras espera | Tres peticiones; sesiones_crear permite propietario | SQL02: autoasignación; SQL03: índice sí bloquea segunda estadía. Operación atómica y carrera remota pendientes. |
-| Mesa ocupada→libre manual | Gerencia con coherencia de estadía | RLS gerencia, toggle sin condición | No proteger solo listado. Rechazar si existe estadía abierta. |
+| Mesa libre→estadía activa | Metre tras espera | H-MIG coordina mesa/estadía con bloqueo de fila; la asignación completa sigue fuera de alcance | H-REAL prueba carrera con liberación; SQL02 histórico sobre autoasignación no se declara corregido. |
+| Mesa ocupada→libre manual | Gerencia con coherencia de estadía | H-MIG: trigger impide liberar mientras hay estadía activa; marca administrativa independiente | H-SQL/H-REAL: denegación por 23514, carrera real y Realtime comprobados. |
 | Borrador→pendiente_confirmacion | Cliente propietario | Adaptador inserta directamente pendiente | SQL01: ítems rechazados; guardado/transición atómicos. |
 | Pendiente→rechazado/confirmado | Mozo | RLS es_staff genérico | SQL11: cocinero confirma; imponer actor y estado previo. |
 | Rechazado→reenviado | Cliente propietario | Nuevo pedido + carrito vacío | AUD07; restaurar versión, evitar duplicados y cambio de precio/sector. |
@@ -719,10 +727,10 @@ En todos los eventos siguientes: **destinatarios observados en dispositivos: nin
 | Estadía→cuenta | Cliente tras recepción y propina seleccionada | RPC calcula subtotal; cliente manda números finales | SQL12 null admitido; precio/premio manipulables. Calcular total y nivel en servidor. |
 | Cuenta pendiente→pagada | Cliente, simulación | update sin precondición estado | Probar reenvío/porcentajes/cambio de totales tras pagar y denegar alteraciones. |
 | Cuenta pagada→confirmada→mesa libre | Mozo; push gerencia | cuentas_actualizar permite propietario; trigger libera | SQL07 cliente confirma sin pago; restringir columnas/transiciones, conservar trigger bajo autorización correcta. |
-| Logout/cambio usuario | Usuario activo | SesionService limpia solo usuario; Auth limpia almacenamiento | AUD06/V02 carrito heredado; limpiar estado operativo/canal, no solo credenciales. |
+| Logout/cambio usuario | Usuario activo | H: formularios/fotos/catálogos 01–04 y sus canales se limpian al cambiar sesión | H-U/H-VIS comprobados. El hallazgo histórico de carrito 05–22 no se reaudita ni se declara cerrado. |
 
 
-Los índices UNIQUE son protección efectiva local para estadía activa por mesa/cliente, encuesta por estadía y un premio positivo; no prueban que la operación completa sea válida ni atómica. **Concurrencia simultánea** no se ejecutó: PGlite se usó secuencialmente; carreras de asignación, pago, reenvío y encuesta en dos conexiones reales siguen pendientes. Tampoco se confirmó publicación Realtime, recuperación de desconexión ni app cerrada.
+Los índices UNIQUE son protección efectiva local para estadía activa por mesa/cliente, encuesta por estadía y un premio positivo; no prueban que la operación completa sea válida ni atómica. **Concurrencia simultánea histórica** no se ejecutó (H-REAL sí prueba ahora alta duplicada y carrera mesa/estadía): PGlite se usó secuencialmente; carreras de asignación, pago, reenvío y encuesta en dos conexiones reales siguen pendientes. Tampoco se confirmó publicación Realtime, recuperación de desconexión ni app cerrada.
 
 ### E6. Búsquedas de ausencia y límites
 
@@ -741,10 +749,10 @@ Las exploraciones V02 sí usaron cuatro BrowserContexts independientes, pero no 
 
 | Paso/dispositivo y rol | Precondición / acción | Resultado esperado | Resultado observado en esta auditoría | IDs |
 | --- | --- | --- | --- | --- |
-| F01 · D1 dueño; luego supervisor | Login, alta empleado cocinero con foto y DNI; repetir permisos con ambos | Empleado persistido, campos correctos; otros roles denegados | Solo acceso UI/validadores inspeccionados y U01; alta real/cámara pendiente | 01.01–01.20 |
-| F02 · D2 cocinero | Alta plato con 3 fotos, reemplazar segunda, confirmar | 3 imágenes persistidas y plato en carta | Formulario expone 1; AUD02 lo acepta. No alta remota | 02.01–02.15 |
-| F03 · D3 cantinero | Alta bebida independiente, 3 fotos y reemplazo | Bebida en carta y solo bar puede crearla | Mismo defecto de 1 foto, camino de bebidas localizado; alta real pendiente | 03.01–03.15 |
-| F04 · D4 dueño; repetir supervisor | Alta mesa, comprobar foto, QR, libre y cambiar disponibilidad sin estadía | Mesa/QR correctos, estado consistente | Generación QR cubierta por tests de servicio; cámara/alta real pendientes | 04.01–04.14 |
+| F01 · D1 dueño; luego supervisor | Login, alta empleado cocinero con foto y DNI; repetir permisos con ambos | Empleado persistido, campos correctos; otros roles denegados | H-REAL/H-VIS: Supabase real con JWT de cada rol. Cámara/lector físico pendientes en H-NAT. | 01.01–01.20 |
+| F02 · D2 cocinero | Alta plato con 3 fotos, reemplazar segunda, confirmar | 3 imágenes persistidas y plato en carta | H-REAL/H-VIS: Supabase real con JWT de cada rol. Cámara/lector físico pendientes en H-NAT. | 02.01–02.15 |
+| F03 · D3 cantinero | Alta bebida independiente, 3 fotos y reemplazo | Bebida en carta y solo bar puede crearla | H-REAL/H-VIS: Supabase real con JWT de cada rol. Cámara/lector físico pendientes en H-NAT. | 03.01–03.15 |
+| F04 · D4 dueño; repetir supervisor | Alta mesa, comprobar foto, QR, libre y cambiar disponibilidad sin estadía | Mesa/QR correctos, estado consistente | H-REAL/H-VIS: Supabase real con JWT de cada rol. Cámara/lector físico pendientes en H-NAT. | 04.01–04.14 |
 | F05 · D2 logout cocinero→cliente nuevo; variante metre | Registrar cliente A con cámara y DNI | Cuenta pendiente, sin funciones de cliente aún | No vía pública ni contraseña/foto; método siempre mock | 05.01–05.17 |
 | F06 · D1 dueño/supervisor | Recibir alta A y abrir pendientes | Foto/nombres/apellidos, push a ambos roles | Vista demo inspeccionada; push ausente, alta real no disponible | 06.01–06.10 |
 | F07 · D1 gerencia; D2 cliente A | Rechazar; abrir correo de prueba; intentar login/acceso directo y JWT previo | Correo de rechazo diseñado y bloqueo completo | No correo; bloqueo login por estado localizado; RLS incompleta. No envío realizado | 07.01–07.14 |
@@ -812,10 +820,104 @@ Pruebas de dinero a realizar después de acordar política: ítems con centavos,
 6. Resolver contradicción documental sobre anónimo: CONTEXTO-PROYECTO.md prohíbe juegos; prompt solo prohíbe beneficio. No se penalizó como obligación adicional el no permitirle jugar sin premio; sí se exige impedir descuentos.
 7. Probar con cuatro teléfonos físicos: cámara exclusiva, selección galería para productos, PDF417 real, QR impresos, vibración/sonido, permisos, safe areas, teclado, push abierta/cerrada y recepción de correo empresarial. No hay evidencia de esas pruebas en esta auditoría.
 
-### Control de cierre
+### Control de cierre de la auditoría histórica (previo a implementación 01–04)
 
 Se representaron los **22 puntos**, con criterios por campo y flujos separados de plato/bebida, dueño/supervisor, cocina/bar; tres áreas visuales; todos los eventos mínimos de comunicación; escenarios de aprobación/rechazo, anónimo/registrado y liberación final. Las métricas derivan de las filas únicas y no suman las referencias duplicadas de juegos/beneficio. Los tests de caracterización no se contabilizan como cumplimiento de flujos remotos.
 
 El único archivo persistente creado por la auditoría dentro del repositorio es **docs/AUDITORIA_CUMPLIMIENTO.md**. Build, scripts, dependencias auxiliares, capturas y pruebas adicionales quedaron fuera del repositorio, en un directorio temporal. No se modificaron código, estilos, migraciones, configuración ni pruebas versionadas; no hubo commits, push ni despliegues. El estado inicial era limpio y el control final debe mostrar únicamente este documento.
 
 **Dictamen final:** existe cumplimiento verificado de controles y presentaciones acotadas, pero hay incumplimientos comprobados que bloquean el circuito y faltan implementaciones obligatorias. **No puede asegurarse cumplimiento total**, tanto por esos fallos como por la inspección remota y las pruebas físicas pendientes. No se recomienda presentar la demo local como evidencia de funcionamiento integral con Supabase.
+
+
+## H. Cierre de implementación 01–04
+
+**Intervención del 18/09/2026, America/Montevideo.** Base de trabajo: rama `terrile`, HEAD `2e2c67944da4ac8430e8b563142a8a570be0c8d6`, inicialmente limpia. Cambios sin commit ni push. Este cierre reemplaza el diagnóstico histórico solo para 01–04 y las dependencias indicadas. **Código implementado y desplegado no equivale a aceptación física:** quedan ocho criterios con verificación Android pendiente, identificados en C. Los otros 56 de los 64 criterios 01–04 tienen evidencia del comportamiento descrito, con el alcance por capa que sigue.
+
+### H1. Qué se conservó y qué se corrigió
+
+Se conservaron Angular/Ionic/Capacitor, navegación por perfiles, formularios existentes, identidad visual, normalización de nombres, roles legítimos de gerencia, baja lógica de productos, modelo de mesas y formato QR. No se reconstruyeron las funcionalidades.
+
+- **Empleado:** dueño y supervisor usan el endpoint autorizado. Valida tipos antes de operar cadenas; conserva nombres con tildes/ñ/compuestos; exige DNI y CUIL coherentes, correo válido y contraseña compatible. Foto requerida antes de completar el alta. Auth crea una identidad pendiente y bloqueada; solo se activa después de asociar perfil aprobado y foto. La sesión gerencial no se sustituye por la nueva cuenta.
+- **DNI/cámara:** lectura nativa QR/PDF417, resultados específicos de cancelación, permiso, código ajeno y malformado. Solo se completan campos presentes y vacíos, sin fabricar correo o CUIL ni pisar datos manuales. Web informa la necesidad de Android para empleado/mesa/lector. El selector web sigue disponible para productos; una foto sintética no se presenta como prueba óptica.
+- **Platos y bebidas:** tres posiciones numeradas, estado de carga, reemplazo independiente y validación exacta. Nuevos productos se publican únicamente después de confirmar las tres asociaciones y sus objetos. La edición conserva posiciones no reemplazadas; los históricos incompletos exigen completar las faltantes. Se mantiene la reactivación de un producto dado de baja por el mismo nombre/tipo. Cocina/bar se autorizan también contra el recurso destino, no solo contra el tipo enviado.
+- **Mesas:** alta con foto, número/capacidad/tipo válidos y estado `libre` (equivalente a vacía). QR derivado del token persistido y estable. Disponibilidad administrativa separada de estadía: no se inventan sesiones para bloquear una mesa, ni se cierran/borran para liberarla. Trigger y bloqueo de fila coordinan la apertura de estadía y la liberación administrativa. La edición de una mesa histórica sin foto obliga a completar la imagen.
+- **Sesiones e interfaz:** se limpian formularios, imágenes temporales y datos de estos catálogos al cambiar de usuario; se renuevan sus suscripciones. Resultados tardíos de cámara/lector/guardado no repueblan la nueva sesión. Listados por unidad completa, scroll en formularios largos y bordes de selector con contraste corregido. No se afirma que el carrito u otros estados 05–22 hayan sido corregidos.
+
+**Fallos parciales:** `solicitudes_alta` asigna un UUID estable y una reserva de cinco minutos; reintentos del mismo formulario no duplican recursos. Un segundo envío simultáneo recibe el recurso ya confirmado o un conflicto recuperable. Storage/Auth no se incluyen ficticiamente en la transacción PostgreSQL. Se decodifican imágenes antes de mutar; se suben a rutas propias e inmutables; el RPC publica fila/asociaciones en una transacción. Ante fallo se consulta la confirmación antes de compensar: solo se eliminan los objetos propios si consta que no finalizó. La cuenta de empleado pendiente permanece bloqueada. Si se pierde la confirmación de activación, el reintento activa la identidad ya finalizada. Un corte total del worker puede exigir esperar el vencimiento de la reserva; las solicitudes pendientes quedan identificables para recuperación administrativa. La bitácora no contiene contraseña.
+
+### H2. Archivos y cambios remotos efectivos
+
+**Proyecto verificado:** `weeemajondwqstaoldtu`, nombre `tumbo`, región `sa-east-1`, estado `ACTIVE_HEALTHY`, PostgreSQL 17.6. El usuario confirmó expresamente que es desarrollo/pruebas. El MCP de esta sesión mantuvo el error de reconexión OAuth; se usó la **CLI oficial autenticada 2.117.0 y la Management API autorizada**, sin atribuir resultados a un MCP que no estaba conectado.
+
+Archivos principales:
+
+| Alias | Archivos/símbolos actuales |
+| --- | --- |
+| ALTA | `supabase/functions/_shared/alta.ts`: `atenderAlta`; entradas `crear-empleado`, `guardar-producto`, `guardar-mesa` |
+| VALALT | `_shared/validacion-altas.ts` e `imagen-segura.ts`; `supabase/functions/deno.json` y `deno.lock` |
+| MIG | Las tres migraciones nuevas de la tabla siguiente |
+| OPS/CMP/TPL | `src/app/core/services/operacion.service.ts`; `src/app/features/operacion/operacion.component.ts`, `.html`, `operacion-fotos.component.scss` |
+| CAM/DNI/VAL | `core/dispositivo/camara.service.ts`, `lector-de-dni.service.ts`; `core/dni/codigo-de-dni.ts`; `core/validacion/validadores.ts`, `mensajes.ts` |
+| Contratos | `core/models/base-de-datos.ts`: `mesas`, `solicitudes_alta` y RPC nuevos sincronizados con generación CLI remota. Contratos históricos fuera de alcance conservados; `recibido_en` sigue siendo discrepancia del punto 19. |
+| Regresión | `supabase/tests/altas-01-04.mjs`, `integracion-altas.mjs`, `ui-altas.mjs`, `_shared/altas_test.ts`, pruebas Angular de DNI/lector/productos |
+| Dependencias | `package.json`/lock: PGlite, jsQR, Playwright y axe-core como dependencias de pruebas; sin actualización masiva del stack |
+
+| Migración aplicada y registrada | Efecto |
+| --- | --- |
+| `20260918205836_cierre_altas_01_04.sql` | Ledger/RPC de altas, grants/RLS, CUIL/rangos, Storage, publicación completa de productos, protección de legajo y disponibilidad, publicación Realtime |
+| `20260918212226_blindar_triggers_altas.sql` | Revoca invocación directa de las tres funciones nuevas de trigger para public/anon/authenticated |
+| `20260918213735_permitir_baja_actor_altas.sql` | La bitácora no impide la baja legítima de un empleado: FK actor con cascade únicamente sobre sus solicitudes internas |
+
+Aplicación mediante `npx supabase db query --linked --project-ref weeemajondwqstaoldtu --file <SQL>`: cada archivo se ejecutó dentro de `BEGIN/COMMIT`, registrando su versión/contenido en `supabase_migrations.schema_migrations` en la misma transacción. Se verificaron las doce versiones remotas (nueve previas y tres nuevas). **No se reescribieron migraciones aplicadas ni se reinició la base.** La histórica `20260909000100_fotos_catalogo_completo.sql` no estaba aplicada y se dejó sin aplicar: propone ilustraciones como fotos de catálogo y no acredita fotografías reales. No se usó un push indiscriminado que la incluyera.
+
+Despliegue real: `npx supabase functions deploy crear-empleado guardar-producto guardar-mesa --project-ref weeemajondwqstaoldtu --use-api`. Verificación final mediante `functions list`: **crear-empleado v7, guardar-producto v5 y guardar-mesa v5**, todas ACTIVE con `verify_jwt=true`. `eliminar-empleado` permanece v1 sin modificación. Los ensayos anteriores detectaron un problema del decodificador en el runtime Edge; se sustituyó por dependencias fijadas `jpeg-js`/`pngjs`, se desplegó y se repitieron altas reales exitosas.
+
+Realtime publica `mesas`, `productos`, `producto_fotos`, `usuarios`. Los buckets conservan lectura pública compatible con la app; límite de 5 MiB y tipos declarados acotados. Las escrituras de estas altas pasan por Edge; no se permite sobrescribir fotos ajenas cambiando rutas. El camino propio de avatar de cliente queda preservado sin implementar su registro.
+
+**Transición de datos existentes:** se diagnosticaron 21 productos, seis con menos de tres asociaciones, y nueve mesas, ocho sin foto. No se inventaron fotos ni se borraron registros históricos. CHECK nuevos `NOT VALID` preservan las filas anteriores pero se exigen en nuevas escrituras. Los productos incompletos siguen accesibles a gerencia/su sector para reparación y no se publican como carta completa a clientes. Después de los ensayos se comprobó que los 21 productos históricos y los seis incompletos se conservan. Esas fotos reales faltantes son contenido que debe aportar el responsable, no un defecto que deba rellenarse con placeholders.
+
+Dependencia compartida mínima: `asignarMesa` ya no escribe `ocupada` antes de abrir la estadía, porque eso se interpretaría como bloqueo administrativo; la coordinación ocurre en el trigger al crear la sesión. Se conservan los consumidores del cierre existente. Esto **no completa ni reaudita** asignación, pedidos, pagos ni puntos 05–22.
+
+El advisor conserva avisos históricos sobre vista security-definer, funciones antiguas ejecutables, search_path y protección de contraseñas filtradas. El aviso nuevo de RLS sin policy en `solicitudes_alta` es intencional: no tiene grants de cliente y solo accede service_role. Se revocó ejecución directa de los triggers nuevos. No se presenta este cierre como saneamiento global del proyecto.
+
+### H3. Política aplicada y evidencia por capa
+
+Nombres/apellidos 2–50 según caracteres admitidos; DNI normalizado de 7–8 dígitos; CUIL de 11 dígitos, verificador y vínculo; correo 5–80. Contraseña de 6–72 caracteres y máximo 72 bytes UTF-8, no espacios solos; Auth remoto confirmó mínimo 6 y ausencia de requisitos adicionales de caracteres. Nombre de producto 2–60, descripción 10–300, minutos enteros 1–600, precio 1–99999999,99 con hasta dos decimales. Mesa: número entero 1–999, capacidad entera 1–20 y enum cerrado. Se conservan los límites existentes de interfaz como decisión del proyecto; no se atribuyen a una exigencia textual adicional del TFI.
+
+Archivos: cliente comprime a JPEG (hasta 1400 px); servidor verifica firma/dimensiones, decodifica y recodifica JPEG/PNG, limita 5 MiB, 4096 px y 16 megapíxeles. No confía solo en MIME/nombre. WebP seleccionable se transforma en el cliente; el endpoint acepta directamente JPEG/PNG válidos. URLs nuevas evitan mostrar la versión anterior por caché. La validación fiable y grants impiden publicar sin tres fotos mediante una petición de usuario manipulada.
+
+| Evidencia | Comando/recorrido | Resultado y alcance |
+| --- | --- | --- |
+| H-U | `npm test -- --watch=false` | **20 archivos, 187 pruebas aprobadas**. Validadores, DNI sin datos inventados, lector QR/PDF417 con dobles, cancelación/permiso/reintento, tres posiciones, reemplazo, datos manuales y cambio de sesión; incluye selección tardía descartada. |
+| H-EDGE | `npx deno test --config supabase/functions/deno.json --allow-env supabase/functions/_shared/altas_test.ts` | **7 pruebas aprobadas**, con matrices de tipos/vacíos/límites/enum/CUIL/precio. JPEG/PNG reales, corruptos/truncados/exceso. Fallo controlado de segunda subida: limpia solo la primera, no publica y reintenta. Fallo después de crear Auth: no activa cuenta incompleta y recupera mismo UUID. No se presenta el doble de red como fallo físico de Storage. |
+| H-SQL | `node supabase/tests/altas-01-04.mjs` | **21 comprobaciones aprobadas** en PGlite desechable. Reproduce migraciones desde cero y transición de filas históricas sin fotos inventadas. Grants/RLS, CUIL/rangos, reserva/finalización, cantidades 0–4, disponibilidad/estadía. Auth y Storage mínimos simulados solo en este ensayo. |
+| H-REAL | `TUMBO_TEST_PROJECT=weeemajondwqstaoldtu`, `TUMBO_TEST_DEVELOPMENT=yes`; `node supabase/tests/integracion-altas.mjs` | JWT reales independientes de dueño, supervisor, cocinero, cantinero y cliente. Altas, Auth/login, filas y objetos Storage, reintentos, denegaciones, cada reemplazo, duplicado de mesa, tres tipos, jsQR, evento Realtime y carrera estadía/liberación. **88 comprobaciones API**; privilegios administrativos solo preparan/limpian fixtures. |
+| H-VIS | Agregar `TUMBO_BROWSER_TESTS=yes` al comando anterior; `npm run build:local` previo | Ejecución combinada: **142 comprobaciones API+navegador aprobadas**. Harness permanente repetido por separado: **54 comprobaciones aprobadas**. Ingreso real en cuatro roles, formulario de plato/bebida, recarga y carta de cliente independiente con tres URLs navegables, logout/login sin herencia. |
+| H-BUILD | `npm run build`; `npm run build:local` | Ambos correctos. Type checking incluido en compilación Angular y Deno. No hay script lint dedicado. `git diff --check` sin errores; formato aplicado a archivos de código cambiados. |
+| H-NAT | `android/gradlew.bat assembleDebug` | **Bloqueado:** JAVA_HOME no configurado y Java ausente del PATH. No se generó APK ni hubo dispositivo/cámara físicos. |
+
+Reproducir H-VIS en PowerShell: establecer `$env:TUMBO_TEST_PROJECT='weeemajondwqstaoldtu'`, `$env:TUMBO_TEST_DEVELOPMENT='yes'`, `$env:TUMBO_BROWSER_TESTS='yes'`; ejecutar `npm run build:local` y `node supabase/tests/integracion-altas.mjs`. Requiere CLI Supabase autenticada y Chrome instalado. Para repetir solo UI, agregar `$env:TUMBO_BROWSER_ONLY='yes'`; quitar esa variable para el recorrido combinado. El harness no contiene claves, credenciales personales ni contraseñas fijas. Capturas/logs se guardan en TEMP, no en documentación adicional versionada.
+
+La configuración local ignorada contiene únicamente URL y clave anon pública; la credencial administrativa se obtiene en memoria por la CLI para fixtures y no viaja al bundle. La configuración base sin valores conserva demo explícita; los ensayos reales se hicieron con `build:local`, sin fallback silencioso ante error de Supabase. Las advertencias de jsdom sobre CSS y de sourcemaps no fueron fallos de tests; no se ejecutó una actualización automática de dependencias para ocultarlas.
+
+### H4. Revisión visual, datos de prueba y límites
+
+H-VIS usa Chrome headless y viewports **320×568, 360×640, 390×844 y 768×1024**, con listados, formularios y errores. Reducción adicional **390×480** con confirmación alcanzable: simula espacio de teclado, no teclado Android. Sin overflow horizontal en estados medidos. Una tarjeta completa por página en Personal/Productos/Mesas; en 320 px terminan respectivamente en y=330,14/318,19/344,25. Se revisaron capturas y geometría, incluidos selectores con fotos sintéticas y carta real. Un fragmento durante scroll intermedio no se declara recorte permanente.
+
+AXE con etiquetas WCAG 2 A/AA, 2.1 AA y 2.2 AA no reportó violaciones en las instantáneas de 390 px del recorrido. El borde del selector se cambió de `#bac5d3` a `#526582` sobre superficie crema/clara; texto/foco conservan la paleta. **No es certificación WCAG de todo el sistema**, ni evidencia de TalkBack, zoom/teclado/áreas seguras nativas.
+
+Fixtures identificables `qa0104<marca temporal>` con correos `example.invalid`, contraseñas aleatorias solo en memoria, DNI/CUIL sintéticos coherentes e imágenes JPEG sintéticas. Se crearon únicamente para la ejecución autorizada. Limpieza en `finally` por UUID de actor/solicitud/recurso de esa ejecución: objetos propios, sesiones de prueba, productos, mesas, ledger y usuarios Auth. Incluye solicitudes originadas por UI, sin filtros destructivos globales ni eliminación de cuentas preexistentes. Se comprueban errores de borrado; los registros históricos incompletos se mantienen. No se enviaron correos a terceros ni push.
+
+Las migraciones y funciones ya están aplicadas. **Pendientes reales:** hardware/entorno Android y contenido fotográfico histórico que no puede fabricarse. Validación física exacta:
+
+1. Configurar JDK 21 (exigido por `android/app/capacitor.build.gradle`), SDK Android y dispositivo autorizado; comprobar `JAVA_HOME`/`adb`. Ejecutar `npm run apk`, luego `android/gradlew.bat assembleDebug`. Instalar únicamente en el dispositivo de prueba; no publicar/distribuir.
+2. Con dueño y supervisor: alta de cocinero tomando foto; negar permiso, cancelar y repetir. Debe conservar datos, mostrar foto individual proporcionada y solo confirmar tras perfil/foto persistidos. Ingresar con el empleado creado.
+3. Escanear DNI autorizado PDF417 y QR soportado. Verificar datos realmente presentes, ausentes manuales, conservación de campos válidos, código ajeno/malformado, cancelación y permiso denegado. No registrar códigos completos ni documentos personales en evidencias.
+4. Cocinero y cantinero: elegir galería y tomar cámara; completar tres posiciones y repetir cada una. Confirmar y revisar la carta en otra sesión. Mesa: tomar/repetir foto, crear, abrir QR y contrastar token sin credenciales; lectura óptica física se informa por separado del jsQR ya probado.
+5. Revisar orientación vertical, tamaños angostos, teclado real en último campo, foco, áreas seguras y acceso a cerrar errores/confirmar. Registrar resultados en esta misma sección y recién entonces promover los criterios físicos pendientes.
+
+**Resultado de alcance:** 01–04 implementados e integrados con Supabase real; aceptación automática y de navegador ejecutada. Aceptación óptica/nativa pendiente por entorno, no simulada como aprobada. Los diagnósticos 05–22 siguen siendo los de la auditoría anterior.
+
+**Control final de datos:** cero usuarios `qa0104…@example.invalid`, cero productos `qa0104…` y cero solicitudes de alta remanentes; 21 productos y ocho mesas. La inspección inicial contaba nueve mesas: los logs registran un DELETE autenticado exitoso a una mesa desde Android a las 21:16:51 UTC, fuera del harness de pruebas (que elimina por UUID de sus fixtures mediante CLI/SDK). Esa actividad concurrente explica la diferencia y no se atribuye a las migraciones ni se revierte. Se conservaron los ocho registros históricos sin foto.
+
+Una repetición de H-REAL agotó la espera inicial de cinco segundos del evento Realtime. Se añadió comprobación explícita de la fila actualizada y una espera acotada de veinte segundos; la repetición completa final aprobó las 88 comprobaciones, incluida la recepción real del evento. No se sustituyó por un valor en memoria.
