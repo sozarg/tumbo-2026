@@ -1,4 +1,4 @@
-import { SexoDeCuil, cuilDeDni, cuilTieneDigitoCorrecto } from '../validacion/cuil';
+import { SexoDeCuil, cuilTieneDigitoCorrecto } from '../validacion/cuil';
 
 /**
  * Lee el código de barras del DNI argentino.
@@ -110,7 +110,7 @@ export function leerCodigoDeDni(texto: string): DatosDeDni | null {
     apellidos: comoSeEscribe(apellidos),
     dni,
     sexo,
-    cuil: cuilDelCodigo(campos, dni) ?? cuilDeDni(dni, sexo),
+    cuil: cuilDelCodigo(campos, dni),
     correo: correoDelCodigo(campos),
   };
 }

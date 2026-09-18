@@ -1,5 +1,5 @@
 import { leerCodigoDeDni } from './codigo-de-dni';
-import { cuilDeDni, cuilTieneDigitoCorrecto } from '../validacion/cuil';
+import { cuilTieneDigitoCorrecto } from '../validacion/cuil';
 
 /**
  * Los códigos de estas pruebas son inventados: el DNI y el CUIL no son de
@@ -55,21 +55,21 @@ describe('leerCodigoDeDni', () => {
      * Un código con el CUIL roto no puede envenenar el formulario: si el
      * dígito no cierra, se calcula en lugar de copiarlo.
      */
-    it('lo calcula si el del código tiene el dígito mal', () => {
+    it('deja vacío el CUIL cuyo dígito está mal', () => {
       const roto = VIEJA.replace(/@274$/, '@279');
-      expect(leerCodigoDeDni(roto)?.cuil).toBe(cuilDeDni('43210987', 'F'));
+      expect(leerCodigoDeDni(roto)?.cuil).toBeNull();
     });
 
-    it('lo calcula si el código no trae CUIL', () => {
+    it('deja vacío el CUIL ausente', () => {
       const sinCuil = VIEJA.replace(/@274$/, '');
-      expect(leerCodigoDeDni(sinCuil)?.cuil).toBe(cuilDeDni('43210987', 'F'));
+      expect(leerCodigoDeDni(sinCuil)?.cuil).toBeNull();
     });
 
     /**
      * Cualquiera sea el camino —copiado del código o calculado— lo que
      * sale tiene que pasar el mismo validador que usa el formulario.
      */
-    it('siempre sale un CUIL que el formulario acepta', () => {
+    it('nunca calcula CUIL en documentos sin ese dato', () => {
       for (let i = 0; i < 500; i += 1) {
         const dni = String(10_000_000 + Math.floor(Math.random() * 35_000_000));
         const sexo = Math.random() < 0.5 ? 'F' : 'M';
@@ -78,7 +78,7 @@ describe('leerCodigoDeDni', () => {
         );
 
         expect(datos).not.toBeNull();
-        expect(cuilTieneDigitoCorrecto(datos!.cuil!)).toBe(true);
+        expect(datos!.cuil).toBeNull();
       }
     });
 

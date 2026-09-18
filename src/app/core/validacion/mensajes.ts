@@ -24,6 +24,9 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
     return `Completá ${el}.`;
   }
 
+  if (errores['claveEnBytes'])
+    return 'La contraseña no puede superar 72 bytes; las tildes y emojis ocupan más de un byte.';
+
   if (errores['email'] || errores['correoValido']) {
     return 'Ingresá un correo válido, por ejemplo: nombre@dominio.com.';
   }
@@ -100,9 +103,10 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
 
   if (errores['tresFotos']) {
     const cargadas = errores['tresFotos'].cargadas as number;
+    if (cargadas >= 3) return 'Se requieren exactamente tres fotos.';
     return cargadas === 0
       ? 'Faltan las tres fotos del producto.'
-      : `Falta${3 - cargadas === 1 ? '' : 'n'} ${3 - cargadas} foto${3 - cargadas === 1 ? '' : 's'}: el punto pide tres.`;
+      : `Falta${3 - cargadas === 1 ? '' : 'n'} ${3 - cargadas} foto${3 - cargadas === 1 ? '' : 's'} para completar el producto.`;
   }
 
   if (errores['soloNumeros']) {

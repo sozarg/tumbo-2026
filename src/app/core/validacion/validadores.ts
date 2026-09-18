@@ -284,8 +284,14 @@ export const precioValido: ValidatorFn = (control: AbstractControl): ValidationE
 export const tresFotosRequeridas: ValidatorFn = (
   control: AbstractControl,
 ): ValidationErrors | null => {
-  const fotos = (control.value ?? []) as readonly unknown[];
+  const fotos: readonly unknown[] = Array.isArray(control.value) ? control.value : [];
   const cargadas = fotos.filter(Boolean).length;
 
-  return cargadas === 3 ? null : { tresFotos: { cargadas } };
+  return fotos.length === 3 && cargadas === 3 ? null : { tresFotos: { cargadas } };
 };
+
+/** Auth usa bcrypt: además del largo visible, limita la contraseña a 72 bytes UTF-8. */
+export const claveEnBytes: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
+  typeof control.value === 'string' && new TextEncoder().encode(control.value).length > 72
+    ? { claveEnBytes: true }
+    : null;

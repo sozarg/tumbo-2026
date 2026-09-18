@@ -15,13 +15,8 @@ import { Capacitor } from '@capacitor/core';
  * Para productos sí vale la galería, y ahí se usa el `<input type=file>`
  * que ya existe. Son requisitos distintos del mismo enunciado.
  *
- * QUÉ PASA EN EL NAVEGADOR
- * `Camera.getPhoto` con `CameraSource.Camera` no funciona en la web sin
- * los componentes de Ionic PWA. En vez de sumar esa dependencia solo
- * para la demostración, en el navegador se abre un selector de archivo y
- * el resultado viene marcado como `simulada`. La pantalla lo aclara, con
- * el mismo criterio que el lector de DNI: en el APK es de verdad, en la
- * web alcanza para probar el resto del alta.
+ * En web, las capturas exclusivas requieren Android. Los productos pueden
+ * seleccionarse como archivos reales; esto no acredita cámara nativa.
  */
 
 /**
@@ -80,6 +75,12 @@ export class Camara {
 
   private async pedirImagen(origen: CameraSource): Promise<ResultadoDeFoto> {
     if (!this.esReal) {
+      if (origen === CameraSource.Camera)
+        return {
+          estado: 'error',
+          mensaje:
+            'Para tomar esta foto usá la aplicación Android con permiso de cámara. No se admite elegirla de la galería.',
+        };
       return this.elegirArchivo();
     }
 
@@ -140,18 +141,7 @@ export class Camara {
     );
   }
 
-  /**
-   * El reemplazo del navegador: un selector de archivo.
-   *
-   * `capture="user"` hace que en un celular con navegador se abra
-   * directamente la cámara frontal; en una computadora el atributo se
-   * ignora y se abre el explorador de archivos. En los dos casos el
-   * resultado queda marcado como simulado.
-   *
-   * Es el mismo para los dos orígenes: en el navegador no hay forma de
-   * distinguir cámara de galería, y marcarlo como simulado ya avisa que
-   * eso se prueba en el APK.
-   */
+  /** Selector web de archivos para productos; no se usa en empleado ni mesa. */
   private elegirArchivo(): Promise<ResultadoDeFoto> {
     return new Promise((resolver) => {
       const entrada = document.createElement('input');

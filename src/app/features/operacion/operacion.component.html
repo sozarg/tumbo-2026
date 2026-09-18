@@ -130,7 +130,7 @@
                     fill="outline"
                     type="button"
                     [attr.aria-label]="
-                      lectorReal ? 'Leer el DNI con la cámara' : 'Simular lector de DNI'
+                      lectorReal ? 'Leer el DNI con la cámara' : 'Lector disponible en Android'
                     "
                     (click)="leerDniEmpleado()"
                     ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
@@ -184,7 +184,7 @@
                       (click)="sacarFotoEmpleado()"
                     >
                       <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                      {{ camaraReal ? 'Sacar la foto' : 'Elegir una imagen' }}
+                      {{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}
                     </ion-button>
                     @if (campoInvalido(empleadoForm.controls.foto)) {
                       <p class="employee-photo__error" role="alert">
@@ -333,7 +333,7 @@
               </form>
             } @else {
               <section class="person-list" aria-label="Lista de personal">
-                @for (empleado of demo.empleados(); track empleado.id) {
+                @for (empleado of paginar(demo.empleados()); track empleado.id) {
                   <article class="person-card">
                     <div class="person-card__details">
                       <h2>{{ empleado.nombres }} {{ empleado.apellidos }}</h2>
@@ -426,26 +426,33 @@
                   />
                 </div>
                 <fieldset class="product-photos">
-                  <legend class="product-photos__legend">Imagen del producto</legend>
+                  <legend class="product-photos__legend">Tres fotos del producto</legend>
 
                   <div class="product-photos__grid">
                     @for (lugar of lugaresDeFoto; track lugar) {
                       <div class="product-photo">
+                        <p class="product-photo__etiqueta" aria-live="polite">
+                          Foto {{ lugar + 1 }} de 3{{
+                            fotoEnCarga() === lugar ? ' · Cargando…' : ''
+                          }}
+                        </p>
                         <!-- La señal y no el control: ver `fotosDelProducto`. -->
-                        @if (imagenActualDelProducto(); as foto) {
+                        @if (imagenActualDelProducto(lugar); as foto) {
                           <button
                             class="product-photo__slot product-photo__slot--llena"
                             type="button"
-                            [attr.aria-label]="'Reemplazar imagen del producto'"
+                            [attr.aria-label]="'Reemplazar foto ' + (lugar + 1)"
+                            [disabled]="fotoEnCarga() !== null"
                             (click)="elegirFotoDeProducto(lugar)"
                           >
                             <img [src]="foto" [alt]="'Imagen del producto'" />
                           </button>
-                          @if (fotosDelProducto()[0]) {
+                          @if (fotosDelProducto()[lugar]) {
                             <button
                               class="product-photo__quitar"
                               type="button"
                               [attr.aria-label]="'Descartar imagen seleccionada'"
+                              [disabled]="fotoEnCarga() !== null"
                               (click)="quitarFotoDeProducto(lugar)"
                             >
                               <ion-icon name="trash-outline" aria-hidden="true" />
@@ -455,11 +462,12 @@
                           <button
                             class="product-photo__slot"
                             type="button"
-                            [attr.aria-label]="'Elegir imagen del producto'"
+                            [attr.aria-label]="'Elegir foto ' + (lugar + 1)"
+                            [disabled]="fotoEnCarga() !== null"
                             (click)="elegirFotoDeProducto(lugar)"
                           >
                             <ion-icon name="camera-outline" aria-hidden="true" />
-                            <small>Elegir imagen</small>
+                            <small>Elegir foto {{ lugar + 1 }} de 3</small>
                           </button>
                         }
                       </div>
@@ -472,7 +480,7 @@
                     </p>
                   } @else if (productoEditado()) {
                     <small class="product-photos__nota">
-                      Si no elegís otra imagen, se conserva la actual.
+                      Cada posición sin reemplazo conserva su imagen actual.
                     </small>
                   } @else {
                     <small class="product-photos__nota">
@@ -532,7 +540,7 @@
               </form>
             } @else {
               <section class="person-list product-list" aria-label="Lista de productos">
-                @for (producto of productosDelSector(); track producto.id) {
+                @for (producto of paginar(productosDelSector()); track producto.id) {
                   <article class="catalog-item">
                     @if (producto.fotos[0]; as foto) {
                       <img
@@ -653,7 +661,7 @@
                       (click)="sacarFotoDeMesa()"
                     >
                       <ion-icon name="camera-outline" aria-hidden="true" />
-                      <small>{{ camaraReal ? 'Sacar la foto' : 'Elegir una imagen' }}</small>
+                      <small>{{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}</small>
                     </button>
                     @if (campoInvalido(mesaForm.controls.foto)) {
                       <p class="field-error" role="alert">
@@ -993,7 +1001,7 @@
                     fill="outline"
                     type="button"
                     [attr.aria-label]="
-                      lectorReal ? 'Leer el DNI con la cámara' : 'Simular lector de DNI'
+                      lectorReal ? 'Leer el DNI con la cámara' : 'Lector disponible en Android'
                     "
                     (click)="leerDniCliente()"
                     ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"

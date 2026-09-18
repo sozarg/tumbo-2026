@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject, signal, computed } from '@angular/core';
+import { DestroyRef, Injectable, inject, signal, computed, effect } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Tablas } from '../models/base-de-datos';
 import {
@@ -30,13 +30,7 @@ type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
 type Item = Tablas<'pedido_items'>;
 type Producto = Tablas<'productos'>;
-/**
- * `aviso` es para lo que salió a medias: la operación principal se hizo,
- * pero algo secundario no. El alta de empleado es el caso: si la cuenta
- * se creó y la foto no se pudo subir, devolver `ok: false` sería mentir
- * —invitaría a repetir el alta y a chocar con el correo duplicado— y
- * devolver `ok: true` a secas escondería que falta la foto.
- */
+/** Resultado confirmado; aviso agrega contexto sin sustituir un error de alta. */
 type Resultado = { ok: boolean; error?: string; aviso?: string };
 
 /** Persistencia de la pantalla Operaciones. El mock se conserva solo para el modo sin configuración. */
@@ -150,6 +144,8 @@ export class OperacionService {
   private readonly cliente: SupabaseClient | null = supabaseConfigurado
     ? (exigirCliente() as unknown as SupabaseClient)
     : null;
+  private readonly solicitudes = new Map<string, string>();
+  private readonly enviandoAltas = new Set<string>();
   private canal: ReturnType<NonNullable<typeof this.cliente>['channel']> | null = null;
   private sesionActiva: Sesion | null = null;
   private pedidoReal: Pedido | null = null;
@@ -196,7 +192,18 @@ export class OperacionService {
     this.destroyRef.onDestroy(() => {
       if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
     });
-    if (this.cliente) void this.cargar();
+    effect(() => {
+      const usuario = this.sesion.usuario();
+      this.solicitudes.clear();
+      if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
+      this.canal = null;
+      if (this.cliente) {
+        this.empleados.set([]);
+        this.productos.set([]);
+        this.mesas.set([]);
+      }
+      if (usuario && this.cliente) void this.cargar();
+    });
   }
 
   async cargar(): Promise<void> {
@@ -230,6 +237,7 @@ export class OperacionService {
         ]);
       this.validar(productos.error, 'productos');
       this.validar(mesas.error, 'mesas');
+      if (this.sesion.usuario()?.id !== usuario.id) return;
       if (productos.data) {
         this.productosPorId = new Map(productos.data.map((p) => [p.id, p]));
         const fotosPorProducto = new Map<string, string[]>();
@@ -272,75 +280,61 @@ export class OperacionService {
    * el resto del servicio.
    */
   async registrarEmpleado(d: AltaEmpleadoDemo): Promise<Resultado> {
+    if (!d.foto) return { ok: false, error: 'La foto es obligatoria.' };
     if (!this.cliente) {
       this.mock.registrarEmpleado(d);
       return { ok: true };
     }
-
-    const { data, error } = await this.cliente.functions.invoke('crear-empleado', {
-      body: {
-        nombres: d.nombres,
-        apellidos: d.apellidos,
-        dni: normalizarDni(d.dni),
-        cuil: d.cuil,
-        correo: d.correo,
-        clave: d.clave,
-        perfil: d.perfil,
-      },
-    });
-
-    if (error) {
-      return { ok: false, error: await this.mensajeDeLaFuncion(error) };
-    }
-
-    // La foto va DESPUÉS y no adentro de la Edge Function: la ruta en
-    // Storage se arma con el id del usuario, y ese id recién existe
-    // cuando la cuenta está creada. Mandar la imagen en el cuerpo de la
-    // función significaría pasar megabytes en base64 por una llamada que
-    // hoy pesa medio kilobyte.
-    const aviso = await this.guardarFotoDeEmpleado((data as { id?: string })?.id, d.foto);
-
-    // La lista de usuarios no la refresca realtime: `usuarios` no está
-    // entre las tablas suscriptas, así que se recarga a mano.
-    await this.recargarUsuarios();
-    return aviso ? { ok: true, aviso } : { ok: true };
+    const { foto, ...datos } = d;
+    const resultado = await this.guardarAlta(
+      'crear-empleado',
+      { ...datos, dni: normalizarDni(d.dni) },
+      [foto],
+    );
+    if (resultado.ok) await this.recargarUsuarios();
+    return resultado;
   }
 
-  /**
-   * Sube la foto del empleado y la deja apuntada en `usuarios.foto_url`.
-   *
-   * Devuelve el texto del aviso cuando algo falla, o `undefined` cuando
-   * salió bien o cuando no había foto. Nunca tira: llegado este punto la
-   * cuenta ya existe, y una excepción acá dejaría a quien la creó sin
-   * saber que se creó.
-   */
-  private async guardarFotoDeEmpleado(
-    id?: string,
-    foto?: FotoDePersona,
-  ): Promise<string | undefined> {
-    if (!this.cliente || !foto) return undefined;
-    if (!id) return 'El empleado se creó, pero no se pudo guardar la foto.';
-
+  /** Una solicitud estable por formulario hace seguro reintentar tras una respuesta perdida. */
+  private async guardarAlta(
+    funcion: string,
+    datos: object,
+    fotos: readonly (FotoDePersona | null | undefined)[],
+    destino?: string,
+  ): Promise<Resultado> {
+    const actor = this.sesion.usuario()?.id;
+    if (!actor || !this.cliente) return { ok: false, error: 'Falta iniciar sesión.' };
+    const llave = `${actor}:${funcion}:${destino ?? 'alta'}`;
+    if (this.enviandoAltas.has(llave)) return { ok: false, error: 'La operación sigue en curso.' };
+    this.enviandoAltas.add(llave);
+    const solicitud = this.solicitudes.get(llave) ?? crypto.randomUUID();
+    this.solicitudes.set(llave, solicitud);
     try {
-      const archivo = await this.comprimirImagen(foto.file);
-      const ruta = `${id}/${crypto.randomUUID()}.webp`;
-
-      const subida = await this.cliente.storage.from('fotos-usuarios').upload(ruta, archivo, {
-        contentType: 'image/webp',
-        cacheControl: '31536000',
-        upsert: false,
-      });
-
-      if (subida.error) {
-        return 'El empleado se creó, pero la foto no se pudo subir.';
+      const body = new FormData();
+      body.set('datos', JSON.stringify(datos));
+      body.set('solicitud', solicitud);
+      if (destino) body.set('destino', destino);
+      for (let i = 0; i < fotos.length; i++) {
+        const foto = fotos[i];
+        if (foto)
+          body.set(`foto${i + 1}`, await this.comprimirImagen(foto.file), `foto${i + 1}.jpg`);
       }
-
-      const url = this.cliente.storage.from('fotos-usuarios').getPublicUrl(ruta).data.publicUrl;
-      const guardada = await this.cliente.from('usuarios').update({ foto_url: url }).eq('id', id);
-
-      return guardada.error ? 'La foto se subió, pero no se pudo asociar al empleado.' : undefined;
+      if (this.sesion.usuario()?.id !== actor)
+        return { ok: false, error: 'La sesión cambió. Volvé a abrir el formulario.' };
+      const { data, error } = await this.cliente.functions.invoke(funcion, { body });
+      if (error) return { ok: false, error: await this.mensajeDeLaFuncion(error) };
+      if (!data?.ok || typeof data.id !== 'string')
+        return { ok: false, error: 'El servidor no confirmó el alta. Reintentá.' };
+      this.solicitudes.delete(llave);
+      if (this.sesion.usuario()?.id === actor) await this.cargar();
+      return { ok: true };
     } catch {
-      return 'El empleado se creó, pero no se pudo procesar la foto.';
+      return {
+        ok: false,
+        error: 'No se completó el guardado. Revisá las fotos y la conexión; podés reintentar.',
+      };
+    } finally {
+      this.enviandoAltas.delete(llave);
     }
   }
 
@@ -445,57 +439,25 @@ export class OperacionService {
       return { ok: true };
     }
 
-    const enLaCarta = await this.buscarEnLaCarta(d.tipo, nombre);
-
-    if (enLaCarta?.activo) {
-      return { ok: false, error: `«${enLaCarta.nombre}» ya está en la carta.` };
-    }
-
-    if (enLaCarta) {
-      const vuelta = await this.escribirProducto(
-        enLaCarta.id,
-        {
-          nombre,
-          descripcion: d.descripcion,
-          precio: d.precio,
-          tiempo_elaboracion_min: d.minutos,
-          sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-          activo: true,
-        },
-        'devolver el producto a la carta',
+    if (d.fotos?.length !== 3 || d.fotos.some((f) => !f))
+      return { ok: false, error: 'Se requieren exactamente tres fotos.' };
+    const { fotos, ...datos } = d;
+    const existente = await this.buscarEnLaCarta(d.tipo, nombre);
+    const prefijo = `${this.sesion.usuario()?.id}:guardar-producto:`;
+    if (existente && (!existente.activo || this.solicitudes.has(prefijo + existente.id))) {
+      const resultado = await this.guardarAlta(
+        'guardar-producto',
+        { ...datos, nombre },
+        fotos,
+        existente.id,
       );
-      if (!vuelta.ok) return vuelta;
-
-      const conFotos = await this.guardarFotosDelProducto(enLaCarta.id, d.fotos);
-      if (!conFotos.ok) return conFotos;
-
-      return {
-        ok: true,
-        aviso: `${comoSeLlama.Ese} estaba dado de baja: volvió a la carta con los datos nuevos.`,
-      };
+      return resultado.ok
+        ? { ok: true, aviso: 'El producto volvió a la carta con los datos nuevos.' }
+        : resultado;
     }
-
-    const usuario = this.sesion.usuario();
-    const resultado = await this.insertarConFila('productos', {
-      nombre,
-      descripcion: d.descripcion,
-      tipo: d.tipo,
-      sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-      precio: d.precio,
-      tiempo_elaboracion_min: d.minutos,
-      creado_por: usuario?.id ?? null,
-    });
-    if (!resultado.ok || !resultado.fila) return { ok: false, error: resultado.error };
-
-    const conFotos = await this.guardarFotosDelProducto(resultado.fila.id, d.fotos);
-
-    // El alta siempre lleva las tres fotos, así que `guardarFotosDelProducto`
-    // ya recargó. El `if` es para el caso sin fotos —que hoy el formulario
-    // no deja pasar, pero que si mañana lo deja no puede terminar con el
-    // producto guardado y la lista sin él.
-    if (conFotos.ok && !d.fotos?.some(Boolean)) await this.cargar();
-
-    return conFotos;
+    if (existente && !this.solicitudes.has(prefijo + 'alta'))
+      return { ok: false, error: `Ya hay ${comoSeLlama.un} con ese nombre en la carta.` };
+    return this.guardarAlta('guardar-producto', { ...datos, nombre }, fotos);
   }
   async actualizarProducto(id: string, d: AltaProductoDemo): Promise<Resultado> {
     const nombre = comoSeGuarda(d.nombre);
@@ -520,9 +482,7 @@ export class OperacionService {
                 precio: d.precio,
                 tipo: d.tipo,
                 sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-                fotos: (d.fotos ?? []).some(Boolean)
-                  ? (d.fotos ?? []).filter((f) => f !== null).map((f) => f!.previewUrl)
-                  : item.fotos,
+                fotos: [0, 1, 2].map((pos) => d.fotos?.[pos]?.previewUrl ?? item.fotos[pos]),
               }
             : item,
         ),
@@ -530,39 +490,8 @@ export class OperacionService {
       return { ok: true };
     }
 
-    // Al editar también se verifica la carta, excluyendo al producto que
-    // se está editando: sin esto, renombrar un plato con el nombre de
-    // otro choca contra el único de la base y vuelve como error genérico.
-    // Acá entra también un dado de baja con ese nombre: son dos filas
-    // distintas y el único no distingue activos de inactivos.
-    const otro = await this.buscarEnLaCarta(d.tipo, nombre, id);
-    if (otro) {
-      return {
-        ok: false,
-        error: otro.activo
-          ? `Ya hay ${comoSeLlama.otro} llamado «${otro.nombre}» en la carta.`
-          : `Hubo ${comoSeLlama.otro} llamado «${otro.nombre}» y sigue guardado: elegí otro nombre.`,
-      };
-    }
-
-    // `escribirProducto` y no `actualizar`: también recarga. Sin eso,
-    // editar solo el precio no se veía hasta recargar la página, porque
-    // `guardarFotosDelProducto` —que es quien recargaba— se va derecho
-    // cuando no hay fotos nuevas.
-    const resultado = await this.escribirProducto(
-      id,
-      {
-        nombre,
-        descripcion: d.descripcion,
-        tipo: d.tipo,
-        sector: d.tipo === 'plato' ? 'cocina' : 'bar',
-        precio: d.precio,
-        tiempo_elaboracion_min: d.minutos,
-      },
-      'guardar los cambios del producto',
-    );
-    if (!resultado.ok) return resultado;
-    return this.guardarFotosDelProducto(id, d.fotos);
+    const { fotos, ...datos } = d;
+    return this.guardarAlta('guardar-producto', { ...datos, nombre }, fotos ?? [], id);
   }
 
   /**
@@ -693,57 +622,9 @@ export class OperacionService {
    *
    * Un lugar en `null` significa «esta no se tocó»: se saltea.
    */
-  private async guardarFotosDelProducto(
-    id: string,
-    fotos?: readonly (FotoDePersona | null)[],
-  ): Promise<Resultado> {
-    if (!this.cliente || !fotos?.some(Boolean)) return { ok: true };
-
-    try {
-      const subidas = await Promise.all(
-        fotos.map(async (foto, posicion) => {
-          if (!foto) return null;
-
-          const archivo = await this.comprimirImagen(foto.file);
-          const ruta = `${id}/${crypto.randomUUID()}.webp`;
-          const subida = await this.cliente!.storage.from('fotos-productos').upload(ruta, archivo, {
-            contentType: 'image/webp',
-            cacheControl: '31536000',
-            upsert: false,
-          });
-
-          if (subida.error) return null;
-
-          return {
-            producto_id: id,
-            url: this.cliente!.storage.from('fotos-productos').getPublicUrl(ruta).data.publicUrl,
-            orden: posicion + 1,
-          };
-        }),
-      );
-
-      const filas = subidas.filter((fila) => fila !== null);
-      if (filas.length !== fotos.filter(Boolean).length) {
-        return { ok: false, error: 'No se pudieron subir todas las imágenes del producto.' };
-      }
-
-      const guardadas = await this.cliente
-        .from('producto_fotos')
-        .upsert(filas, { onConflict: 'producto_id,orden' });
-
-      if (guardadas.error) {
-        return { ok: false, error: 'Las imágenes se subieron, pero no se pudieron asociar.' };
-      }
-
-      await this.cargar();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'No se pudieron procesar las imágenes del producto.' };
-    }
-  }
-
   /** Comprime fotos de cámara antes de enviarlas a Storage. */
   private async comprimirImagen(archivo: File): Promise<Blob> {
+    if (!archivo.size || archivo.size > 5 * 1024 * 1024) throw new Error('Foto: máximo 5 MB.');
     const bitmap = await createImageBitmap(archivo);
     const escala = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
@@ -754,7 +635,7 @@ export class OperacionService {
     return new Promise((resolve, reject) =>
       canvas.toBlob(
         (salida) => (salida ? resolve(salida) : reject(new Error('compresión fallida'))),
-        'image/webp',
+        'image/jpeg',
         0.82,
       ),
     );
@@ -785,21 +666,9 @@ export class OperacionService {
 
     if (!this.cliente) return { ok: this.mock.registrarMesa(d) };
 
-    const alta = await this.insertarConFila('mesas', {
-      numero: d.numero,
-      cantidad_comensales: d.comensales,
-      tipo: this.tipoMesa(d.tipo),
-      // `estado` no se manda: la base lo pone en 'libre' por defecto, que
-      // es la «disponibilidad vacía por defecto» que pide el enunciado.
-      // El `qr_token` también sale solo, con su propio default.
-    });
-
-    if (!alta.ok || !alta.fila) return { ok: false, error: alta.error };
-
-    const aviso = await this.guardarFotoDeMesa(alta.fila.id, d.foto);
-
-    await this.cargar();
-    return aviso ? { ok: true, aviso } : { ok: true };
+    if (!d.foto) return { ok: false, error: 'La foto de la mesa es obligatoria.' };
+    const { foto, ...datos } = d;
+    return this.guardarAlta('guardar-mesa', { ...datos, tipo: this.tipoMesa(d.tipo) }, [foto]);
   }
   async registrarCliente(d: AltaClienteDemo): Promise<Resultado> {
     // La creación de auth.users requiere service_role, que nunca se expone al navegador.
@@ -837,59 +706,8 @@ export class OperacionService {
       return { ok: true };
     }
 
-    const guardada = await this.escribirMesa(
-      id,
-      {
-        numero: d.numero,
-        cantidad_comensales: d.comensales,
-        tipo: this.tipoMesa(d.tipo),
-      },
-      'guardar los cambios de la mesa',
-    );
-
-    if (!guardada.ok || !d.foto) return guardada;
-
-    const aviso = await this.guardarFotoDeMesa(id, d.foto);
-    if (aviso) return { ok: true, aviso };
-
-    await this.cargar();
-    return { ok: true };
-  }
-
-  /**
-   * Sube la foto de la mesa y la asocia (punto 4).
-   *
-   * Devuelve un AVISO y no un error: si la mesa se creó y la foto no
-   * subió, decir `ok: false` sería mentir —invitaría a repetir el alta y
-   * a chocar contra el número duplicado— y decir `ok: true` a secas
-   * escondería que falta la foto. Es el mismo criterio que la foto del
-   * empleado.
-   *
-   * El bucket `fotos-mesas` ya existía en la migración de storage, con
-   * sus políticas: no hubo que crear nada.
-   */
-  private async guardarFotoDeMesa(id: string, foto?: FotoDePersona): Promise<string | undefined> {
-    if (!this.cliente || !foto) return undefined;
-
-    try {
-      const archivo = await this.comprimirImagen(foto.file);
-      const ruta = `${id}/${crypto.randomUUID()}.webp`;
-
-      const subida = await this.cliente.storage.from('fotos-mesas').upload(ruta, archivo, {
-        contentType: 'image/webp',
-        cacheControl: '31536000',
-        upsert: false,
-      });
-
-      if (subida.error) return 'La mesa se guardó, pero la foto no se pudo subir.';
-
-      const url = this.cliente.storage.from('fotos-mesas').getPublicUrl(ruta).data.publicUrl;
-      const asociada = await this.cliente.from('mesas').update({ foto_url: url }).eq('id', id);
-
-      return asociada.error ? 'La foto se subió, pero no se pudo asociar a la mesa.' : undefined;
-    } catch {
-      return 'La mesa se guardó, pero no se pudo procesar la foto.';
-    }
+    const { foto, ...datos } = d;
+    return this.guardarAlta('guardar-mesa', { ...datos, tipo: this.tipoMesa(d.tipo) }, [foto], id);
   }
 
   /**
@@ -1017,6 +835,11 @@ export class OperacionService {
       .eq('id', mesa.id)
       .select('id');
 
+    if (error?.code === '23514')
+      return {
+        ok: false,
+        error: 'La mesa tiene una estadía activa. Solo el cierre del circuito puede liberarla.',
+      };
     if (error) return this.fallo('cambiar la disponibilidad de la mesa', error);
 
     if (!data?.length) {
@@ -1061,7 +884,7 @@ export class OperacionService {
       asignado_en: new Date().toISOString(),
     });
     if (!r.ok) return r;
-    await this.actualizar('mesas', mesa.id, { estado: 'ocupada' });
+    // El trigger de sesiones toma el bloqueo de mesa y actualiza ocupación atómicamente.
     const espera = this.espera().find((e) => e.id === idEspera);
     const clienteId = espera ? this.clientePorEspera.get(espera.id) : undefined;
     if (clienteId)
@@ -1332,6 +1155,21 @@ export class OperacionService {
       .channel('operacion-compartida')
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'productos' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'producto_fotos' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'usuarios' },
+        () => void this.cargar(),
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'mesas' },
         () => void this.cargar(),
       )
@@ -1504,7 +1342,10 @@ export class OperacionService {
     destinatarios: [],
   });
   private tipoMesa(t: TipoMesa): Tablas<'mesas'>['tipo'] {
-    return t === 'VIP' ? 'vip' : t === 'estándar' ? 'estandar' : 'movilidad_reducida';
+    if (t === 'VIP') return 'vip';
+    if (t === 'estándar') return 'estandar';
+    if (t === 'movilidad_reducida') return t;
+    throw new Error('Tipo de mesa no admitido.');
   }
   private tipoDemo(t: Tablas<'mesas'>['tipo']): TipoMesa {
     return t === 'vip' ? 'VIP' : t === 'estandar' ? 'estándar' : 'movilidad_reducida';
