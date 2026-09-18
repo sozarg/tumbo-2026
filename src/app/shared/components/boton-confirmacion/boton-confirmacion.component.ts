@@ -50,20 +50,96 @@ import { helpCircleOutline } from 'ionicons/icons';
     </ion-modal>
   `,
   styles: `
-    :host { display: contents; }
-    ion-button { min-height: 52px; margin: 0; font-size: 13px; letter-spacing: normal; }
-    ion-button.primary-action { min-height: 60px; --border-radius: 0.7rem; --background: #fbb103; --color: #003592; --background-hover: #e7a000; }
-    ion-button.approve-button { --border-radius: 0.7rem; --background: #006ae7; --background-hover: #003592; --color: #f8fbfd; }
-    ion-button.reject-button { --border-radius: 0.7rem; --color: #003592; --border-color: #003592; }
-    ion-button.table-tile { width: 100%; --color: #003592; --background: rgb(220 91 2 / 10%); --border-radius: .9rem; }
-    ion-button.table-tile::part(native) { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .35rem; border: .1rem solid rgb(220 91 2 / 36%); padding: 1rem; color: #003592; font: inherit; line-height: 1.3; text-align: left; white-space: normal; }
-    ion-button.table-tile span, ion-button.table-tile strong, ion-button.table-tile small { display: block; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
-    ion-button.table-tile--free { --background: rgb(0 106 231 / 9%); }
-    ion-button.table-tile--free::part(native) { border-color: rgb(0 106 231 / 35%); }
-    ion-button.table-tile .table-tile__number { color: #006ae7; font-size: 1.8rem; line-height: 1; }
-    ion-button.icon-danger { width: 44px; height: 44px; min-height: 44px; --color: #dc5b02; --background: #fcf1d5; --border-radius: 50%; --box-shadow: none; }
-    ion-button.icon-danger::part(native) { width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid rgb(220 91 2 / 55%); }
-    ion-button.icon-danger:hover { --background: #fcedbb; }
+    :host {
+      display: contents;
+    }
+    ion-button {
+      min-height: 52px;
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: normal;
+    }
+    ion-button::part(native) {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    ion-button.primary-action {
+      min-height: 60px;
+      --border-radius: 0.7rem;
+      --background: #fbb103;
+      --color: #003592;
+      --background-hover: #e7a000;
+    }
+    ion-button.approve-button {
+      --border-radius: 0.7rem;
+      --background: #006ae7;
+      --background-hover: #003592;
+      --color: #f8fbfd;
+    }
+    ion-button.reject-button {
+      --border-radius: 0.7rem;
+      --color: #003592;
+      --border-color: #003592;
+    }
+    ion-button.table-tile {
+      width: 100%;
+      --color: #003592;
+      --background: rgb(220 91 2 / 10%);
+      --border-radius: 0.9rem;
+    }
+    ion-button.table-tile::part(native) {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0.35rem;
+      border: 0.1rem solid rgb(220 91 2 / 36%);
+      padding: 1rem;
+      color: #003592;
+      font: inherit;
+      line-height: 1.3;
+      text-align: left;
+      white-space: normal;
+    }
+    ion-button.table-tile span,
+    ion-button.table-tile strong,
+    ion-button.table-tile small {
+      display: block;
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.3;
+    }
+    ion-button.table-tile--free {
+      --background: rgb(0 106 231 / 9%);
+    }
+    ion-button.table-tile--free::part(native) {
+      border-color: rgb(0 106 231 / 35%);
+    }
+    ion-button.table-tile .table-tile__number {
+      color: #006ae7;
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+    ion-button.icon-danger {
+      width: 44px;
+      height: 44px;
+      min-height: 44px;
+      --color: #dc5b02;
+      --background: #fcf1d5;
+      --border-radius: 50%;
+      --box-shadow: none;
+    }
+    ion-button.icon-danger::part(native) {
+      width: 44px;
+      height: 44px;
+      min-height: 44px;
+      padding: 0;
+      border: 1px solid rgb(220 91 2 / 55%);
+    }
+    ion-button.icon-danger:hover {
+      --background: #fcedbb;
+    }
     /*
       EL DIÁLOGO DE CONFIRMACIÓN
 
@@ -80,46 +156,71 @@ import { helpCircleOutline } from 'ionicons/icons';
     ion-modal.confirmacion {
       --width: min(92vw, 24rem);
       --height: auto;
+      --max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
       --border-radius: 1.25rem;
-      --backdrop-opacity: .45;
+      --backdrop-opacity: 0.45;
       --box-shadow: 0 1.5rem 3rem rgb(0 53 146 / 25%);
     }
     .confirmacion__caja {
-      display: flex; flex-direction: column; align-items: center;
-      box-sizing: border-box; width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+      width: 100%;
+      max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
+      overflow: auto;
+      overscroll-behavior: contain;
+      overflow-wrap: anywhere;
       padding: 1.75rem 1.25rem 1.25rem;
       background: var(--tumbo-crema-fondo, #fbf1d5);
       text-align: center;
     }
     .confirmacion__icono {
-      display: grid; place-items: center;
-      width: 3.25rem; height: 3.25rem; margin-bottom: .85rem;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 3.25rem;
+      height: 3.25rem;
+      margin-bottom: 0.85rem;
       border-radius: 50%;
       background: var(--tumbo-amarillo-marca, #fbb103);
       color: var(--tumbo-azul-sombra, #003592);
       font-size: 1.75rem;
     }
     .confirmacion__titulo {
-      margin: 0 0 .5rem;
+      margin: 0 0 0.5rem;
       color: var(--tumbo-azul-sombra, #003592);
-      font-size: 1.15rem; font-weight: 700; line-height: 1.25;
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.25;
       /* Que se parta en dos renglones antes que cortarse. */
       overflow-wrap: anywhere;
     }
     .confirmacion__texto {
       margin: 0 0 1.35rem;
       color: var(--tumbo-azul-sombra, #003592);
-      font-size: .95rem; line-height: 1.45; opacity: .85;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      opacity: 0.85;
     }
-    .confirmacion__acciones { display: flex; gap: .6rem; width: 100%; }
+    .confirmacion__acciones {
+      display: flex;
+      flex-shrink: 0;
+      gap: 0.6rem;
+      width: 100%;
+    }
     .confirmacion__acciones ion-button {
-      flex: 1; min-height: 3rem; margin: 0;
-      --border-radius: .75rem;
-      font-size: .95rem; font-weight: 600; text-transform: none;
+      flex: 1;
+      min-height: 3rem;
+      margin: 0;
+      --border-radius: 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: none;
     }
     .confirmacion__cancelar {
       --border-color: var(--tumbo-azul-sombra, #003592);
-      --border-width: .12rem;
+      --border-width: 0.12rem;
       --color: var(--tumbo-azul-sombra, #003592);
     }
     .confirmacion__aceptar {
@@ -131,7 +232,9 @@ import { helpCircleOutline } from 'ionicons/icons';
     }
     /* En pantallas muy angostas los botones van uno arriba del otro. */
     @media (max-width: 22rem) {
-      .confirmacion__acciones { flex-direction: column; }
+      .confirmacion__acciones {
+        flex-direction: column;
+      }
     }
   `,
 })
@@ -171,7 +274,9 @@ export class BotonConfirmacion {
     this.abierto.set(true);
   }
 
-  protected cancelar(): void { this.abierto.set(false); }
+  protected cancelar(): void {
+    this.abierto.set(false);
+  }
 
   /**
    * Emite UNA sola vez por apertura.

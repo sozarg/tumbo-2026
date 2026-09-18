@@ -292,11 +292,12 @@ ion-icon {
   font-size: 12px;
 }
 :host(.grouped-home) > nav {
+  min-height: 0;
   align-content: start;
-  gap: 22px;
+  gap: clamp(4px, 1dvh, 10px);
 }
 :host(.grouped-home) h2 {
-  margin-bottom: 10px;
+  margin: 0;
 }
 :host(.grouped-home) .management-list,
 :host(.grouped-home) .tools-list {
@@ -339,22 +340,35 @@ ion-icon {
 }
 .owner-management-list {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 .owner-management-action {
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 8px 14px;
+  gap: 3px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px;
   border: 1px solid #bac5d3;
   border-radius: 12px;
   background: var(--tumbo-azul-brillante);
-  text-align: left;
+  text-align: center;
 }
 .owner-management-action strong {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
+}
+.owner-management-action .chevron {
+  display: none;
+}
+.owner-management-action .action-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  background: transparent;
 }
 
 .tools-list--pair {
@@ -362,11 +376,11 @@ ion-icon {
 }
 
 .dashboard-section {
-  padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--tumbo-azul-sombra) 10%, var(--tumbo-crema-fondo));
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--tumbo-crema-brillante) 72%, var(--tumbo-crema-fondo));
-  box-shadow: 0 5px 14px rgb(0 53 146 / 7%);
+  min-width: 0;
+  padding: clamp(4px, 1dvh, 10px);
+  border: 1px solid #d4d7d5;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--tumbo-crema-fondo) 65%, var(--tumbo-azul-brillante));
 }
 
 .dashboard-section__heading {
@@ -374,27 +388,27 @@ ion-icon {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .dashboard-section__heading h2 {
   margin: 0;
-  color: var(--tumbo-azul-acento);
-  font-size: clamp(18px, 4.8vw, 22px);
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(13px, 2vw, 16px);
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
 .dashboard-section__heading p {
-  margin: 5px 0 0;
-  color: color-mix(in srgb, var(--tumbo-azul-sombra) 68%, var(--tumbo-crema-fondo));
-  font-size: 12px;
+  margin: 1px 0 0;
+  color: #526582;
+  font-size: 11px;
   line-height: 1.4;
 }
 
 :host(.grouped-home) .dashboard-section .tools-list {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
 }
 
 :host(.grouped-home) .dashboard-section .dashboard-action {
@@ -416,12 +430,12 @@ ion-icon {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: 94px;
-  gap: 10px;
-  padding: 12px 7px;
-  border: 1px solid color-mix(in srgb, var(--tumbo-azul-sombra) 13%, var(--tumbo-crema-fondo));
-  border-radius: 16px;
-  background: var(--tumbo-crema-fondo);
+  min-height: 44px;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid #bac5d3;
+  border-radius: 12px;
+  background: var(--tumbo-azul-brillante);
   color: var(--tumbo-azul-sombra);
   font-size: 12px;
   font-weight: 650;
@@ -436,26 +450,24 @@ ion-icon {
 .dashboard-action__icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--tumbo-azul-acento) 11%, var(--tumbo-azul-brillante));
-  color: var(--tumbo-azul-acento);
+  width: 22px;
+  height: 22px;
+  color: var(--tumbo-azul-sombra);
 }
 
 .dashboard-action__icon ion-icon {
-  font-size: 23px;
+  font-size: 22px;
 }
 
 :host(.grouped-home) .dashboard-section .dashboard-action:focus-visible {
-  outline: 3px solid var(--tumbo-azul-acento);
-  outline-offset: 3px;
+  outline: 3px solid var(--tumbo-azul-sombra);
+  outline-offset: -3px;
 }
 
 @media (hover: hover) {
   :host(.grouped-home) .dashboard-section .dashboard-action:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--tumbo-azul-acento) 30%, var(--tumbo-crema-fondo));
+    border-color: var(--tumbo-azul-accion);
     background: var(--tumbo-crema-brillante);
     box-shadow: 0 7px 14px rgb(0 53 146 / 10%);
   }
@@ -473,7 +485,24 @@ ion-icon {
   }
 
   :host(.grouped-home) .dashboard-section {
-    padding: 22px;
+    padding: clamp(4px, 1dvh, 10px);
+  }
+}
+
+/* Se conserva el umbral de altura de Operación; se ajusta espacio, no escala. */
+@media (max-height: 650px) {
+  :host(.grouped-home) > nav {
+    gap: 4px;
+  }
+  :host(.grouped-home) .dashboard-section {
+    padding: 4px 6px;
+  }
+  @media (min-width: 768px) {
+    :host(.grouped-home) .dashboard-section .dashboard-action,
+    .owner-management-action {
+      flex-direction: row;
+      gap: 6px;
+    }
   }
 }
 

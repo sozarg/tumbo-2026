@@ -92,7 +92,7 @@
 
 .mesa-teja__estado--libre {
   background: rgb(0 106 231 / 14%);
-  color: var(--tumbo-azul-accion);
+  color: var(--tumbo-azul-sombra);
 }
 
 .mesa-teja__tipo {
@@ -129,17 +129,17 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid rgb(220 91 2 / 36%);
-  border-radius: 15px;
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
   padding: clamp(10px, 1.4vw, 14px);
-  background: rgb(220 91 2 / 10%);
+  background: var(--tumbo-azul-brillante);
   box-shadow: 0 4px 12px rgb(0 53 146 / 5%);
 }
 
 /** La mesa libre se distingue por color, no solo por la etiqueta. */
 .mesa-tarjeta--libre {
   border-color: rgb(0 106 231 / 25%);
-  background: rgb(0 106 231 / 7%);
+  background: var(--tumbo-azul-brillante);
 }
 
 /**
@@ -194,7 +194,7 @@
   --border-width: 1px;
   --border-style: solid;
   --border-color: rgb(0 106 231 / 30%);
-  min-height: 34px;
+  min-height: 44px;
   margin: 0;
   font-size: 12px;
   font-weight: 700;
@@ -204,8 +204,8 @@
 /* El de editar es un `button` pelado y no un `ion-button`: necesita su caja. */
 button.mesa-accion {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid rgb(0 106 231 / 30%);
   border-radius: 9px;
@@ -222,8 +222,8 @@ button.mesa-accion:disabled {
 .mesa-accion--icono {
   --padding-start: 0;
   --padding-end: 0;
-  width: 34px;
-  flex: 0 0 34px;
+  width: 44px;
+  flex: 0 0 44px;
 }
 
 .mesa-accion--peligro {
@@ -260,7 +260,7 @@ button.mesa-accion:disabled {
  * selector sea más específico. Queda acotado a esta línea.
  */
 .table-grid {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)) !important;
 }
 
 /**

@@ -75,8 +75,10 @@
   }
 } @else {
   <nav aria-label="Secciones del restaurante">
-    <section aria-labelledby="primary-access-title">
-      <h2 id="primary-access-title">{{ tituloPrincipal() }}</h2>
+    <section class="dashboard-section" aria-labelledby="primary-access-title">
+      <div class="dashboard-section__heading">
+        <h2 id="primary-access-title">{{ tituloPrincipal() }}</h2>
+      </div>
       <div class="owner-management-list">
         @for (acceso of principales(); track acceso.id) {
           <button
@@ -96,13 +98,13 @@
         class="dashboard-section"
         [class.dashboard-section--operation]="grupo.accesos[0]?.id === 'pedidos'"
         [class.dashboard-section--service]="grupo.accesos[0]?.id === 'cocina'"
-        [class.dashboard-section--experience]="grupo.accesos[0]?.id === 'menu' || grupo.accesos[0]?.id === 'juegos'"
+        [class.dashboard-section--experience]="
+          grupo.accesos[0]?.id === 'menu' || grupo.accesos[0]?.id === 'juegos'
+        "
         [class.dashboard-section--tracking]="grupo.accesos[0]?.id === 'reportes'"
         [attr.aria-label]="grupo.titulo"
       >
-        <div
-          class="dashboard-section__heading"
-        >
+        <div class="dashboard-section__heading">
           <div>
             <h2>{{ grupo.titulo }}</h2>
             @if (grupo.accesos[0]?.id === 'pedidos') {
@@ -119,7 +121,9 @@
               type="button"
               (click)="seleccionar.emit(acceso.id)"
             >
-              <span class="dashboard-action__icon"><ion-icon [name]="acceso.icono" aria-hidden="true" /></span>
+              <span class="dashboard-action__icon"
+                ><ion-icon [name]="acceso.icono" aria-hidden="true"
+              /></span>
               <span>{{ acceso.titulo }}</span>
             </button>
           }

@@ -169,9 +169,12 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     ReactiveFormsModule,
   ],
   selector: 'tumbo-operacion',
-  // Dos hojas y no una: `operacion.component.scss` ya está a 24,4 kB del
-  // presupuesto de 30, y el de Angular se mide por hoja.
-  styleUrls: ['./operacion.component.scss', './operacion-fotos.component.scss'],
+  // Shell compartido, contenido de las secciones y carga de fotos, por responsabilidad.
+  styleUrls: [
+    './operacion.component.scss',
+    './operacion-layout.component.scss',
+    './operacion-fotos.component.scss',
+  ],
   templateUrl: './operacion.component.html',
 })
 export class Operacion implements OnInit {
@@ -243,6 +246,7 @@ export class Operacion implements OnInit {
   protected readonly error = signal('');
 
   protected readonly enviando = signal(false);
+  protected readonly confirmandoRecepcion = signal(false);
 
   /**
    * El id del empleado que se está dando de baja, o `null`.
@@ -1625,8 +1629,32 @@ export class Operacion implements OnInit {
   }
 
   protected async recibirPedido(): Promise<void> {
-    await this.demo.confirmarRecepcion();
-    this.mensaje.set('Recepción confirmada. Ya se puede responder la encuesta y pedir la cuenta.');
+    if (
+      !this.perfilEsCliente() ||
+      this.confirmandoRecepcion() ||
+      this.demo.pedidoActivo().estado !== 'entregado'
+    )
+      return;
+
+    this.confirmandoRecepcion.set(true);
+    try {
+      const resultado = await this.demo.confirmarRecepcion();
+      if (!resultado.ok) {
+        await this.avisarError(resultado.error ?? 'No se pudo confirmar la recepción.');
+        return;
+      }
+      this.avisarExito(
+        'Recepción confirmada. Ya se puede responder la encuesta y pedir la cuenta.',
+      );
+    } catch (error: unknown) {
+      await this.avisarError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'No se pudo confirmar la recepción.',
+      );
+    } finally {
+      this.confirmandoRecepcion.set(false);
+    }
   }
 
   protected async enviarMensaje(): Promise<void> {
