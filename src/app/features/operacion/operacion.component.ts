@@ -1,5 +1,6 @@
 import { MenuOperacion } from './menu-operacion.component';
 import { NgOptimizedImage } from '@angular/common';
+import { Capacitor } from '@capacitor/core';
 import {
   ChangeDetectorRef,
   Component,
@@ -28,6 +29,7 @@ import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
 import { IonItem } from '@ionic/angular/ion-item';
 import { IonLabel } from '@ionic/angular/ion-label';
+import { IonModal } from '@ionic/angular/ion-modal';
 import { IonRange } from '@ionic/angular/ion-range';
 import { IonSelect } from '@ionic/angular/ion-select';
 import { IonSelectOption } from '@ionic/angular/ion-select-option';
@@ -56,6 +58,7 @@ import {
   closeCircleOutline,
   cubeOutline,
   documentTextOutline,
+  downloadOutline,
   happyOutline,
   logOutOutline,
   peopleOutline,
@@ -72,18 +75,21 @@ import {
   AltaEmpleadoDemo,
   AltaMesaDemo,
   AltaProductoDemo,
+  ETIQUETA_DE_TIPO_MESA,
   EstadoPedido,
+  MesaDemo,
   ProductoDemo,
   SectorProducto,
   TipoMesa,
   TipoProducto,
 } from '../../core/models/demo-restaurante';
 import { OperacionService } from '../../core/services/operacion.service';
+import { CodigoQrService } from '../../core/services/codigo-qr.service';
 import { ErroresService } from '../../core/services/errores.service';
 import { Camara, FotoTomada } from '../../core/dispositivo/camara.service';
 import { LectorDeDni, ResultadoDeLectura } from '../../core/dispositivo/lector-de-dni.service';
 import { DatosDeDni } from '../../core/dni/codigo-de-dni';
-import { LIMITES } from '../../core/validacion/limites';
+import { LIMITES, RANGOS } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
 import {
   clavesCoinciden,
@@ -110,6 +116,25 @@ import {
   Seccion,
   puedeAcceder,
 } from '../../core/navegacion/secciones';
+/**
+ * Cuántas mesas entran en una pantalla sin cortar ninguna.
+ *
+ * El enunciado es explícito con los listados: «no deben cortar elementos
+ * del listado por la mitad. Procurar que entren de a uno por pantalla
+ * visible o n elementos pero sin cortar».
+ *
+ * Eran 4, y entraban mientras la tarjeta de mesa era chiquita y la
+ * grilla tenía dos columnas fijas. Con la fila de acciones la tarjeta
+ * pasó a ~166 px y la grilla a una sola columna en teléfono: medido, la
+ * grilla pedía 695 px en un contenedor de 563 y las dos últimas
+ * quedaban cortadas.
+ *
+ * El número vive acá y no suelto en dos lugares porque ANTES estaba
+ * duplicado —en la plantilla y en `totalPaginas`— y cambiar uno solo
+ * hacía que el paginador dijera una cantidad de páginas que no existía.
+ */
+const MESAS_POR_PAGINA = 3;
+
 type GraficoDemo = 'torta' | 'barras' | 'linea';
 
 @Component({
@@ -129,6 +154,7 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonInput,
     IonItem,
     IonLabel,
+    IonModal,
     IonRange,
     IonSelect,
     IonSelectOption,
@@ -161,6 +187,7 @@ export class Operacion implements OnInit {
   protected readonly demo = inject(OperacionService);
   private readonly lector = inject(LectorDeDni);
   private readonly camara = inject(Camara);
+  private readonly qr = inject(CodigoQrService);
 
   protected readonly usuario = this.sesion.usuario;
   protected readonly modo = this.autenticacion.modo;
@@ -230,6 +257,56 @@ export class Operacion implements OnInit {
    * excluyente R6: indicadores en TODAS las esperas).
    */
   protected readonly dandoDeBaja = signal<string | null>(null);
+
+  /**
+   * El número de la mesa que se está cambiando de estado, o `null`.
+   *
+   * Mismo criterio que `dandoDeBaja`: guarda CUÁL y no un booleano, así
+   * el spinner sale en esa mesa y no en toda la grilla.
+   */
+  protected readonly cambiandoMesa = signal<number | null>(null);
+
+  /** El id de la mesa que se está editando, o `null` si es un alta. */
+  protected readonly mesaEditada = signal<string | null>(null);
+
+  /** El id de la mesa que se está sacando del salón, o `null`. */
+  protected readonly sacandoMesa = signal<string | null>(null);
+
+  /**
+   * La foto de la mesa que se está cargando (punto 4).
+   *
+   * Señal y no el control, por lo mismo que las otras dos: la foto llega
+   * de un callback de la cámara y ahí no hay evento que dispare el
+   * redibujado. Ver `aplicarYRedibujar`.
+   */
+  protected readonly fotoDeLaMesa = signal<FotoTomada | null>(null);
+
+  /**
+   * La mesa cuyo QR se está mirando, o `null` con el cartel cerrado.
+   *
+   * Guarda la mesa entera y no el id porque el cartel muestra su número,
+   * su tipo y su estado: con el id habría que ir a buscarla a la lista
+   * en cada redibujado, y si justo la sacan del salón mientras el cartel
+   * está abierto, `find` devuelve `undefined` y la pantalla se rompe.
+   */
+  protected readonly mesaDelQr = signal<MesaDemo | null>(null);
+
+  /** El PNG del QR ya dibujado, o `null` mientras se está generando. */
+  protected readonly qrDeLaMesa = signal<string | null>(null);
+
+  /** `true` si el QR no se pudo dibujar. Ver `verQrDeMesa`. */
+  protected readonly qrFallado = signal(false);
+
+  /**
+   * `true` adentro del APK.
+   *
+   * Lo mira el botón de descargar el QR: bajar un archivo es algo que
+   * solo existe en el navegador. Ver `descargarQrDeMesa`.
+   */
+  protected readonly enElTelefono = Capacitor.isNativePlatform();
+
+  /** El tipo de mesa como se lee, no como viaja. Ver `ETIQUETA_DE_TIPO_MESA`. */
+  protected readonly etiquetaDeTipoMesa = (tipo: TipoMesa): string => ETIQUETA_DE_TIPO_MESA[tipo];
   protected readonly imagenes = signal<Record<string, number>>({});
   protected readonly nombreAnonimo = signal('');
   protected readonly qrSeleccionado = signal<number | null>(null);
@@ -293,6 +370,8 @@ export class Operacion implements OnInit {
 
   /** Los topes de la base, para el atributo `maxlength` de los inputs. */
   protected readonly limites = LIMITES;
+  /** Los rangos numéricos, para los atributos min/max del HTML. */
+  protected readonly rangos = RANGOS;
   /**
    * Alta y edición de un producto (punto 2), validada igual que la base.
    *
@@ -312,7 +391,15 @@ export class Operacion implements OnInit {
   protected readonly productoForm = this.formularioBuilder.nonNullable.group({
     nombre: ['', [Validators.required, sinEspaciosSolos, ...conLimite('nombreProducto')]],
     descripcion: ['', [Validators.required, sinEspaciosSolos, ...conLimite('descripcionProducto')]],
-    minutos: [10, [Validators.required, enteroValido, Validators.min(1), Validators.max(600)]],
+    minutos: [
+      10,
+      [
+        Validators.required,
+        enteroValido,
+        Validators.min(RANGOS.minutosProducto.min),
+        Validators.max(RANGOS.minutosProducto.max),
+      ],
+    ],
     precio: [1000, [Validators.required, precioValido, Validators.min(1)]],
     tipo: ['plato' as TipoProducto, Validators.required],
     /**
@@ -380,11 +467,83 @@ export class Operacion implements OnInit {
 
   /** Lo consulta el botón de confirmar antes de abrir el cartel. */
   protected readonly productoEsValido = (): boolean => this.validar(this.productoForm);
+  /**
+   * El alta de mesa (punto 4).
+   *
+   * Antes esto era `Validators.min(1)` y nada más, en los dos números.
+   * Eso dejaba pasar tres cosas que la base rechaza o que no tienen
+   * sentido: una mesa para 30 personas —el CHECK es `between 1 and 20`—,
+   * una cantidad con decimales, y la mesa número 100000 de un tipeo.
+   *
+   * Los rangos salen de `RANGOS`, que es el espejo de los CHECK.
+   */
   protected readonly mesaForm = this.formularioBuilder.nonNullable.group({
-    numero: [6, [Validators.required, Validators.min(1)]],
-    comensales: [4, [Validators.required, Validators.min(1)]],
+    numero: [
+      6,
+      [
+        Validators.required,
+        enteroValido,
+        Validators.min(RANGOS.numeroMesa.min),
+        Validators.max(RANGOS.numeroMesa.max),
+      ],
+    ],
+    comensales: [
+      4,
+      [
+        Validators.required,
+        enteroValido,
+        Validators.min(RANGOS.comensalesMesa.min),
+        Validators.max(RANGOS.comensalesMesa.max),
+      ],
+    ],
     tipo: ['estándar' as TipoMesa, Validators.required],
+    /**
+     * La foto de la mesa. Obligatoria en el ALTA, opcional al modificar.
+     *
+     * Misma regla que las tres fotos del producto: al modificar, el
+     * lugar vacío significa «esta no la cambié», y exigirla de nuevo
+     * obligaría a sacar otra foto para corregir un número.
+     */
+    foto: [null as FotoTomada | null, fotoRequerida],
   });
+
+  /** Lo consulta el botón de confirmar antes de abrir el cartel. */
+  protected readonly mesaEsValida = (): boolean => this.validar(this.mesaForm);
+
+  /** Ver `exigirLasTresFotos`: misma idea, para la foto de la mesa. */
+  private exigirLaFotoDeLaMesa(exigir: boolean): void {
+    const control = this.mesaForm.controls.foto;
+    control.setValidators(exigir ? fotoRequerida : []);
+    control.updateValueAndValidity();
+  }
+
+  /** Saca o reemplaza la foto de la mesa (punto 4: se TOMA, no se elige). */
+  protected async sacarFotoDeMesa(): Promise<void> {
+    const resultado = await this.camara.sacarFoto();
+
+    if (resultado.estado === 'cancelado') return;
+
+    if (resultado.estado === 'error') {
+      await this.avisarError(resultado.mensaje);
+      return;
+    }
+
+    this.aplicarYRedibujar(() => this.cambiarFotoDeMesa(resultado.foto));
+  }
+
+  protected quitarFotoDeMesa(): void {
+    this.aplicarYRedibujar(() => this.cambiarFotoDeMesa(null));
+  }
+
+  /** El único lugar que toca la foto de la mesa. */
+  private cambiarFotoDeMesa(foto: FotoTomada | null): void {
+    const anterior = this.fotoDeLaMesa();
+    if (anterior?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(anterior.previewUrl);
+
+    this.fotoDeLaMesa.set(foto);
+    this.mesaForm.controls.foto.setValue(foto);
+    this.mesaForm.controls.foto.markAsTouched();
+  }
   protected readonly clienteForm = this.formularioBuilder.nonNullable.group({
     nombres: ['', Validators.required],
     apellidos: ['', Validators.required],
@@ -418,6 +577,7 @@ export class Operacion implements OnInit {
       closeCircleOutline,
       cubeOutline,
       documentTextOutline,
+      downloadOutline,
       happyOutline,
       logOutOutline,
       peopleOutline,
@@ -450,10 +610,53 @@ export class Operacion implements OnInit {
     this.error.set('');
   }
 
+  /**
+   * La flecha de atrás del encabezado.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * VUELVE UN PASO, NO AL PRINCIPIO
+   *
+   * Antes hacía `seccion.set(null)` siempre, así que desde el formulario
+   * de modificar una mesa la flecha te sacaba al home, salteándose el
+   * listado del que venías. Lo mismo pasaba en el alta de empleado, de
+   * producto y de cliente: no era de mesas, era de las cuatro.
+   *
+   * Ahora la flecha deshace exactamente el último paso que diste. Si
+   * estás en un formulario, te devuelve a su listado; si estás en el
+   * listado, al home. Es lo que espera cualquiera que la toque, y
+   * además evita perder de vista lo que estabas haciendo.
+   */
   protected volver(): void {
+    this.error.set('');
+
+    if (this.creando()) {
+      this.salirDelFormulario();
+      this.enfocarEncabezado();
+      return;
+    }
+
     this.seccion.set(null);
     this.enfocarEncabezado();
-    this.error.set('');
+  }
+
+  /**
+   * Cierra el formulario abierto y deja su sección limpia.
+   *
+   * Es lo mismo que hace `alternarFormulario` al volver al listado, y
+   * está acá aparte para que la flecha de atrás y el botón «Ver listado»
+   * no puedan quedar haciendo cosas distintas.
+   */
+  private salirDelFormulario(): void {
+    this.creando.set(false);
+    this.paso.set(0);
+
+    if (this.seccion() === 'mesas') {
+      this.salirDelFormularioDeMesa();
+    }
+
+    if (this.seccion() === 'productos') {
+      this.productoEditado.set(null);
+    }
   }
 
   /** Tras cambiar de vista, el lector de pantalla recibe el nuevo título sin desplazarla. */
@@ -464,7 +667,12 @@ export class Operacion implements OnInit {
   }
 
   ionViewWillEnter(): void {
-    this.volver();
+    // NO `volver()`: esa ahora deshace un paso, y entrar a la pantalla
+    // tiene que dejarla en el principio, venga de donde venga.
+    this.salirDelFormulario();
+    this.seccion.set(null);
+    this.error.set('');
+    this.enfocarEncabezado();
     // `quitarFotoEmpleado` y no solo el `reset`: el reset limpia el
     // control, y la foto que DIBUJA la pantalla vive en la señal.
     this.quitarFotoEmpleado();
@@ -487,7 +695,7 @@ export class Operacion implements OnInit {
       case 'menu':
         return this.demo.productos().length;
       case 'mesas':
-        return Math.ceil(this.demo.mesas().length / 4);
+        return Math.ceil(this.demo.mesas().length / MESAS_POR_PAGINA);
       case 'clientes':
         return 1;
       case 'espera':
@@ -710,6 +918,11 @@ export class Operacion implements OnInit {
   protected alternarFormulario(): void {
     this.creando.update((valor) => !valor);
     this.paso.set(0);
+    if (this.seccion() === 'mesas' && !this.creando()) {
+      // Salir del formulario cancela la edición: si no, volver a entrar
+      // seguiría apuntando a la mesa anterior y «Agregar» guardaría encima.
+      this.mesaEditada.set(null);
+    }
     if (this.seccion() === 'productos') {
       this.productoEditado.set(null);
       this.limpiarFotosDeProducto();
@@ -912,17 +1125,219 @@ export class Operacion implements OnInit {
     this.fotosDelProducto.set([null, null, null]);
   }
 
+  /**
+   * Alta de mesa (punto 4).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * LO QUE HACÍA ANTES, Y POR QUÉ ESTÁ MAL
+   *
+   *     this.mensaje.set(creada ? 'Mesa creada…' : 'No se puede repetir…');
+   *
+   * `mensaje` es el toast VERDE con el tilde. O sea que el fallo se
+   * mostraba con cara de éxito, que es el mismo bug que ya habíamos
+   * arreglado en el alta de empleado. Y encima el texto del error estaba
+   * escrito a mano: dijera lo que dijera el servicio —permisos, conexión,
+   * un CHECK— la pantalla siempre echaba la culpa al número repetido.
+   *
+   * Ahora el error va por `avisarError`, que es el cartel rojo con
+   * `role="alert"` y su vibración, y dice lo que realmente pasó.
+   */
   protected async registrarMesa(): Promise<void> {
-    if (!this.gestiona()) return;
+    if (!this.gestiona() || this.enviando()) return;
     if (!this.validar(this.mesaForm)) {
       return;
     }
-    const creada = (await this.demo.registrarMesa(this.mesaForm.getRawValue() as AltaMesaDemo)).ok;
-    this.mensaje.set(
-      creada
-        ? 'Mesa creada: el QR se generó automáticamente.'
-        : 'No se puede repetir el número de mesa.',
+
+    const datos = this.mesaForm.getRawValue() as AltaMesaDemo;
+    const id = this.mesaEditada();
+
+    this.enviando.set(true);
+    let resultado;
+    try {
+      resultado = id
+        ? await this.demo.actualizarMesa(id, datos)
+        : await this.demo.registrarMesa(datos);
+    } finally {
+      this.enviando.set(false);
+    }
+
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo guardar la mesa.');
+      return;
+    }
+
+    this.salirDelFormularioDeMesa();
+
+    // El aviso es «se guardó pero la foto no subió». Va como error, con
+    // su vibración, porque hay algo que alguien tiene que ir a arreglar.
+    if (resultado.aviso) {
+      await this.avisarError(resultado.aviso);
+      return;
+    }
+
+    this.avisarExito(
+      id ? `Mesa ${datos.numero} actualizada.` : 'Mesa creada: el QR se generó automáticamente.',
     );
+  }
+
+  /**
+   * Muestra el código QR de una mesa (punto 4).
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * QUÉ PIDE EL ENUNCIADO Y QUÉ FALTABA
+   *
+   * «Generar el código QR correspondiente de forma automática». El
+   * token ya se generaba solo —lo pone PostgreSQL al insertar la fila—,
+   * pero no había ninguna manera de VERLO: el alta avisaba que el QR
+   * estaba listo y después no aparecía en ningún lado. Un QR que no se
+   * puede mirar ni imprimir no sirve para nada, porque el cliente lo
+   * escanea de la mesa, no de la base de datos.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ SE COMPARA LA MESA AL VOLVER
+   *
+   * Dibujar el QR es asincrónico —la primera vez incluye bajar la
+   * biblioteca—. En ese rato alguien puede cerrar el cartel o abrir el
+   * de otra mesa. Sin la comparación, el QR que termina de dibujarse
+   * pisa al que está en pantalla y muestra el de la mesa equivocada,
+   * que en este caso significa mandar al cliente a otra mesa.
+   *
+   * El `detectChanges` es por lo mismo que en la cámara: la aplicación
+   * es zoneless, así que escribir la señal desde el `await` AGENDA un
+   * redibujado, no lo hace. Ver `aplicarYRedibujar`.
+   */
+  protected async verQrDeMesa(mesa: MesaDemo): Promise<void> {
+    this.aplicarYRedibujar(() => {
+      this.mesaDelQr.set(mesa);
+      this.qrDeLaMesa.set(null);
+      this.qrFallado.set(false);
+    });
+
+    try {
+      const png = await this.qr.comoPng(this.qr.contenidoDeMesa(mesa.qrToken));
+      if (this.mesaDelQr()?.id !== mesa.id) return;
+      this.aplicarYRedibujar(() => this.qrDeLaMesa.set(png));
+    } catch {
+      if (this.mesaDelQr()?.id !== mesa.id) return;
+      this.aplicarYRedibujar(() => this.qrFallado.set(true));
+    }
+  }
+
+  /** Cierra el cartel del QR y suelta el PNG, que ocupa unos 30 kB. */
+  protected cerrarQrDeMesa(): void {
+    this.mesaDelQr.set(null);
+    this.qrDeLaMesa.set(null);
+    this.qrFallado.set(false);
+  }
+
+  /**
+   * Guarda el QR como archivo, para imprimirlo y pegarlo en la mesa.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * ANDA EN LA WEB, NO EN EL TELÉFONO
+   *
+   * Es un `<a download>`, que es la única manera de bajar un archivo
+   * sin agregar nada: el navegador lo guarda en «Descargas» y de ahí se
+   * imprime. En el APK no funciona —el WebView de Android no tiene a
+   * dónde bajarlo sin un plugin nativo que escriba en el disco—, así
+   * que el botón solo aparece cuando NO estamos en el teléfono, en vez
+   * de aparecer y no hacer nada.
+   *
+   * Es la decisión correcta para lo que se necesita: el QR se imprime
+   * una vez, desde una computadora, y en el teléfono alcanza con verlo
+   * en pantalla. Si algún día hace falta bajarlo desde el APK, la
+   * solución es `@capacitor/filesystem` más `@capacitor/share`, y son
+   * dos plugins nativos que hoy el proyecto no tiene.
+   */
+  protected descargarQrDeMesa(): void {
+    const mesa = this.mesaDelQr();
+    const png = this.qrDeLaMesa();
+    if (!mesa || !png) return;
+
+    const enlace = document.createElement('a');
+    enlace.href = png;
+    enlace.download = `qr-mesa-${mesa.numero}.png`;
+    enlace.click();
+  }
+
+  /** Abre el formulario con los datos de una mesa para modificarla. */
+  protected editarMesa(mesa: MesaDemo): void {
+    if (!this.gestiona()) return;
+    this.mesaEditada.set(mesa.id);
+    this.cambiarFotoDeMesa(null);
+    this.mesaForm.reset({
+      numero: mesa.numero,
+      comensales: mesa.comensales,
+      tipo: mesa.tipo,
+      foto: null,
+    });
+    // Al modificar, la foto que ya tiene la mesa sigue en la base: el
+    // lugar vacío significa «esta no la cambié».
+    this.exigirLaFotoDeLaMesa(false);
+    this.creando.set(true);
+  }
+
+  /**
+   * Saca una mesa del salón.
+   *
+   * No lo pide el enunciado —solo pide modificar la disponibilidad—,
+   * pero sin esto no hay forma de probar el alta sin dejar el salón
+   * lleno de mesas de prueba. El borrado es seguro por construcción:
+   * las claves foráneas de `sesiones_mesa` y `lista_espera` no cascadean,
+   * así que una mesa con historial no se puede borrar ni queriendo.
+   */
+  protected async eliminarMesa(mesa: MesaDemo): Promise<void> {
+    if (!this.gestiona() || this.sacandoMesa()) return;
+
+    this.sacandoMesa.set(mesa.id);
+    let resultado;
+    try {
+      resultado = await this.demo.eliminarMesa(mesa.id);
+    } finally {
+      this.sacandoMesa.set(null);
+    }
+
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo sacar la mesa.');
+      return;
+    }
+
+    // Si se estaba editando justo esa, el formulario ya no tiene sentido.
+    if (this.mesaEditada() === mesa.id) this.salirDelFormularioDeMesa();
+    // Y su QR tampoco: manda a una mesa que ya no está en el salón.
+    if (this.mesaDelQr()?.id === mesa.id) this.cerrarQrDeMesa();
+
+    this.avisarExito(`Mesa ${mesa.numero} eliminada del salón.`);
+  }
+
+  /** Deja el formulario de mesa limpio y listo para la próxima alta. */
+  private salirDelFormularioDeMesa(): void {
+    this.mesaEditada.set(null);
+    this.cambiarFotoDeMesa(null);
+    this.mesaForm.reset({
+      numero: this.proximoNumeroDeMesa(),
+      comensales: 4,
+      tipo: 'estándar',
+      foto: null,
+    });
+    // Se vuelve a exigir: el formulario queda listo para la próxima alta.
+    this.exigirLaFotoDeLaMesa(true);
+    this.creando.set(false);
+  }
+
+  /**
+   * El número que se propone para la próxima mesa.
+   *
+   * Arrancar siempre en 6 —como estaba— hace que la segunda alta seguida
+   * choque contra el número que se acaba de usar. Proponer el siguiente
+   * libre es un empujón, no una imposición: el campo queda editable.
+   */
+  /** Para la plantilla: ver `MESAS_POR_PAGINA`. */
+  protected readonly mesasPorPagina = MESAS_POR_PAGINA;
+
+  private proximoNumeroDeMesa(): number {
+    const usados = this.demo.mesas().map((mesa) => mesa.numero);
+    return usados.length ? Math.max(...usados) + 1 : 1;
   }
 
   protected async registrarCliente(): Promise<void> {
@@ -1141,10 +1556,31 @@ export class Operacion implements OnInit {
     this.demo.quitarDelCarrito(producto.id);
   }
 
+  /**
+   * Libera u ocupa una mesa (punto 4, «gestión de mesas»).
+   *
+   * El error iba por `mensaje` —el cartel verde— igual que en el alta.
+   * Ahora va por `avisarError`, y el cambio confirmado avisa: antes,
+   * tocar la mesa y que funcionara no decía absolutamente nada.
+   */
   protected async cambiarDisponibilidadMesa(numero: number): Promise<void> {
-    if (!this.gestiona()) return;
-    const resultado = await this.demo.cambiarDisponibilidadMesa(numero);
-    if (resultado.error) this.mensaje.set(resultado.error);
+    if (!this.gestiona() || this.cambiandoMesa()) return;
+
+    this.cambiandoMesa.set(numero);
+    let resultado;
+    try {
+      resultado = await this.demo.cambiarDisponibilidadMesa(numero);
+    } finally {
+      this.cambiandoMesa.set(null);
+    }
+
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo cambiar el estado de la mesa.');
+      return;
+    }
+
+    const mesa = this.demo.mesas().find((m) => m.numero === numero);
+    this.avisarExito(`Mesa ${numero} ${mesa?.disponible ? 'liberada' : 'ocupada'}.`);
   }
 
   protected async eliminarDeEspera(id: string): Promise<void> {
@@ -1257,6 +1693,21 @@ export class Operacion implements OnInit {
     this.seleccionarPropina(porcentaje);
   }
 
+  /**
+   * Los QR que son SIEMPRE EL MISMO y viven como archivo.
+   *
+   * El de ingreso al local y los cinco de propina no dependen de ningún
+   * dato: son carteles fijos que se imprimen una vez. Dibujarlos en
+   * cada pantallazo sería trabajo de más para un resultado idéntico.
+   *
+   * El de MESA no está acá, y antes sí: había una rama que armaba
+   * `imagenes/qr-mesa-${numero}.png`. Solo funcionaba para las cinco
+   * mesas que vinieron con el proyecto —la mesa nueva del punto 4 pedía
+   * un archivo que no existe— y encima el contenido de esos PNG es el
+   * token del modo demostración, que contra la base de verdad no
+   * encuentra ninguna mesa. Ahora el QR de mesa lo dibuja
+   * `CodigoQrService` a partir del `qr_token` de la fila.
+   */
   protected qrImagen(clave: string): string {
     const imagenes: Record<string, string> = {
       entrada: 'imagenes/qr-entrada.png',
@@ -1266,9 +1717,6 @@ export class Operacion implements OnInit {
       'propina-5': 'imagenes/qr-propina-5.png',
       'propina-0': 'imagenes/qr-propina-0.png',
     };
-    if (clave.startsWith('mesa-')) {
-      return 'imagenes/qr-' + clave + '.png';
-    }
     return imagenes[clave] ?? '';
   }
 

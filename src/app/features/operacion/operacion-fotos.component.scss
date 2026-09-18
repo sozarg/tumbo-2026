@@ -48,6 +48,20 @@
 }
 
 /**
+ * Una aclaración neutra dentro de un formulario.
+ *
+ * Existe porque `.field-error` es lo único que había para poner texto
+ * debajo de un campo, y está en naranja de error: usarlo para decir «la
+ * mesa se crea disponible» haría que un dato normal se lea como un
+ * problema.
+ */
+.field-note {
+  margin: 0;
+  color: #526582;
+  font-size: 12px;
+}
+
+/**
  * El spinner de la baja, en el lugar de los dos botones de la tarjeta.
  *
  * Mide lo mismo que ocupaban `editar` + `eliminar` juntos (44 px cada

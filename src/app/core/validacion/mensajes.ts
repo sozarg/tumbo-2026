@@ -76,7 +76,14 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
   }
 
   if (errores['fotoRequerida']) {
-    return 'Falta la foto personal: el alta la pide tomada con la cámara.';
+    /*
+     * Sin la palabra «personal»: el mismo validador lo usan la foto del
+     * empleado (punto 1) y la de la mesa (punto 4), y «Falta la foto
+     * personal» en el alta de una mesa no tiene sentido. El `El` sale de
+     * la etiqueta que pasa cada formulario, así que el mensaje se adapta
+     * solo si mañana alguien le pone otro nombre al campo.
+     */
+    return `Falta ${el}: el alta la pide tomada con la cámara.`;
   }
 
   if (errores['entero']) {
@@ -102,8 +109,24 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
     return `${El} solo puede tener números.`;
   }
 
-  if (errores['min'] !== undefined || errores['max'] !== undefined) {
-    return `${El} está fuera del rango permitido.`;
+  /**
+   * El rango se DICE, no se insinúa.
+   *
+   * Antes esto devolvía «está fuera del rango permitido», que es cierto
+   * y no sirve: quien carga una mesa para 30 personas no tiene forma de
+   * saber que el máximo son 20, así que prueba 25, después 22… Angular
+   * ya trae el límite en el error (`{ min }` / `{ max }`), solo había
+   * que mostrarlo.
+   */
+  const minimo = errores['min']?.min as number | undefined;
+  const maximo = errores['max']?.max as number | undefined;
+
+  if (minimo !== undefined) {
+    return `${El} tiene que ser ${minimo} o más.`;
+  }
+
+  if (maximo !== undefined) {
+    return `${El} no puede ser mayor que ${maximo}.`;
   }
 
   // Red de seguridad: si mañana alguien agrega un validador y se olvida
@@ -111,7 +134,23 @@ export function mensajeDeError(control: AbstractControl, etiqueta: string): stri
   return `Revisá ${el}.`;
 }
 
-/** 'la' para las palabras femeninas que usamos; 'el' para el resto. */
+/**
+ * 'la' para las palabras femeninas que usamos; 'el' para el resto.
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * MIRA LA PRIMERA PALABRA, NO LA ETIQUETA ENTERA
+ *
+ * Antes comparaba la etiqueta completa contra la lista. Andaba mientras
+ * las etiquetas fueran de una palabra, y se rompía sola en cuanto
+ * alguien pasaba una de varias: «cantidad de comensales» no está en la
+ * lista —«cantidad» sí— así que el punto 4 mostraba «EL cantidad de
+ * comensales no puede ser mayor que 20».
+ *
+ * El género de un sustantivo compuesto lo pone su núcleo, que en
+ * castellano es la primera palabra: «cantidad de comensales» es
+ * femenino por «cantidad», «número de mesa» es masculino por «número».
+ * Así que se mira esa y no la frase.
+ */
 function articulo(etiqueta: string): string {
   const femeninas = [
     'cantidad',
@@ -124,7 +163,8 @@ function articulo(etiqueta: string): string {
     'pregunta',
     'respuesta',
   ];
-  return femeninas.includes(etiqueta) ? 'la' : 'el';
+  const nucleo = etiqueta.trim().split(/\s+/)[0].toLocaleLowerCase('es-AR');
+  return femeninas.includes(nucleo) ? 'la' : 'el';
 }
 
 function capitalizar(texto: string): string {

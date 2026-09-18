@@ -80,7 +80,12 @@ export class DemoRestauranteService {
 
   registrarEmpleado(datos: AltaEmpleadoDemo): void {
     const id = this.slug(datos.nombres + '-' + datos.apellidos);
-    const etiqueta = datos.perfil === 'cocinero' ? 'Cocinero' : datos.perfil === 'cantinero' ? 'Cantinero' : 'Mozo';
+    const etiqueta =
+      datos.perfil === 'cocinero'
+        ? 'Cocinero'
+        : datos.perfil === 'cantinero'
+          ? 'Cantinero'
+          : 'Mozo';
     const nuevo: Usuario = {
       id,
       nombres: datos.nombres,
@@ -139,9 +144,32 @@ export class DemoRestauranteService {
       tipo: datos.tipo,
       disponible: true,
       qrToken: 'tumbo-mesa-' + datos.numero,
+      fotoUrl: datos.foto?.previewUrl ?? null,
     };
     this.mesas.update((mesas) => [...mesas, mesa]);
     return true;
+  }
+
+  actualizarMesa(id: string, datos: AltaMesaDemo): void {
+    this.mesas.update((mesas) =>
+      mesas.map((mesa) =>
+        mesa.id === id
+          ? {
+              ...mesa,
+              numero: datos.numero,
+              comensales: datos.comensales,
+              tipo: datos.tipo,
+              // Sin foto nueva se deja la que estaba: el lugar vacío al
+              // modificar significa «esta no la cambié».
+              fotoUrl: datos.foto?.previewUrl ?? mesa.fotoUrl,
+            }
+          : mesa,
+      ),
+    );
+  }
+
+  eliminarMesa(id: string): void {
+    this.mesas.update((mesas) => mesas.filter((mesa) => mesa.id !== id));
   }
 
   registrarCliente(datos: AltaClienteDemo): void {
@@ -164,10 +192,9 @@ export class DemoRestauranteService {
     );
     const cliente = this.clientes().find((item) => item.id === id);
     if (cliente) {
-      this.notificar(
-        `${cliente.nombres} ${cliente.apellidos}: registro ${estado}.`,
-        ['cliente_registrado'],
-      );
+      this.notificar(`${cliente.nombres} ${cliente.apellidos}: registro ${estado}.`, [
+        'cliente_registrado',
+      ]);
     }
   }
 
@@ -207,9 +234,7 @@ export class DemoRestauranteService {
       mesas.map((item) => (item.numero === numeroMesa ? { ...item, disponible: false } : item)),
     );
     this.espera.update((personas) =>
-      personas.map((item) =>
-        item.id === idEspera ? { ...item, mesaAsignada: numeroMesa } : item,
-      ),
+      personas.map((item) => (item.id === idEspera ? { ...item, mesaAsignada: numeroMesa } : item)),
     );
     this.mesaVinculada.set(numeroMesa);
     this.notificar(`Mesa ${numeroMesa} asignada a ${persona.nombre}.`, ['cliente_registrado']);
@@ -298,13 +323,19 @@ export class DemoRestauranteService {
       estado: completo ? 'listo' : 'en_preparacion',
     });
     if (completo) {
-      this.notificar('Pedido completo: todos los sectores terminaron.', ['mozo', 'cliente_registrado']);
+      this.notificar('Pedido completo: todos los sectores terminaron.', [
+        'mozo',
+        'cliente_registrado',
+      ]);
     }
   }
 
   marcarEntregado(): void {
     this.actualizarPedido({ estado: 'entregado' });
-    this.notificar('El pedido fue entregado. Confirmá la recepción.', ['cliente_registrado', 'cliente_anonimo']);
+    this.notificar('El pedido fue entregado. Confirmá la recepción.', [
+      'cliente_registrado',
+      'cliente_anonimo',
+    ]);
   }
 
   confirmarRecepcion(): void {
@@ -334,7 +365,10 @@ export class DemoRestauranteService {
       return false;
     }
     this.encuestaRespondida.set(true);
-    this.notificar('Encuesta guardada. Gracias por tu opinión.', ['cliente_registrado', 'cliente_anonimo']);
+    this.notificar('Encuesta guardada. Gracias por tu opinión.', [
+      'cliente_registrado',
+      'cliente_anonimo',
+    ]);
     return true;
   }
 
@@ -368,7 +402,11 @@ export class DemoRestauranteService {
     const cuenta = this.cuenta();
     if (cuenta) {
       this.cuenta.set({ ...cuenta, estado: 'pagada' });
-      this.notificar('Pago simulado realizado. Esperando confirmación del mozo.', ['mozo', 'dueno', 'supervisor']);
+      this.notificar('Pago simulado realizado. Esperando confirmación del mozo.', [
+        'mozo',
+        'dueno',
+        'supervisor',
+      ]);
     }
   }
 
@@ -415,11 +453,46 @@ export class DemoRestauranteService {
       'Café de especialidad': 'imagenes/tumbito/cafe.webp',
     };
     return [
-      ['Hamburguesa TUMBO', 'Carne, cheddar, cebolla caramelizada y salsa de la casa.', 'plato', 'cocina', 7800, 18],
-      ['Ravioles de la abuela', 'Ravioles caseros con salsa pomodoro y albahaca.', 'plato', 'cocina', 6900, 22],
-      ['Ensalada fresca', 'Hojas verdes, tomates, queso y vinagreta cítrica.', 'plato', 'cocina', 5200, 12],
-      ['Papas crocantes', 'Papas doradas con especias y aderezo TUMBO.', 'plato', 'cocina', 3500, 10],
-      ['Taco de vegetales', 'Tortilla de maíz, vegetales grillados y guacamole.', 'plato', 'cocina', 6100, 16],
+      [
+        'Hamburguesa TUMBO',
+        'Carne, cheddar, cebolla caramelizada y salsa de la casa.',
+        'plato',
+        'cocina',
+        7800,
+        18,
+      ],
+      [
+        'Ravioles de la abuela',
+        'Ravioles caseros con salsa pomodoro y albahaca.',
+        'plato',
+        'cocina',
+        6900,
+        22,
+      ],
+      [
+        'Ensalada fresca',
+        'Hojas verdes, tomates, queso y vinagreta cítrica.',
+        'plato',
+        'cocina',
+        5200,
+        12,
+      ],
+      [
+        'Papas crocantes',
+        'Papas doradas con especias y aderezo TUMBO.',
+        'plato',
+        'cocina',
+        3500,
+        10,
+      ],
+      [
+        'Taco de vegetales',
+        'Tortilla de maíz, vegetales grillados y guacamole.',
+        'plato',
+        'cocina',
+        6100,
+        16,
+      ],
       ['Limonada de la casa', 'Limonada fresca con menta y jengibre.', 'bebida', 'bar', 2400, 5],
       ['TUMBO Spritz', 'Aperitivo cítrico, soda y frutos rojos.', 'bebida', 'bar', 4200, 7],
       ['Gaseosa', 'Bebida fría de la línea seleccionada.', 'bebida', 'bar', 1900, 2],
@@ -445,6 +518,7 @@ export class DemoRestauranteService {
       tipo: numero === 1 ? 'VIP' : numero === 4 ? 'movilidad_reducida' : 'estándar',
       disponible: numero !== 2,
       qrToken: 'tumbo-mesa-' + numero,
+      fotoUrl: null,
     }));
   }
 

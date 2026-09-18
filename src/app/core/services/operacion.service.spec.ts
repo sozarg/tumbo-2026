@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { OperacionService, comoSeGuarda, mismoNombre, paraIlike } from './operacion.service';
 import { DemoRestauranteService } from './demo-restaurante.service';
-import { AltaProductoDemo } from '../models/demo-restaurante';
+import { AltaMesaDemo, AltaProductoDemo } from '../models/demo-restaurante';
 import { tipoProductoDelPerfil } from '../navegacion/secciones';
 
 describe('Adaptador de operación en demostración', () => {
@@ -253,7 +253,9 @@ describe('Alta de bebida · punto 3 (cantinero)', () => {
 
   it('el cantinero solo ve bebidas en su listado', () => {
     const servicio = TestBed.inject(OperacionService);
-    const deSuSector = servicio.productos().filter((p) => p.tipo === tipoProductoDelPerfil('cantinero'));
+    const deSuSector = servicio
+      .productos()
+      .filter((p) => p.tipo === tipoProductoDelPerfil('cantinero'));
 
     expect(deSuSector.length).toBeGreaterThan(0);
     expect(deSuSector.every((p) => p.tipo === 'bebida')).toBe(true);
@@ -266,5 +268,151 @@ describe('Alta de bebida · punto 3 (cantinero)', () => {
 
     expect((await servicio.eliminarProducto(creada.id)).ok).toBe(true);
     expect(servicio.productos().some((p) => p.id === creada.id)).toBe(false);
+  });
+});
+
+/**
+ * Punto 4 del enunciado: «Agregar una nueva mesa (dispositivo 4).
+ * Perfiles: dueño o supervisor.»
+ *
+ * Acá se fija la parte de datos: que no se pueda repetir el número y que
+ * la mesa nazca disponible. Las validaciones del formulario viven en el
+ * componente y los rangos en `RANGOS`, que es el espejo de los CHECK.
+ */
+describe('Alta de mesa · punto 4', () => {
+  const mesa = (numero: number): AltaMesaDemo => ({
+    numero,
+    comensales: 4,
+    tipo: 'estándar',
+  });
+
+  it('crea una mesa con un número libre', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const numero = Math.max(...servicio.mesas().map((m) => m.numero)) + 1;
+
+    expect((await servicio.registrarMesa(mesa(numero))).ok).toBe(true);
+    expect(servicio.mesas().some((m) => m.numero === numero)).toBe(true);
+  });
+
+  /**
+   * «Se verifica la existencia de la nueva mesa (listado)».
+   *
+   * `mesas.numero` es `unique` en la base. Sin este control, repetir un
+   * número llegaba al insert y volvía como «No se pudo guardar datos.
+   * Revisá la conexión», que además manda a mirar la conexión.
+   */
+  it('rechaza un número de mesa que ya existe, y dice cuál', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const existente = servicio.mesas()[0];
+    const antes = servicio.mesas().length;
+
+    const resultado = await servicio.registrarMesa(mesa(existente.numero));
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toContain(String(existente.numero));
+    expect(servicio.mesas().length).toBe(antes);
+  });
+
+  /** «Disponibilidad (vacía, por defecto)». */
+  it('la mesa nueva nace disponible', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const numero = Math.max(...servicio.mesas().map((m) => m.numero)) + 1;
+
+    await servicio.registrarMesa(mesa(numero));
+
+    expect(servicio.mesas().find((m) => m.numero === numero)!.disponible).toBe(true);
+  });
+
+  /** «Generar el código QR correspondiente de forma automática». */
+  it('la mesa nueva viene con su token de QR', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const numero = Math.max(...servicio.mesas().map((m) => m.numero)) + 1;
+
+    await servicio.registrarMesa(mesa(numero));
+
+    const creada = servicio.mesas().find((m) => m.numero === numero)!;
+    expect(creada.qrToken).toBeTruthy();
+    expect(creada.qrToken).not.toBe(servicio.mesas()[0].qrToken);
+  });
+
+  /** «Permitir la gestión de mesas, dando la posibilidad de modificar la disponibilidad». */
+  it('libera y ocupa una mesa', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const numero = servicio.mesas()[0].numero;
+    const antes = servicio.mesas()[0].disponible;
+
+    expect((await servicio.cambiarDisponibilidadMesa(numero)).ok).toBe(true);
+    expect(servicio.mesas().find((m) => m.numero === numero)!.disponible).toBe(!antes);
+
+    await servicio.cambiarDisponibilidadMesa(numero);
+    expect(servicio.mesas().find((m) => m.numero === numero)!.disponible).toBe(antes);
+  });
+});
+
+/**
+ * Gestión de mesas: modificar y sacar del salón.
+ *
+ * El enunciado solo pide poder cambiar la disponibilidad. Esto va más
+ * allá, y la razón es práctica: sin borrado no hay forma de probar el
+ * alta sin dejar el salón lleno de mesas de prueba, y un restaurante con
+ * quince mesas numeradas salteado no es creíble en una defensa.
+ */
+describe('Gestión de mesas · modificar y sacar (punto 4)', () => {
+  const mesa = (numero: number): AltaMesaDemo => ({ numero, comensales: 4, tipo: 'estándar' });
+
+  it('cambia los datos de una mesa sin tocar su número', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const existente = servicio.mesas()[0];
+
+    const resultado = await servicio.actualizarMesa(existente.id, {
+      numero: existente.numero,
+      comensales: 2,
+      tipo: 'VIP',
+    });
+
+    expect(resultado.ok).toBe(true);
+    const guardada = servicio.mesas().find((m) => m.id === existente.id)!;
+    expect(guardada.comensales).toBe(2);
+    expect(guardada.tipo).toBe('VIP');
+  });
+
+  it('al modificar, no deja tomar el número de otra mesa', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const [una, otra] = servicio.mesas();
+
+    const resultado = await servicio.actualizarMesa(una.id, mesa(otra.numero));
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toContain(String(otra.numero));
+    expect(servicio.mesas().find((m) => m.id === una.id)!.numero).toBe(una.numero);
+  });
+
+  it('saca del salón una mesa libre', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const libre = servicio.mesas().find((m) => m.disponible)!;
+
+    expect((await servicio.eliminarMesa(libre.id)).ok).toBe(true);
+    expect(servicio.mesas().some((m) => m.id === libre.id)).toBe(false);
+  });
+
+  /**
+   * Una mesa ocupada tiene gente sentada. La base la rechazaría igual
+   * —`sesiones_mesa` no cascadea— pero con un error de clave foránea
+   * que en pantalla no dice nada útil. Se avisa antes y con nombre.
+   */
+  it('no deja sacar una mesa ocupada, y explica por qué', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const ocupada = servicio.mesas().find((m) => !m.disponible)!;
+
+    const resultado = await servicio.eliminarMesa(ocupada.id);
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toContain('ocupada');
+    expect(servicio.mesas().some((m) => m.id === ocupada.id)).toBe(true);
+  });
+
+  it('avisa si la mesa ya no existe', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    expect((await servicio.eliminarMesa('mesa-inexistente')).ok).toBe(false);
   });
 });

@@ -398,6 +398,21 @@ ion-icon {
 }
 
 :host(.grouped-home) .dashboard-section .dashboard-action {
+  /*
+   * `display: flex` FALTABA, y sin él nada de lo de abajo servía.
+   *
+   * La regla ya declaraba `align-items`, `justify-content` y `gap`, que
+   * son propiedades de flex, pero el botón seguía siendo un bloque. El
+   * resultado, medido: la caja del ícono —que es `display: grid`, o sea
+   * de bloque— caía sola a la izquierda, y la etiqueta, que es `inline`,
+   * sí quedaba centrada por el `text-align: center`. Los dos en la misma
+   * teja, uno centrado y el otro 28 px corrido.
+   *
+   * Con `flex` y `column` queda lo que la regla siempre quiso decir:
+   * ícono arriba, etiqueta abajo, las dos centradas.
+   */
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-width: 0;
@@ -411,7 +426,10 @@ ion-icon {
   font-size: 12px;
   font-weight: 650;
   text-align: center;
-  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease,
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
     border-color 160ms ease;
 }
 
