@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { OperacionService, comoSeGuarda, mismoNombre, paraIlike } from './operacion.service';
 import { DemoRestauranteService } from './demo-restaurante.service';
 import { AltaProductoDemo } from '../models/demo-restaurante';
+import { tipoProductoDelPerfil } from '../navegacion/secciones';
 
 describe('Adaptador de operación en demostración', () => {
   it('muestra los datos del mock y refleja las acciones en la misma fuente', async () => {
@@ -144,5 +145,126 @@ describe('Normalización de nombres de producto', () => {
 
   it('deja intacto un nombre sin comodines', () => {
     expect(paraIlike('Provoleta al romero')).toBe('Provoleta al romero');
+  });
+});
+
+/**
+ * Punto 3 del enunciado: «Agregar una nueva bebida (dispositivo 3).
+ * Perfil: cantinero.»
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * POR QUÉ ESTE BLOQUE EXISTE SI EL CÓDIGO ES EL MISMO
+ *
+ * El punto 3 pide lo mismo que el 2 y lo resuelve el mismo formulario:
+ * `tipoProductoDelPerfil` le fija `tipo: 'bebida'` al cantinero y de ahí
+ * en adelante es el circuito del punto 2.
+ *
+ * Que ANDE por ser el mismo código no es lo mismo que que SIGA andando.
+ * Hay tres lugares donde el tipo se ramifica —el sector, el nombre que
+ * se le muestra a la persona, y el único por (tipo, nombre)—, y las
+ * pruebas del punto 2 solo recorren la rama del plato. Sin esto, el día
+ * que alguien toque una de esas tres ramas, el punto 3 se rompe y las
+ * 142 pruebas siguen en verde.
+ */
+describe('Alta de bebida · punto 3 (cantinero)', () => {
+  const bebida = (nombre: string): AltaProductoDemo => ({
+    nombre,
+    descripcion: 'Bebida de prueba con descripción suficiente.',
+    minutos: 5,
+    precio: 3200,
+    tipo: 'bebida',
+  });
+
+  it('agrega una bebida que no está en la carta', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const antes = servicio.productos().length;
+
+    expect((await servicio.registrarProducto(bebida('Limonada de jengibre'))).ok).toBe(true);
+    expect(servicio.productos().length).toBe(antes + 1);
+  });
+
+  /**
+   * El `check (sector_coherente)` de la base exige que una bebida vaya a
+   * `bar` y un plato a `cocina`. Si el alta mandara el sector cruzado, la
+   * base lo rechazaría con un error que en pantalla se lee como «no se
+   * pudo guardar datos», sin decir por qué.
+   */
+  it('manda la bebida al sector bar y no a cocina', async () => {
+    const servicio = TestBed.inject(OperacionService);
+
+    await servicio.registrarProducto(bebida('Tónica de pomelo'));
+
+    const guardada = servicio.productos().find((p) => p.nombre === 'Tónica de pomelo')!;
+    expect(guardada.sector).toBe('bar');
+    expect(guardada.tipo).toBe('bebida');
+  });
+
+  it('rechaza una bebida con un nombre que ya está en la carta', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const existente = servicio.productos().find((p) => p.tipo === 'bebida')!;
+    const antes = servicio.productos().length;
+
+    const resultado = await servicio.registrarProducto(bebida(existente.nombre));
+
+    expect(resultado.ok).toBe(false);
+    expect(servicio.productos().length).toBe(antes);
+  });
+
+  /**
+   * El mensaje tiene que decir «bebida», no «plato», Y CON EL ARTÍCULO
+   * QUE CORRESPONDE.
+   *
+   * Esto salió probando el punto 3 en el navegador: el cantinero veía
+   * «Ya hay UN BEBIDA con ese nombre en la carta». El código guardaba el
+   * sustantivo y escribía «un» a mano, así que la rama del plato se veía
+   * perfecta y la de la bebida no. Es exactamente el tipo de detalle que
+   * ninguna prueba del punto 2 podía atrapar.
+   */
+  it('nombra el tipo con su artículo en el mensaje de rechazo', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const existente = servicio.productos().find((p) => p.tipo === 'bebida')!;
+
+    const resultado = await servicio.registrarProducto(bebida(existente.nombre.toUpperCase()));
+
+    expect(resultado.error).toContain('una bebida');
+    expect(resultado.error).not.toContain('un bebida');
+    expect(resultado.error).not.toContain('plato');
+  });
+
+  it('usa el artículo masculino para los platos', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const existente = servicio.productos().find((p) => p.tipo === 'plato')!;
+
+    const resultado = await servicio.registrarProducto({
+      ...bebida(existente.nombre),
+      tipo: 'plato',
+    });
+
+    expect(resultado.error).toContain('un plato');
+  });
+
+  it('reconoce la misma bebida aunque cambien mayúsculas y espacios', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const existente = servicio.productos().find((p) => p.tipo === 'bebida')!;
+    const disfrazada = `  ${existente.nombre.toUpperCase().replace(/ /g, '   ')}  `;
+
+    expect((await servicio.registrarProducto(bebida(disfrazada))).ok).toBe(false);
+  });
+
+  it('el cantinero solo ve bebidas en su listado', () => {
+    const servicio = TestBed.inject(OperacionService);
+    const deSuSector = servicio.productos().filter((p) => p.tipo === tipoProductoDelPerfil('cantinero'));
+
+    expect(deSuSector.length).toBeGreaterThan(0);
+    expect(deSuSector.every((p) => p.tipo === 'bebida')).toBe(true);
+  });
+
+  it('da de baja una bebida y desaparece del listado', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    await servicio.registrarProducto(bebida('Agua saborizada'));
+    const creada = servicio.productos().find((p) => p.nombre === 'Agua saborizada')!;
+
+    expect((await servicio.eliminarProducto(creada.id)).ok).toBe(true);
+    expect(servicio.productos().some((p) => p.id === creada.id)).toBe(false);
   });
 });
