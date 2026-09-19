@@ -60,48 +60,102 @@
           <div class="queue-vacancy"><span>Sin pedido</span></div>
           <div class="queue-vacancy"><span>Sin pedido</span></div>
         }
-        @if (actividad().length) {
-          <div class="sector-notices">
-            @for (notificacion of actividad(); track notificacion.id) {
-              <article>
-                <p>{{ notificacion.mensaje }}</p>
-                <time>{{ notificacion.fecha }}</time>
-              </article>
-            }
-          </div>
-        }
       </div>
     </section>
+    @if (actividad().length) {
+      <section class="activity sector-notices" aria-label="Actividad">
+        @for (notificacion of actividad(); track notificacion.id) {
+          <article>
+            <p>{{ notificacion.mensaje }}</p>
+            <time>{{ notificacion.fecha }}</time>
+          </article>
+        }
+      </section>
+    }
   }
 } @else {
-  <nav aria-label="Secciones del restaurante">
-    <section aria-labelledby="primary-access-title">
-      <h2 id="primary-access-title">{{ tituloPrincipal() }}</h2>
-      <div class="owner-management-list">
+  <nav
+    class="dashboard"
+    [class.dashboard--sparse]="grupos().length < 2"
+    [class.dashboard--comfortable]="grupos().length === 2"
+    aria-label="Secciones del restaurante"
+  >
+    <section
+      class="dashboard-section dashboard-section--primary"
+      aria-labelledby="primary-access-title"
+    >
+      <div class="dashboard-section__heading">
+        <h2 id="primary-access-title">{{ tituloPrincipal() }}</h2>
+      </div>
+      <div
+        class="dashboard-accesses"
+        [class.dashboard-accesses--single]="principales().length === 1"
+        [class.dashboard-accesses--pair]="principales().length === 2"
+        [style.--access-count]="principales().length"
+      >
         @for (acceso of principales(); track acceso.id) {
           <button
-            class="hub-tile owner-management-action"
+            class="hub-tile dashboard-action"
             type="button"
+            [attr.aria-label]="acceso.titulo"
             (click)="seleccionar.emit(acceso.id)"
           >
-            <span class="action-icon"><ion-icon [name]="acceso.icono" aria-hidden="true" /></span>
-            <strong>{{ acceso.titulo }}</strong
-            ><span class="chevron" aria-hidden="true">›</span>
+            <span class="dashboard-action__icon"
+              ><ion-icon [name]="acceso.icono" aria-hidden="true"
+            /></span>
+            <span class="dashboard-action__text"
+              ><strong>{{ acceso.titulo }}</strong>
+              @if (principales().length === 1 && descripcion(acceso)) {
+                <small>{{ descripcion(acceso) }}</small>
+              }
+            </span>
+            @if (principales().length === 1) {
+              <span class="chevron" aria-hidden="true">›</span>
+            }
           </button>
         }
       </div>
     </section>
     @for (grupo of grupos(); track grupo.titulo) {
-      <section [attr.aria-label]="grupo.titulo">
-        <h2>{{ grupo.titulo }}</h2>
-        <div class="tools-list" [class.tools-list--pair]="grupo.accesos.length === 2">
+      <section
+        class="dashboard-section"
+        [class.dashboard-section--service]="grupo.titulo === 'Servicio'"
+        [class.dashboard-section--experience]="
+          grupo.titulo === 'Experiencia del cliente' || grupo.titulo === 'Experiencia'
+        "
+        [attr.aria-label]="grupo.titulo"
+      >
+        <div class="dashboard-section__heading">
+          <div>
+            <h2>{{ grupo.titulo }}</h2>
+            @if (grupo.accesos[0]?.id === 'pedidos') {
+              <p>Gestioná el funcionamiento diario</p>
+            } @else if (grupo.accesos[0]?.id === 'cocina') {
+              <p>Accedé a las áreas del restaurante</p>
+            }
+          </div>
+        </div>
+        <div
+          class="dashboard-accesses"
+          [class.dashboard-accesses--pair]="grupo.accesos.length === 2"
+          [style.--access-count]="grupo.accesos.length"
+        >
           @for (acceso of grupo.accesos; track acceso.id) {
             <button
-              class="hub-tile tool-action"
+              class="hub-tile dashboard-action"
               type="button"
+              [attr.aria-label]="acceso.titulo"
               (click)="seleccionar.emit(acceso.id)"
             >
-              <ion-icon [name]="acceso.icono" aria-hidden="true" /><span>{{ acceso.titulo }}</span>
+              <span class="dashboard-action__icon"
+                ><ion-icon [name]="acceso.icono" aria-hidden="true"
+              /></span>
+              <span class="dashboard-action__text"
+                ><strong>{{ acceso.titulo }}</strong>
+                @if (grupos().length < 2 && descripcion(acceso)) {
+                  <small>{{ descripcion(acceso) }}</small>
+                }
+              </span>
             </button>
           }
         </div>

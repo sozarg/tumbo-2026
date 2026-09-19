@@ -1,64 +1,3 @@
-:host {
-  height: 100%;
-}
-
-.operation-page {
-  --background: #fbf1d5;
-}
-
-.operation-layout {
-  position: relative;
-  z-index: 1;
-  margin: 0 auto;
-  color: #003592;
-}
-
-.operation-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.back-button,
-.logout-button {
-  margin: 0;
-}
-
-.back-button {
-  --color: #003592;
-}
-
-.operation-brand {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-self: start;
-  flex-direction: row;
-  gap: 0.75rem;
-}
-
-.operation-brand__lockup {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-.operation-brand span {
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-.operation-header--detail {
-  grid-template-columns: 48px 1fr 48px;
-}
-
-.logout-button {
-  --border-color: #003592;
-  --border-radius: 10px;
-  --color: #003592;
-  --border-color: #a59b7f;
-  font-size: 0.7rem;
-}
-
 .chart-tabs button {
   border: 0.1rem solid rgb(0 106 231 / 22%);
   border-radius: 999px;
@@ -71,7 +10,7 @@
   cursor: pointer;
 }
 
-.chart-tab--active {
+.chart-tabs .chart-tab--active {
   border-color: #006ae7;
   color: #f8fbfd;
   background: #006ae7;
@@ -100,18 +39,6 @@
 
 .section-block {
   margin-top: 2rem;
-}
-
-.section-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.section-heading h2 {
-  margin: 0;
-  color: #003592;
 }
 
 .status-pill {
@@ -145,7 +72,7 @@
 
 .order-summary-card__caption,
 .staff-order-card__header span {
-  color: #dc5b02;
+  color: var(--tumbo-naranja-profundo);
   font-size: 0.7rem;
 }
 
@@ -393,12 +320,14 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.7rem;
+  align-content: center;
 }
 
 .table-tile {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  min-height: 120px;
   border: 0.1rem solid rgb(220 91 2 / 36%);
   border-radius: 0.9rem;
   padding: 0.85rem;
@@ -484,7 +413,7 @@
 }
 
 .bill-lines small {
-  color: #dc5b02;
+  color: var(--tumbo-naranja-profundo);
   font-size: 0.65rem;
 }
 
@@ -912,7 +841,7 @@
 
 .tip-option strong {
   margin-top: 0.25rem;
-  color: #006ae7;
+  color: var(--tumbo-azul-sombra);
   font-size: 0.74rem;
 }
 
@@ -956,7 +885,7 @@ img.qr-art {
 }
 
 .bill-card__header span {
-  color: #dc5b02;
+  color: var(--tumbo-naranja-profundo);
   font-size: 0.65rem;
 }
 
@@ -982,7 +911,7 @@ img.qr-art {
 
 .bill-line--discount strong,
 .bill-line--discount small {
-  color: #dc5b02;
+  color: var(--tumbo-naranja-profundo);
 }
 
 .bill-total {
@@ -1044,51 +973,10 @@ img.qr-art {
   font-size: 1.8rem;
 }
 
-.operation-layout {
-  display: flex;
-  flex-direction: column;
-  width: min(100%, 44rem);
-  height: 100%;
-  min-height: 0;
-  padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
-  gap: 10px;
-}
-.operation-header {
-  flex: 0 0 48px;
-  min-height: 48px;
-}
-.operation-brand span {
-  color: #003592;
-  font-size: 10px;
-}
-.view-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  gap: 10px;
-}
-.view-heading h1 {
-  margin: 0;
-  font-size: 26px;
-  letter-spacing: -0.03em;
-}
-.view-content {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 .section-block {
   margin: 0;
 }
-.section-heading {
-  margin-bottom: 8px;
-}
-.section-heading h2 {
-  font-size: 18px;
-}
+
 .demo-form {
   flex: 1;
   gap: 12px;
@@ -1122,27 +1010,6 @@ ion-button::part(native) {
   --color: #003592;
   --border-color: #003592;
 }
-.wizard-controls,
-.page-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.wizard-controls {
-  margin-top: auto;
-  padding-top: 8px;
-}
-.wizard-controls span,
-.page-controls span {
-  font-size: 12px;
-}
-.page-controls {
-  flex: 0 0 52px;
-}
-.page-controls ion-button {
-  min-width: 60px;
-}
 .empty-state {
   flex: 1;
   display: flex;
@@ -1156,75 +1023,7 @@ ion-button::part(native) {
   background: #fcedbb;
   overflow-wrap: anywhere;
 }
-.person-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  border: 1px solid #d4d7d5;
-  border-radius: 16px;
-  padding: 10px;
-  background: color-mix(in srgb, var(--tumbo-crema-fondo) 65%, var(--tumbo-azul-brillante));
-  box-shadow: inset 0 1px 4px rgb(0 53 146 / 5%);
-  scrollbar-width: thin;
-  scrollbar-color: #bac5d3 transparent;
-}
-.person-list:focus-visible {
-  outline: 2px solid var(--tumbo-azul-sombra);
-  outline-offset: -2px;
-}
-.person-card + .person-card {
-  margin-top: 10px;
-}
-.person-card {
-  flex: 0 0 auto;
-  border: 1px solid #bac5d3;
-  border-radius: 14px;
-  padding: 18px;
-  background: var(--tumbo-azul-brillante);
-  overflow-wrap: anywhere;
-}
-.person-card h2 {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-.person-card p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.person-card .person-card__email {
-  margin-top: 10px;
-  color: #526582;
-}
-.operation-layout--personal .view-content {
-  justify-content: flex-start;
-  gap: 12px;
-}
-.operation-layout--personal .view-heading h1 {
-  font-size: 23px;
-  font-weight: 600;
-}
-.operation-layout--personal .view-heading ion-button {
-  --border-radius: 10px;
-  --border-width: 1px;
-  --border-color: #bac5d3;
-  --background: var(--tumbo-azul-brillante);
-  --color: var(--tumbo-azul-sombra);
-  --box-shadow: none;
-  font-size: 13px;
-  font-weight: 600;
-  min-height: 44px;
-}
-.operation-header--detail .logout-button {
-  --border-width: 0;
-  --border-radius: 50%;
-}
-.operation-header--detail .operation-brand span {
-  font-size: 12px;
-}
+
 .menu-grid,
 .product-card {
   flex: 1;
@@ -1289,9 +1088,6 @@ ion-button::part(native) {
   font-size: 10px;
 }
 @media (max-height: 650px) {
-  .operation-layout {
-    gap: 6px;
-  }
   .demo-form {
     padding: 12px;
     gap: 8px;
@@ -1300,34 +1096,10 @@ ion-button::part(native) {
     height: 100px;
   }
 }
-.operation-top {
-  background: #fbf1d5;
-  box-shadow: none;
-  padding: max(8px, env(safe-area-inset-top)) 14px 4px;
-}
-.operation-top .operation-header {
-  max-width: 42rem;
-  margin: auto;
-}
-.operation-layout {
-  padding-top: 6px;
-}
-.operation-header ion-button {
-  min-width: 48px;
-}
-.view-content > .section-block {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-.view-content > .section-block > :last-child {
-  flex: 1;
-}
+
 .client-list,
 .wait-list {
-  align-content: center;
-  flex: 1;
+  align-content: start;
 }
 .client-row,
 .wait-row {
@@ -1366,12 +1138,6 @@ ion-button[fill='outline'] {
 .staff-order-card .button-row ion-button {
   flex-basis: 40%;
 }
-.table-grid {
-  align-content: center;
-}
-.table-tile {
-  min-height: 120px;
-}
 .sector-card,
 .staff-order-card,
 .order-summary-card {
@@ -1384,8 +1150,8 @@ ion-button[fill='outline'] {
 .order-summary-card ion-card-content {
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  flex: 1;
+  justify-content: flex-start;
+  gap: 12px;
 }
 .anonymous-entry,
 .game-card,
@@ -1420,9 +1186,6 @@ ion-button[fill='outline'] {
 .demo-form {
   justify-content: flex-start;
 }
-.demo-form .wizard-controls {
-  flex-shrink: 0;
-}
 .assign-actions {
   display: flex;
   flex-direction: column;
@@ -1445,20 +1208,8 @@ ion-button[fill='outline'] {
   .form-title h2 {
     font-size: 16px;
   }
-  .demo-form .wizard-controls {
-    padding-top: 0;
-  }
 }
-/* ion-header y ion-content reparten el alto, sin sumar un viewport extra. */
-:host {
-  display: flex;
-  flex-direction: column;
-}
-.operation-page {
-  flex: 1;
-  height: 0;
-  min-height: 0;
-}
+
 #encabezado:focus,
 h1[tabindex]:focus {
   outline: none;
@@ -1482,81 +1233,7 @@ strong {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.operation-top::after {
-  display: none;
-}
 
-.operation-layout--home {
-  height: 100%;
-  min-height: 100%;
-  padding-top: 16px;
-}
-.operation-brand__text {
-  display: grid;
-  gap: 1px;
-}
-.operation-top--home .operation-brand {
-  gap: 10px;
-}
-.operation-top--home .operation-brand__lockup {
-  width: 40px;
-  height: 40px;
-}
-.operation-top--home .operation-brand strong {
-  font-size: 17px;
-  font-weight: 600;
-}
-.operation-top--home .operation-brand span {
-  font-size: 12px;
-}
-.operation-top--home .logout-button {
-  min-width: 44px;
-  width: 44px;
-  height: 44px;
-  --border-radius: 50%;
-  --padding-start: 10px;
-  --padding-end: 10px;
-}
-.operation-top--home .logout-button ion-icon {
-  font-size: 20px;
-}
-
-.operation-layout--home > tumbo-menu-operacion {
-  flex: 1;
-}
-.operation-top--home {
-  padding-bottom: 12px;
-  padding-top: max(12px, env(safe-area-inset-top));
-  background: color-mix(in srgb, var(--tumbo-crema-brillante) 50%, var(--tumbo-crema-fondo));
-}
-.operation-top--home .operation-header {
-  grid-template-columns: minmax(0, 1fr) 44px;
-  gap: 10px;
-}
-.operation-top--home .operation-brand {
-  width: 100%;
-}
-.operation-top--home .operation-brand__lockup {
-  flex-shrink: 0;
-}
-.operation-top--home .operation-brand__text {
-  min-width: 0;
-  gap: 4px;
-}
-.operation-top--home .operation-brand strong {
-  font-size: 14px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.operation-top--home .operation-brand span {
-  font-size: 11px;
-}
-
-.add-person-icon {
-  font-size: 20px;
-  margin-right: 5px;
-  font-weight: 400;
-}
 .employee-form {
   display: flex;
   flex-direction: column;
@@ -1572,6 +1249,53 @@ strong {
 .employee-form .form-title {
   justify-content: space-between;
   margin: 0 0 4px;
+}
+
+/*
+  La foto del empleado (punto 1). El recuadro mide lo mismo haya foto o
+  no: si creciera de golpe empujaría los campos justo cuando la persona
+  está mirando.
+*/
+.employee-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 168px;
+  border: 1px dashed #bac5d3;
+  border-radius: 12px;
+  background: var(--tumbo-azul-brillante);
+  padding: 12px;
+  text-align: center;
+}
+.employee-photo__preview {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  border: 3px solid var(--tumbo-amarillo-marca);
+  object-fit: cover;
+}
+.employee-photo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.employee-photo__note {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+/*
+  La espera de la baja ocupa el mismo lugar que el tachito, para que la
+  fila no se mueva ni cambie de alto mientras se procesa.
+*/
+
+.employee-photo__error {
+  margin: 0;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 12px;
+  font-weight: 600;
 }
 .employee-form .form-title > ion-icon {
   display: none;
@@ -1599,45 +1323,187 @@ strong {
   font-weight: 600;
 }
 
-.operation-layout--employee-form { height: auto; min-height: 100%; }
-.operation-layout--employee-form .view-content { flex: none; }
-.employee-form__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.employee-form__field { min-width: 0; }
-.employee-form small, .employee-form .field-error { color: var(--tumbo-naranja-profundo); font-size: 12px; }
+.employee-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.employee-form__field {
+  min-width: 0;
+}
+.employee-form small,
+.employee-form .field-error {
+  color: var(--tumbo-naranja-profundo);
+  font-size: 12px;
+}
 
-.catalog-item { display: flex; align-items: center; gap: 12px; padding: 14px 10px; border: 1px solid #bac5d3; border-radius: 12px; background: var(--tumbo-azul-brillante); }
-.catalog-item + .catalog-item { margin-top: 10px; }
-.catalog-item__placeholder { flex: 0 0 64px; text-align: center; color: #526582; }
-.catalog-item__placeholder span { display: block; font-size: 28px; font-weight: 400; }
-.catalog-item__placeholder small { font-size: 9px; }
-.catalog-item__details { flex: 1; min-width: 0; }
-.catalog-item h2 { margin: 0 0 5px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.catalog-item p { margin: 0 0 8px; font-size: 11px; }
-.catalog-item strong { font-size: 13px; font-weight: 600; }
-.catalog-item__edit { flex: 0 0 44px; height: 44px; border: 1px solid #bac5d3; border-radius: 50%; background: transparent; color: var(--tumbo-azul-sombra); }
-.catalog-item__edit ion-icon { font-size: 19px; }
-.catalog-item__edit:focus-visible { outline: 2px solid var(--tumbo-azul-sombra); outline-offset: 2px; }
-.catalog-item__edit:active { background: #e5edf9; }
+.catalog-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
+  background: var(--tumbo-azul-brillante);
+}
+.catalog-item__placeholder {
+  height: 64px;
+  display: grid;
+  align-content: center;
+  text-align: center;
+  color: #526582;
+}
+.catalog-item__placeholder span {
+  display: block;
+  font-size: 28px;
+  font-weight: 400;
+}
+.catalog-item__placeholder small {
+  font-size: 9px;
+}
+.catalog-item__details {
+  min-width: 0;
+}
+.catalog-item h2 {
+  margin: 0 0 5px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.catalog-item p {
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+.catalog-item strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.catalog-item__edit {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #bac5d3;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tumbo-azul-sombra);
+}
+.catalog-item__edit ion-icon {
+  font-size: 19px;
+}
+.catalog-item__edit:focus-visible {
+  outline: 2px solid var(--tumbo-azul-sombra);
+  outline-offset: 2px;
+}
+.catalog-item__edit:active {
+  background: #e5edf9;
+}
+.catalog-item__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
 
-.clients-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 12px; }
-.clients-panel .section-heading h2 { font-size: 14px; font-weight: 600; }
-.client-entry__status { color: #526582; margin-top: 8px !important; }
-.client-entry .row-actions { display: flex; gap: 10px; margin-top: 14px; }
-.client-entry ion-button { flex: 1; min-height: 44px; --border-radius: 10px; --box-shadow: none; font-weight: 600; }
-.client-slot { min-height: 120px; display: grid; place-items: center; color: #687a92; font-size: 12px; border-style: dashed; background: transparent; }
+.clients-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.person-card.client-entry {
+  flex-direction: column;
+  align-items: stretch;
+}
+.clients-panel .section-heading h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.client-entry__status {
+  color: #526582;
+  margin-top: 8px !important;
+}
+.client-entry .row-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.client-entry ion-button {
+  flex: 1;
+  min-height: 44px;
+  --border-radius: 10px;
+  --box-shadow: none;
+  font-weight: 600;
+}
+.client-slot {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: #526582;
+  font-size: 12px;
+  border-style: dashed;
+  background: transparent;
+}
 .client-slots {
   display: grid;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  overflow-y: hidden;
 }
 .client-slots .person-card {
   margin: 0;
   min-height: 0;
   padding: 14px 18px;
 }
-.client-slots--scroll {
-  overflow-y: auto;
-  grid-template-rows: none;
-  grid-auto-rows: calc((100% - 20px) / 3);
+
+.status-pill {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.anonymous-entry {
+  flex-wrap: wrap;
+}
+.anonymous-entry > div:last-child {
+  flex: 1 1 9rem;
+}
+.sector-items li,
+.compact-list li,
+.bill-lines li {
+  flex-wrap: wrap;
+}
+.sector-items li > *,
+.compact-list li > *,
+.bill-lines li > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.employee-form__row {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+.form-row > * {
+  min-width: 0;
+}
+.game-card > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-tabs button {
+  min-height: 44px;
+}
+.tip-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4rem), 1fr));
+}
+
+.assign-actions ion-button {
+  flex: 0 0 auto;
+}
+.survey-card ion-item {
+  --background: transparent;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+.survey-card ion-toggle {
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.survey-card ion-label {
+  min-width: 0;
+  white-space: normal;
 }

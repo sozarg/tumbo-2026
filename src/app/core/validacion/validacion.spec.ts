@@ -11,6 +11,7 @@ import {
   soloLetras,
   soloNumeros,
   validadoresDeNombre,
+  fotoRequerida,
 } from './validadores';
 
 /**
@@ -349,5 +350,67 @@ describe('coherencia con la base de datos', () => {
     expect(LIMITES.motivoRechazo).toEqual({ min: 5, max: 300 });
     expect(LIMITES.mensaje.max).toBe(500);
     expect(LIMITES.preguntaEncuesta).toEqual({ min: 5, max: 200 });
+  });
+});
+
+describe('fotoRequerida', () => {
+  const control = (valor: unknown) => new FormControl(valor);
+
+  it('rechaza cuando no hay foto', () => {
+    expect(fotoRequerida(control(null))).toEqual({ fotoRequerida: true });
+  });
+
+  it('acepta cuando hay una', () => {
+    const foto = { file: new File([], 'f.webp'), previewUrl: 'blob:x', simulada: false };
+    expect(fotoRequerida(control(foto))).toBeNull();
+  });
+});
+
+/**
+ * El artículo de los mensajes de error.
+ *
+ * Salió probando el punto 4: la pantalla decía «EL cantidad de
+ * comensales no puede ser mayor que 20». El helper comparaba la
+ * etiqueta ENTERA contra la lista de femeninas, así que andaba con
+ * etiquetas de una palabra y se rompía con las de varias.
+ */
+describe('Género del artículo en los mensajes', () => {
+  /**
+   * Un control de verdad con ese error encima, en vez de un objeto
+   * falso: `mensajeDeError` lee `control.errors`, y un doble a mano se
+   * desincroniza el día que lea algo más.
+   */
+  const conError = (errores: Record<string, unknown>) => {
+    const control = new FormControl('');
+    control.setErrors(errores);
+    return control;
+  };
+
+  it('usa «la» con un sustantivo femenino de varias palabras', () => {
+    const mensaje = mensajeDeError(conError({ max: { max: 20 } }), 'cantidad de comensales');
+    expect(mensaje).toContain('La cantidad');
+    expect(mensaje).not.toContain('El cantidad');
+  });
+
+  it('usa «el» con uno masculino de varias palabras', () => {
+    const mensaje = mensajeDeError(conError({ min: { min: 1 } }), 'número de mesa');
+    expect(mensaje).toContain('El número');
+  });
+
+  /**
+   * `required` arma la frase al revés («Completá la descripción») así que
+   * el artículo va en minúscula. Las dos formas salen del mismo helper,
+   * por eso se comprueban las dos.
+   */
+  it('sigue andando con etiquetas de una sola palabra', () => {
+    expect(mensajeDeError(conError({ required: true }), 'descripción')).toContain('la descripción');
+    expect(mensajeDeError(conError({ required: true }), 'precio')).toContain('el precio');
+    expect(mensajeDeError(conError({ max: { max: 9 } }), 'descripción')).toContain('La descripción');
+  });
+
+  /** El rango se dice, no se insinúa: el número tiene que estar en el texto. */
+  it('nombra el límite concreto en vez de «fuera del rango»', () => {
+    expect(mensajeDeError(conError({ max: { max: 20 } }), 'cantidad de comensales')).toContain('20');
+    expect(mensajeDeError(conError({ min: { min: 1 } }), 'número de mesa')).toContain('1');
   });
 });

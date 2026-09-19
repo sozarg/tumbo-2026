@@ -1,0 +1,549 @@
+/* Estilos de presentación exclusivos de la feature Operación. */
+.operation-layout button {
+  /* Los controles propios usan la superficie de Tumbo, sin apariencia nativa
+     heredada de normalize.css de Ionic. No afecta a los campos del formulario. */
+  appearance: none;
+}
+
+.operation-layout > :not(tumbo-fondo-decorativo) {
+  position: relative;
+  z-index: 1;
+}
+
+.operation-layout--detail {
+  width: min(100%, 48rem);
+  gap: 14px;
+}
+
+.operation-layout--detail .view-heading {
+  min-height: 56px;
+  border-bottom: 1px solid rgb(0 53 146 / 10%);
+  padding: 0 2px 12px;
+}
+
+.operation-layout--detail .view-heading h1 {
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(22px, 6vw, 30px);
+  font-weight: 800;
+}
+
+.operation-layout--detail .view-heading h1::after {
+  display: block;
+  width: 34px;
+  height: 4px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: var(--tumbo-amarillo-marca);
+  content: '';
+}
+
+.operation-layout--detail .view-content {
+  gap: 12px;
+}
+
+.operation-layout--detail .section-block {
+  padding: 0;
+}
+
+.operation-layout--detail .section-heading {
+  align-items: center;
+  min-height: 34px;
+  margin-bottom: 14px;
+}
+
+.operation-layout--detail .section-heading h2 {
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(16px, 4.5vw, 20px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.operation-layout--detail .section-heading h2::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 8px 2px 0;
+  border-radius: 50%;
+  background: var(--tumbo-amarillo-marca);
+  content: '';
+}
+
+.operation-layout--detail .status-pill,
+.operation-layout--detail ion-badge {
+  border: 1px solid rgb(0 106 231 / 22%);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--tumbo-azul-sombra);
+  background: rgb(0 106 231 / 10%);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.operation-layout--detail ion-card-header {
+  border-bottom: 1px solid rgb(0 53 146 / 10%);
+  padding: 16px 18px 12px;
+}
+
+.operation-layout--detail ion-card-content {
+  padding: 16px 18px 18px;
+}
+
+.operation-layout--detail ion-card-title {
+  color: var(--tumbo-azul-sombra);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.operation-layout--detail ion-card-subtitle {
+  margin-top: 4px;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 11px;
+}
+
+.operation-layout--detail ion-button {
+  --border-radius: 12px;
+  --box-shadow: none;
+  font-weight: 700;
+}
+
+.operation-layout--detail .primary-action,
+.operation-layout--detail .approve-button {
+  --background: var(--tumbo-azul-accion);
+  --background-hover: var(--tumbo-azul-sombra);
+  --background-activated: var(--tumbo-azul-sombra);
+  --color: var(--tumbo-azul-brillante);
+}
+
+.operation-layout--detail .reject-button,
+.operation-layout--detail ion-button[fill='outline'] {
+  --border-color: rgb(0 53 146 / 34%);
+  --color: var(--tumbo-azul-sombra);
+  --background: transparent;
+  --background-hover: rgb(0 106 231 / 8%);
+  --background-activated: rgb(0 106 231 / 13%);
+}
+
+.operation-layout--detail .demo-form {
+  gap: 16px;
+  padding: clamp(16px, 4vw, 24px);
+}
+
+.operation-layout--detail .form-title {
+  padding-bottom: 4px;
+}
+
+.operation-layout--detail .form-title > ion-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--tumbo-azul-accion);
+  background: rgb(0 106 231 / 11%);
+  font-size: 21px;
+}
+
+.operation-layout--detail .form-title h2 {
+  color: var(--tumbo-azul-sombra);
+  font-size: 17px;
+}
+
+.operation-layout--detail .form-title p,
+.operation-layout--detail .form-title ion-note {
+  color: rgb(0 53 146 / 70%);
+  font-size: 11px;
+}
+
+.operation-layout--detail ion-input,
+.operation-layout--detail ion-textarea,
+.operation-layout--detail ion-select {
+  --background: var(--tumbo-azul-brillante);
+  --border-color: rgb(0 53 146 / 17%);
+  --border-radius: 12px;
+  --highlight-color-focused: var(--tumbo-azul-accion);
+  --color: var(--tumbo-azul-sombra);
+  --padding-start: 14px;
+  --padding-end: 14px;
+}
+
+.operation-layout--detail .person-list,
+.operation-layout--detail .wait-list {
+  border: 0;
+  border-radius: 14px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.operation-layout--detail .person-card,
+.operation-layout--detail .wait-row,
+.operation-layout--detail .catalog-item,
+.operation-layout--detail .table-tile {
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
+  background: var(--tumbo-azul-brillante);
+  box-shadow: 0 4px 12px rgb(0 53 146 / 5%);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.operation-layout--detail .person-card,
+.operation-layout--detail .wait-row {
+  padding: 14px;
+}
+
+.operation-layout--detail .person-card:focus-within,
+.operation-layout--detail .wait-row:focus-within,
+.operation-layout--detail .catalog-item:focus-within,
+.operation-layout--detail .table-tile:focus-visible {
+  outline: 3px solid rgb(0 106 231 / 30%);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .operation-layout--detail .person-card:hover,
+  .operation-layout--detail .wait-row:hover,
+  .operation-layout--detail .catalog-item:hover,
+  .operation-layout--detail .table-tile:hover {
+    transform: translateY(-2px);
+    border-color: rgb(0 106 231 / 30%);
+    box-shadow: 0 8px 16px rgb(0 53 146 / 10%);
+  }
+}
+
+.operation-layout--detail .wait-row {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.operation-layout--detail .wait-row img {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--tumbo-amarillo-marca);
+  border-radius: 14px;
+}
+
+.operation-layout--detail .assign-actions {
+  gap: 8px;
+}
+
+.operation-layout--detail .assigned-chip {
+  --background: rgb(0 106 231 / 12%);
+  --color: var(--tumbo-azul-sombra);
+  border: 1px solid rgb(0 106 231 / 23%);
+}
+
+.operation-layout--detail .table-section {
+  flex: 0 0 auto;
+}
+
+.operation-layout--detail .table-section .table-grid {
+  flex: 0 0 auto;
+  align-content: start;
+  gap: clamp(10px, 1.5vw, 16px);
+}
+
+.operation-layout--detail .table-tile {
+  min-height: 0;
+  justify-content: stretch;
+  padding: 0;
+  text-align: left;
+}
+
+.operation-layout--detail .table-tile--free {
+  border-color: rgb(0 106 231 / 25%);
+  background: rgb(0 106 231 / 7%);
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile {
+  min-height: 0;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile::part(native) {
+  min-height: 142px;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  padding: clamp(12px, 1.7vw, 18px);
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__heading,
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__heading {
+  gap: 5px;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__details {
+  gap: 5px;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__number {
+  color: var(--tumbo-azul-accion);
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__type {
+  max-width: 100%;
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(12px, 1.4vw, 14px);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.operation-layout--detail .sector-items,
+.operation-layout--detail .compact-list {
+  gap: 8px;
+}
+
+.operation-layout--detail .sector-items li,
+.operation-layout--detail .compact-list li,
+.operation-layout--detail .bill-lines li {
+  border-bottom-color: rgb(0 53 146 / 10%);
+  padding: 10px 0;
+}
+
+.operation-layout--detail .sector-items li strong,
+.operation-layout--detail .compact-list li strong {
+  color: var(--tumbo-azul-accion);
+}
+
+.operation-layout--detail .progress-track {
+  height: 9px;
+  margin-top: 18px;
+  background: rgb(0 53 146 / 10%);
+}
+
+.operation-layout--detail .progress-track__fill {
+  background: var(--tumbo-azul-accion);
+}
+
+/* La tarjeta conserva su altura natural dentro del panel desplazable común. */
+.operation-layout--detail .staff-order-card {
+  flex: 0 0 auto;
+  min-height: max-content;
+  overflow: visible;
+}
+
+.operation-layout--detail .staff-order-card ion-card-content {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  padding-bottom: 24px;
+}
+
+.operation-layout--detail .staff-order-card__header {
+  min-width: 0;
+  align-items: flex-start;
+  padding-right: 4px;
+}
+
+.operation-layout--detail .staff-order-card__header > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operation-layout--detail .staff-order-card__header ion-icon {
+  flex: 0 0 32px;
+  margin-top: 2px;
+  font-size: 26px;
+}
+
+.operation-layout--detail .staff-order-card tumbo-paginador {
+  display: block;
+  flex: 0 0 auto;
+  margin: 4px 0 10px;
+}
+
+.operation-layout--detail .staff-order-card .button-row {
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding-bottom: 2px;
+}
+
+.operation-layout--detail .empty-state {
+  min-height: 150px;
+  border: 1px dashed rgb(0 106 231 / 30%);
+  border-radius: 16px;
+  color: var(--tumbo-azul-sombra);
+  background-color: color-mix(in srgb, var(--tumbo-crema-brillante) 70%, transparent);
+  background-image: url('/assets/tumbito/svg/cafe.svg');
+  background-position: right 12px bottom 10px;
+  background-repeat: no-repeat;
+  background-size: 72px;
+}
+
+.operation-layout--detail .anonymous-entry {
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.operation-layout--detail .qr-preview {
+  flex: 0 0 78px;
+  width: 78px;
+  min-width: 78px;
+  height: 78px;
+  border: 4px solid var(--tumbo-azul-sombra);
+  border-radius: 14px;
+  background-color: var(--tumbo-azul-brillante);
+}
+
+.operation-layout--detail .anonymous-entry h2 {
+  color: var(--tumbo-azul-sombra);
+  font-size: 16px;
+}
+
+.operation-layout--detail .cart-bar {
+  border: 1px solid rgb(0 106 231 / 30%);
+  border-radius: 16px;
+  background: var(--tumbo-crema-brillante);
+  box-shadow: 0 8px 18px rgb(0 53 146 / 12%);
+}
+
+.operation-layout--detail .page-controls {
+  min-height: 48px;
+  border-top: 1px solid rgb(0 53 146 / 10%);
+  padding-top: 10px;
+}
+
+@media (min-width: 700px) {
+  .operation-layout--detail .table-grid,
+  .operation-layout--detail .menu-grid,
+  .operation-layout--detail .games-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operation-layout--detail .product-card__image {
+    height: clamp(150px, 24dvh, 230px);
+  }
+}
+
+@media (max-width: 380px) {
+  .operation-layout--detail .wait-row {
+    gap: 9px;
+    padding: 11px;
+  }
+  .operation-layout--detail .button-row ion-button {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .operation-layout--detail .person-card,
+  .operation-layout--detail .wait-row,
+  .operation-layout--detail .catalog-item,
+  .operation-layout--detail .table-tile {
+    transition: none;
+  }
+}
+
+/* En escritorio el escenario necesita respirar: el fondo acompaña al
+   contenido completo y no queda encerrado en el ancho de un teléfono. */
+@media (min-width: 768px) {
+  .operation-layout--home,
+  .operation-layout--detail {
+    width: min(100%, 72rem);
+    padding-inline: clamp(24px, 5vw, 64px);
+  }
+}
+
+/* La tarjeta es un ion-button dentro de un componente de confirmación. Estos
+   selectores llegan al botón real y mantienen alineados sus cuatro textos. */
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile {
+  width: 100%;
+  min-height: 148px;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile::part(native) {
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 17px;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__status {
+  color: var(--tumbo-azul-accion);
+  font-size: clamp(13px, 1.5vw, 15px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__meta {
+  max-width: 100%;
+  color: rgb(0 53 146 / 68%);
+  font-size: clamp(10px, 1.2vw, 12px);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 700px) {
+  .operation-layout--detail .table-section .table-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 399px) {
+  .operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile::part(native) {
+    min-height: 132px;
+    gap: 10px;
+    padding: 11px;
+  }
+
+  .operation-layout--detail tumbo-boton-confirmacion ion-button.table-tile .table-tile__number {
+    font-size: 27px;
+  }
+}
+
+/* La acción mantiene la misma superficie táctil que Personal y Productos. */
+.operation-layout--detail .wait-row tumbo-boton-confirmacion ion-button.icon-danger {
+  grid-column: 1 / -1;
+  justify-self: end;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  --border-radius: 50%;
+}
+
+.operation-layout--detail .wait-row tumbo-boton-confirmacion ion-button.icon-danger::part(native) {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+/* Entrada usa una composición estable: el campo no cambia de eje ni empuja
+   el contenido hacia arriba al recibir foco o texto. */
+.operation-layout--detail .anonymous-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, auto);
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.operation-layout--detail .anonymous-form ion-input,
+.operation-layout--detail .anonymous-form tumbo-boton-confirmacion ion-button {
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.operation-layout--detail .anonymous-form tumbo-boton-confirmacion ion-button {
+  min-height: 56px;
+}
+
+@media (max-width: 560px) {
+  .operation-layout--detail .anonymous-form {
+    grid-template-columns: 1fr;
+  }
+}

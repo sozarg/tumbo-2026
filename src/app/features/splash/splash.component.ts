@@ -5,13 +5,18 @@ import { IonButton } from '@ionic/angular/ion-button';
 import { IonContent } from '@ionic/angular/ion-content';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
 import { SesionService } from '../../core/services/sesion.service';
+<<<<<<< HEAD
+=======
+import { SonidosService } from '../../core/services/sonidos.service';
+import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
+>>>>>>> cc6cd9374c434871686ff71bad507cf501cae62d
 
 const DURACION = 3_000;
 const DURACION_REDUCIDA = 600;
 const ESPERA_IMAGEN = 1_500;
 
 @Component({
-  imports: [NgOptimizedImage, IonContent, IonButton],
+  imports: [NgOptimizedImage, IonContent, IonButton, FondoDecorativo],
   selector: 'tumbo-splash',
   styleUrl: './splash.component.scss',
   templateUrl: './splash.component.html',

@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { vi } from 'vitest';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
 import { SesionService } from '../../core/services/sesion.service';
-import { SonidosService } from '../../core/services/sonidos.service';
 import { Splash } from './splash.component';
 
 // Exponemos los eventos de la plantilla para verificar el ciclo de vida sin red.
@@ -43,7 +42,6 @@ describe('Splash', () => {
         { provide: Router, useValue: { navigate: navegar } },
         { provide: SesionService, useValue: { estaAutenticado: () => autenticado } },
         { provide: PrecargaDiferida, useValue: { liberar } },
-        { provide: SonidosService, useValue: { sonarApertura: sonido } },
       ],
     });
     splash = TestBed.runInInjectionContext(() => new SplashPrueba());

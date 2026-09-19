@@ -1,0 +1,512 @@
+/**
+ * La teja de cada mesa en «Gestión de mesas» (punto 4).
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * QUÉ ESTABA ROTO
+ *
+ * La teja tenía dos columnas —número y tipo a la izquierda, estado y
+ * detalle a la derecha— y ninguna de las dos se estiraba: quedaban del
+ * ancho de su contenido más angosto. Medido en el navegador: en una
+ * teja de 159 px, el bloque del tipo ocupaba 19 px. Con tan poco lugar
+ * y `overflow-wrap: anywhere` heredado, las palabras se partían por la
+ * mitad: «VI / P», «están / dar», «comensale / s».
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * POR QUÉ DE ARRIBA ABAJO
+ *
+ * Dos columnas dentro de una teja de 159 px son dos columnas de 70.
+ * Ahí no entra «Movilidad reducida» sin partirse, por más que se ajuste
+ * la tipografía. De arriba abajo cada dato tiene el ancho entero, que
+ * es lo que el enunciado pide para los listados: «no deben cortar
+ * elementos del listado por la mitad».
+ *
+ * El número y el estado sí van en la misma fila: son cortos, y son
+ * justamente los dos datos que se buscan de un vistazo.
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * POR QUÉ NOMBRES PROPIOS Y HOJA GLOBAL
+ *
+ * NOMBRES PROPIOS. La tarjeta no lleva más `.table-tile`. Mientras la
+ * teja era el `<ion-button>` de `tumbo-boton-confirmacion`, las reglas
+ * viejas que apuntan a `.table-tile span` no la alcanzaban —el botón es
+ * de OTRO componente—. Al pasar a un `<article>` de esta plantilla, esas
+ * reglas empezaron a aplicar y le ganaron por especificidad al tamaño
+ * del número. Con nombres propios el problema desaparece de raíz en vez
+ * de resolverse a fuerza de selectores más largos.
+ *
+ * HOJA GLOBAL. Los tres botones de acción son `ion-button` que dibuja
+ * `tumbo-boton-confirmacion`, así que llevan el atributo de ESE
+ * componente: desde una hoja de componente no se los puede alcanzar.
+ * Angular le agrega el atributo propio a cada parte del selector, y la
+ * condición no se cumple nunca —medido: cero reglas matcheando—.
+ *
+ * Por eso esto entra por `src/styles.scss`, igual que
+ * `operacion-visual.scss`, que es el patrón que el proyecto ya usa para
+ * lo mismo. Sin encapsulación no hay riesgo de pisar nada: todos los
+ * nombres de acá empiezan con `mesa-`.
+ *
+ * La alternativa era `::ng-deep`, que además de estar deprecada no se
+ * usa en ninguna parte del proyecto.
+ */
+
+.mesa-teja {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.mesa-teja__cabecera {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* `1` en grande: es lo que se busca primero al mirar la grilla. */
+.mesa-teja__numero {
+  color: var(--tumbo-azul-accion);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/**
+ * El estado, como etiqueta y no como texto suelto.
+ *
+ * `white-space: nowrap` es el seguro: «Disponible» es la palabra más
+ * larga de la teja y es justo la que no se puede partir.
+ */
+.mesa-teja__estado {
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgb(220 91 2 / 14%);
+  color: var(--tumbo-naranja-profundo);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mesa-teja__estado--libre {
+  background: rgb(0 106 231 / 14%);
+  color: var(--tumbo-azul-sombra);
+}
+
+.mesa-teja__tipo {
+  color: var(--tumbo-azul-sombra);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  /* Que corte entre palabras si hace falta, pero nunca dentro de una. */
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.mesa-teja__meta {
+  color: #526582;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/**
+ * La tarjeta de mesa: contenedor, no botón.
+ *
+ * Se dibuja entera acá —borde, fondo, sombra— en vez de heredar de
+ * `.table-tile`. Los valores son los que ya tenía, para que no cambie
+ * nada de lo que estaba bien.
+ */
+.mesa-tarjeta {
+  display: flex;
+  /*
+   * Sin `min-height`: el contenido la define. El 142 de antes era para
+   * una tarjeta sin acciones; ahora sobra y solo estorba. Medido: con
+   * 166 px por tarjeta, tres pedían 519 px y el contenedor da 503, así
+   * que la tercera quedaba cortada 16 px.
+   */
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #bac5d3;
+  border-radius: 14px;
+  padding: clamp(10px, 1.4vw, 14px);
+  background: var(--tumbo-azul-brillante);
+  box-shadow: 0 4px 12px rgb(0 53 146 / 5%);
+}
+
+/** La mesa libre se distingue por color, no solo por la etiqueta. */
+.mesa-tarjeta--libre {
+  border-color: rgb(0 106 231 / 25%);
+  background: var(--tumbo-azul-brillante);
+}
+
+/**
+ * La fila de acciones, que NUNCA puede desbordar la tarjeta.
+ *
+ * Medido a 390 px: la tarjeta deja unos 120 px útiles y los tres
+ * botones piden ~142. Sin `wrap`, el de borrar se salía por el borde
+ * derecho y quedaba cortado a la mitad.
+ *
+ * Con `wrap` y un `flex` que puede achicarse, los tres entran cuando hay
+ * lugar y los dos íconos bajan a un segundo renglón cuando no. La
+ * tarjeta crece en vez de cortar, que es lo que pide el enunciado para
+ * los listados.
+ */
+.mesa-tarjeta__acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/**
+ * El spinner ocupa el lugar exacto de la fila de acciones.
+ *
+ * Mismo criterio que en las tarjetas de producto: si la fila cambiara de
+ * alto al aparecer, la grilla entera se movería mientras se procesa.
+ */
+.mesa-tarjeta__espera {
+  display: grid;
+  height: 34px;
+  place-items: center;
+}
+
+/**
+ * Los tres botones de la fila.
+ *
+ * `Ocupar`/`Liberar` lleva texto porque es la acción que más se usa y
+ * conviene que diga qué va a pasar; editar y sacar van con ícono, que es
+ * el mismo patrón que las tarjetas de producto.
+ */
+.mesa-accion {
+  /* Se achica si hace falta, pero nunca por debajo de lo legible. */
+  flex: 0 1 auto;
+  min-width: 0;
+  --background: transparent;
+  --background-hover: rgb(0 106 231 / 8%);
+  --box-shadow: none;
+  --color: var(--tumbo-azul-accion);
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --border-radius: 9px;
+  --border-width: 1px;
+  --border-style: solid;
+  --border-color: rgb(0 106 231 / 30%);
+  min-height: 44px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+}
+
+/* El de editar es un `button` pelado y no un `ion-button`: necesita su caja. */
+button.mesa-accion {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgb(0 106 231 / 30%);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--tumbo-azul-accion);
+  cursor: pointer;
+}
+
+button.mesa-accion:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mesa-accion--icono {
+  --padding-start: 0;
+  --padding-end: 0;
+  width: 44px;
+  flex: 0 0 44px;
+}
+
+.mesa-accion--peligro {
+  --color: var(--tumbo-naranja-profundo);
+  --border-color: rgb(220 91 2 / 35%);
+  --background-hover: rgb(220 91 2 / 10%);
+}
+
+.mesa-accion ion-icon {
+  font-size: 16px;
+}
+
+/**
+ * LAS COLUMNAS SALEN DEL ANCHO DISPONIBLE, NO DEL VIEWPORT.
+ *
+ * `.table-grid` eran dos columnas fijas. Con la tarjeta anterior
+ * —cuatro datos y nada más— entraban; con la fila de acciones ya no:
+ * medido a 390 px, dos columnas dejan 120 px útiles y los tres botones
+ * piden ~142, así que el tacho bajaba a un segundo renglón y la tarjeta
+ * crecía de 166 a 224 px de alto.
+ *
+ * El primer intento fue una consulta por ancho de pantalla, y NO
+ * ALCANZABA: medido a 900 px de viewport, las tarjetas seguían midiendo
+ * 148 px porque quien manda es el ancho del contenedor, que tiene tope,
+ * y no el de la ventana.
+ *
+ * `auto-fit` con un mínimo de 240 px resuelve las dos cosas de una: pone
+ * las columnas que entren de verdad, sin importar de qué ancho sea la
+ * pantalla ni cuánto tope tenga el contenedor. Abajo de 240 px por
+ * tarjeta hay una sola, y ahí los tres botones entran en fila.
+ *
+ * El `!important` es porque la regla original vive en una hoja de
+ * componente, y esas ganan por el atributo de encapsulación aunque este
+ * selector sea más específico. Queda acotado a esta línea.
+ */
+.table-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)) !important;
+}
+
+/**
+ * LA FOTO DE LA MESA (punto 4).
+ *
+ * «La foto se debe ver en un contenedor individual, con buen tamaño y
+ * centrada». Es la misma caja que las tres del producto, con una sola
+ * diferencia: acá hay una, así que ocupa el ancho entero del formulario.
+ *
+ * `object-fit: cover` recorta desde el centro en vez de deformar, que es
+ * lo que hace falta cuando la foto sale de una cámara vertical y el
+ * contenedor es apaisado.
+ */
+.mesa-foto {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.mesa-foto__caja {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px dashed #bac5d3;
+  border-radius: 14px;
+  background: var(--tumbo-azul-brillante);
+  color: #526582;
+  cursor: pointer;
+}
+
+.mesa-foto__caja ion-icon {
+  font-size: 30px;
+}
+
+.mesa-foto__caja small {
+  color: #526582;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mesa-foto__caja:focus-visible {
+  outline: 3px solid var(--tumbo-azul-accion);
+  outline-offset: 2px;
+}
+
+.mesa-foto__caja--llena {
+  border-style: solid;
+  border-color: var(--tumbo-azul-sombra);
+}
+
+.mesa-foto__caja--llena img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Flota sobre la foto para no empujar el formulario. */
+.mesa-foto__quitar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.mesa-foto__quitar ion-icon {
+  font-size: 17px;
+}
+
+/**
+ * La foto en la tarjeta del listado, AL COSTADO.
+ *
+ * Arriba y a lo ancho, la tarjeta con foto medía 238 px contra 158 las
+ * que no tenían: la grilla quedaba despareja y tres dejaban de entrar
+ * sin cortarse, que es justo lo que el enunciado no quiere.
+ *
+ * Al costado la tarjeta no cambia de alto tenga foto o no, y es el mismo
+ * criterio que usan las tarjetas de producto en su propio listado. La
+ * foto en grande —«contenedor individual, buen tamaño, centrada»— se ve
+ * en el formulario, que es donde se carga.
+ */
+.mesa-tarjeta__cuerpo {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mesa-tarjeta__foto {
+  width: 68px;
+  height: 68px;
+  flex: 0 0 68px;
+  border-radius: 12px;
+  object-fit: cover;
+  object-position: center;
+}
+
+/**
+ * El hueco de la mesa sin foto.
+ *
+ * Ocupa exactamente lo mismo que la foto: si no estuviera, las tarjetas
+ * con y sin foto alinearían los datos en lugares distintos y la columna
+ * se vería quebrada.
+ */
+.mesa-tarjeta__foto--vacia {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgb(0 53 146 / 20%);
+  background: rgb(0 53 146 / 4%);
+  color: #8a97ab;
+}
+
+.mesa-tarjeta__foto--vacia ion-icon {
+  font-size: 22px;
+}
+
+/**
+ * EL CARTEL DEL CÓDIGO QR (punto 4).
+ *
+ * Entra por esta hoja global y no por la del componente por lo mismo
+ * que el resto del archivo: `ion-modal` mueve su contenido a un
+ * `<ion-app>` fuera del componente, así que el atributo de
+ * encapsulación que Angular le agrega al selector no se cumple nunca y
+ * la regla no aplica. Es exactamente el caso que ya resolvió
+ * `boton-confirmacion`, que por eso lleva sus estilos en el `styles`
+ * del propio componente.
+ */
+ion-modal.mesa-qr {
+  --width: min(92vw, 22rem);
+  --height: auto;
+  --border-radius: 1.25rem;
+  --backdrop-opacity: 0.45;
+  --box-shadow: 0 1.5rem 3rem rgb(0 53 146 / 25%);
+}
+
+.mesa-qr__caja {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 24px 20px 20px;
+  background: #fff;
+  text-align: center;
+}
+
+.mesa-qr__titulo {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.mesa-qr__detalle {
+  margin: 0;
+  color: #526582;
+  font-size: 13px;
+}
+
+/**
+ * El cuadrado del código, reservado de entrada.
+ *
+ * `aspect-ratio: 1` más `place-items: center` deja el espera y el error
+ * exactamente donde va a ir la imagen, así que al terminar de dibujarse
+ * no se mueve nada.
+ */
+.mesa-qr__lienzo {
+  display: grid;
+  width: 100%;
+  max-width: 260px;
+  margin: 12px 0;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.mesa-qr__imagen {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.mesa-qr__error {
+  margin: 0;
+  padding: 0 12px;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mesa-qr__pie {
+  margin: 0 0 14px;
+  color: #526582;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/**
+ * Los botones, que tienen que entrar en una pantalla de 360.
+ *
+ * `wrap` con un `flex` que se achica: cuando «Descargar» y «Cerrar» no
+ * entran juntos, bajan uno debajo del otro en vez de salirse del
+ * cartel.
+ */
+.mesa-qr__acciones {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mesa-qr__acciones ion-button {
+  flex: 1 1 8rem;
+  min-height: 44px;
+  margin: 0;
+  --border-radius: 0.7rem;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.mesa-qr__descargar {
+  --color: var(--tumbo-azul-accion);
+  --border-color: var(--tumbo-azul-accion);
+}
+
+.mesa-qr__cerrar {
+  --background: var(--tumbo-azul-accion);
+  --background-hover: var(--tumbo-azul-sombra);
+  --color: #f8fbfd;
+}
