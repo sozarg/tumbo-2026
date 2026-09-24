@@ -43,6 +43,7 @@
     "@ionic/angular": "^9.0.1",
     "@supabase/supabase-js": "^2.112.4",
     "node": "^26.8.1",
+    "phaser": "^4.2.1",
     "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
