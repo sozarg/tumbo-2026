@@ -12,6 +12,11 @@ export const routes: Routes = [
       import('./features/ingreso/ingreso.component').then(({ Ingreso }) => Ingreso),
   },
   {
+    path: 'juego-recoleccion',
+    loadComponent: () =>
+      import('./features/juegos/juego-recoleccion/juego-recoleccion.component').then(({ JuegoRecoleccionComponent }) => JuegoRecoleccionComponent),
+  },
+  {
     path: 'operacion',
     canActivate: [sesionGuard],
     loadComponent: () =>

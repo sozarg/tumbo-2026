@@ -1,4 +1,21 @@
 <div class="game-wrapper">
-  <!-- Contenedor donde Phaser inyectará el canvas -->
-  <div id="phaser-game-container"></div>
+  <!-- Botón de Salir flotante -->
+  <button class="btn-salir" (click)="pedirSalida()">SALIR</button>
+
+  <!-- Contenedor de Phaser -->
+  <div id="phaser-game"></div>
+
+  <!-- Modal de confirmación (Se muestra cuando showModal es true) -->
+  @if (showModal) {
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <h2>¿Quieres salir?</h2>
+        <p>Se perderá tu progreso actual.</p>
+        <div class="modal-buttons">
+          <button class="btn-cancelar" (click)="continuarJuego()">No, volver</button>
+          <button class="btn-aceptar" (click)="salirAjustes()">Sí, salir</button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

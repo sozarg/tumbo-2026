@@ -1845,15 +1845,19 @@ export class Operacion implements OnInit {
     this.mensaje.set('Consulta enviada a todos los mozos.');
   }
 
-  protected async jugar(idJuego: string, gano: boolean): Promise<void> {
-    const intento = (await this.demo.jugar(idJuego, gano)).intento;
-    this.mensaje.set(
-      gano && intento === 1
-        ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
-        : 'Partida registrada. Solo el primer intento ganador otorga beneficio.',
-    );
-  }
-
+    protected async jugar(idJuego: string, gano: boolean): Promise<void> {
+      const intento = (await this.demo.jugar(idJuego, gano)).intento;
+      this.mensaje.set(
+        gano && intento === 1
+          ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
+          : 'Partida registrada. Solo el primer intento ganador otorga beneficio.',
+      );
+    }
+    protected async ingresoJuego(idJuego: string): Promise<void> {
+      if(idJuego === 'juegoRecoleccion') {
+        this.router.navigate(['/juego-recoleccion']);
+      }
+    }
   protected async registrarEncuesta(): Promise<void> {
     if (!this.validar(this.encuestaForm)) {
       return;
