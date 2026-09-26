@@ -71,7 +71,26 @@ export class CodigoQrService {
    * hace falta cuando el papel queda sobre una mesa y se mancha.
    */
   async comoPng(contenido: string, lado = 512): Promise<string> {
-    const qrcode = await (this.modulo ??= import('qrcode'));
+    const modulo = await (this.modulo ??= import('qrcode'));
+
+    /*
+     * ───────────────────────────────────────────────────────────────
+     * POR QUÉ ESTE `?? default` NO SOBRA
+     *
+     * `qrcode` es CommonJS, y cómo llega desde un `import()` depende de
+     * quién lo empaquete. El servidor de desarrollo lo entrega con las
+     * funciones como exports nombrados; el paquete OPTIMIZADO —el que
+     * va adentro del APK— las deja colgando de `default`.
+     *
+     * Sin esta línea el QR andaba en `ng serve` y fallaba solo en el
+     * APK, con «(intermediate value).toDataURL is not a function». Es
+     * el peor tipo de error: no aparece en la pantalla donde se
+     * desarrolla y sí en la que se entrega.
+     *
+     * Se toma el objeto entero y no la función suelta para no
+     * desprenderla de su módulo.
+     */
+    const qrcode = modulo.default ?? modulo;
 
     return qrcode.toDataURL(contenido, {
       width: lado,

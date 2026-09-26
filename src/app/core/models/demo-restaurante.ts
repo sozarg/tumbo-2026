@@ -21,6 +21,23 @@ export const ETIQUETA_DE_TIPO_MESA: Readonly<Record<TipoMesa, string>> = {
   VIP: 'VIP',
   movilidad_reducida: 'Movilidad reducida',
 };
+
+/**
+ * El tipo de producto en plural, para los filtros del menú.
+ *
+ * En plural porque rotula un GRUPO —«Platos», no «Plato»—, que es lo que
+ * es un filtro. El singular se sigue usando en la ficha de cada producto
+ * y sale del propio `tipo`.
+ *
+ * Está escrito sobre `TipoProducto`, así que el día que se agregue
+ * `postre` —el enum de la base ya lo tiene— TypeScript va a marcar este
+ * objeto hasta que le pongan nombre. Es justamente lo que se busca: que
+ * no se pueda agregar un tipo y olvidarse de cómo se llama en pantalla.
+ */
+export const ETIQUETA_DE_TIPO_PRODUCTO: Readonly<Record<TipoProducto, string>> = {
+  plato: 'Platos',
+  bebida: 'Bebidas',
+};
 export type EstadoPedido =
   | 'pendiente_confirmacion'
   | 'rechazado'

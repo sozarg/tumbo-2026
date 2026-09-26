@@ -510,3 +510,70 @@ ion-modal.mesa-qr {
   --background-hover: var(--tumbo-azul-sombra);
   --color: #f8fbfd;
 }
+
+/**
+ * LOS FILTROS DEL MENÚ DEL CLIENTE (punto 11).
+ *
+ * Viven en esta hoja global por lo mismo que el resto del archivo: los
+ * estilos de la sección del menú compiten con reglas de
+ * `operacion-visual.scss` que ya apuntan a esos nombres con mucha
+ * especificidad, y desde una hoja de componente Angular le agrega el
+ * atributo de encapsulación a cada parte del selector. Nombres propios
+ * que empiezan con `menu-filtro` y hoja global: no hay con qué chocar.
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * POR QUÉ SCROLLEA EN HORIZONTAL
+ *
+ * Hoy son tres o cuatro y entran. Con los postres van a ser cuatro, y
+ * si mañana alguien agrega «Entradas» son cinco. En una pantalla de
+ * 360 px eso ya no entra, y la alternativa a scrollear es que los
+ * botones se apilen en dos renglones y le coman alto al producto, que
+ * es justamente lo que el enunciado quiere ver grande.
+ *
+ * `scrollbar-width: none` porque en el teléfono la barra no se ve y en
+ * el navegador solo ensucia.
+ */
+.menu-filtros {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.menu-filtros::-webkit-scrollbar {
+  display: none;
+}
+
+.menu-filtro {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgb(0 106 231 / 30%);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tumbo-azul-accion);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu-filtro:focus-visible {
+  outline: 3px solid var(--tumbo-azul-accion);
+  outline-offset: 2px;
+}
+
+/**
+ * El filtro puesto se distingue por FONDO, no solo por color de letra.
+ *
+ * Con solo cambiar el color del texto, la diferencia entre puesto y no
+ * puesto queda en un contraste que no todo el mundo ve. El fondo lleno
+ * se nota aunque no se distingan los colores.
+ */
+.menu-filtro--activo {
+  border-color: var(--tumbo-azul-accion);
+  background: var(--tumbo-azul-accion);
+  color: var(--tumbo-azul-brillante);
+}
