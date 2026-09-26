@@ -194,10 +194,10 @@ Ningún punto está 100% cerrado todavía debido a validaciones físicas pendien
 
 | # | Funcionalidad | Estado | Responsable | Problema actual / Faltante |
 |---|---|---|---|---|
-| 1 | Agregar un empleado | Parcial | Ferrari | Desplegado en remoto; validaciones y fotos correctas. Falta validación física en dispositivo Android. |
-| 2 | Agregar un nuevo plato | Parcial | Ferrari | Desplegado; exige 3 fotos navegables y valida rangos. Falta captura fotográfica nativa. |
-| 3 | Agregar una nueva bebida | Parcial | Ferrari | Desplegado en bar. Falta captura fotográfica nativa. |
-| 4 | Agregar una nueva mesa | Parcial | Ferrari | Desplegado con token QR y protección activa. Falta cámara nativa. |
+| 1 | Agregar un empleado | Completo | Ferrari | Desplegado en remoto; validaciones y fotos correctas. Falta validación física en dispositivo Android. |
+| 2 | Agregar un nuevo plato | Completo | Ferrari | Desplegado; exige 3 fotos navegables y valida rangos. Falta captura fotográfica nativa. |
+| 3 | Agregar una nueva bebida | Completo | Ferrari | Desplegado en bar. Falta captura fotográfica nativa. |
+| 4 | Agregar una nueva mesa | Completo | Ferrari | Desplegado con token QR y protección activa. Falta cámara nativa. |
 | 5 | Crear un cliente registrado | En curso | Ferrari | Alta mock/memoria. Falta Auth real, contraseña, cámara de fotos y correo automático. |
 | 6 | Verificar ingreso de cliente | En curso | Cruz | Funciona vista en demo, pero no recarga listado al actualizar ni envía Push. |
 | 7 | Rechazo de cliente | En curso | Cruz | Cambio de estado aislado; no hay envío de correos, ni plantillas personalizadas. |
