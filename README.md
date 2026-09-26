@@ -37,7 +37,7 @@ Capturas tomadas del APK corriendo en un teléfono Android.
 
 ![Animación de ingreso](docs/imagenes/pantallas/1-presentacion-gif.gif)
 
-Desde el ícono en el teléfono: la splash animada con el logo, el nombre del grupo y los apellidos y nombres de los cuatro integrantes, y su transición a la pantalla de presentación. También está en [video](docs/imagenes/pantallas/01-animacion-de-ingreso.mp4), con mejor calidad.
+Desde el ícono en el teléfono: la splash animada con el logo, el nombre del grupo y los apellidos y nombres de los cuatro integrantes, y su transición a la pantalla de presentación.
 
 ### Del 2 al 18 · Recorrido
 
