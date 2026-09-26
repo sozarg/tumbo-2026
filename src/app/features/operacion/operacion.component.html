@@ -332,8 +332,8 @@
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
-              <section class="person-list" aria-label="Lista de personal">
-                @for (empleado of paginar(demo.empleados()); track empleado.id) {
+              <section #listaPaginada class="person-list" aria-label="Lista de personal">
+                @for (empleado of paginar(demo.empleados(), porPagina()); track empleado.id) {
                   <article class="person-card">
                     <div class="person-card__details">
                       <h2>{{ empleado.nombres }} {{ empleado.apellidos }}</h2>
@@ -539,8 +539,12 @@
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
-              <section class="person-list product-list" aria-label="Lista de productos">
-                @for (producto of paginar(productosDelSector()); track producto.id) {
+              <section
+                #listaPaginada
+                class="person-list product-list"
+                aria-label="Lista de productos"
+              >
+                @for (producto of paginar(productosDelSector(), porPagina()); track producto.id) {
                   <article class="catalog-item">
                     @if (producto.fotos[0]; as foto) {
                       <img
@@ -754,8 +758,8 @@
                 <div class="section-heading">
                   <div><h2>Gestión de mesas</h2></div>
                 </div>
-                <div class="table-grid">
-                  @for (mesa of paginar(demo.mesas(), mesasPorPagina); track mesa.id) {
+                <div #listaPaginada class="table-grid">
+                  @for (mesa of paginar(demo.mesas(), porPagina()); track mesa.id) {
                     <!--
                       LA TEJA YA NO ES UN BOTÓN GIGANTE.
 
@@ -1366,8 +1370,48 @@
                 <div><h2>Menú Tumbito</h2></div>
                 <ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 2 }}</ion-chip>
               </div>
+
+              <!--
+                LOS FILTROS DEL MENÚ (punto 11).
+
+                Solo salen si hay más de una categoría en la carta: con
+                una sola, la fila diría «Todos» y «Platos» y las dos
+                mostrarían lo mismo.
+
+                `role="tablist"` y `aria-selected` porque esto se
+                comporta como una fila de solapas: sin eso, un lector de
+                pantalla lee cuatro botones sueltos y no dice cuál está
+                puesto.
+              -->
+              @if (categoriasDelMenu().length > 1) {
+                <div class="menu-filtros" role="tablist" aria-label="Categorías de la carta">
+                  <button
+                    class="menu-filtro"
+                    type="button"
+                    role="tab"
+                    [class.menu-filtro--activo]="categoriaMenu() === 'todos'"
+                    [attr.aria-selected]="categoriaMenu() === 'todos'"
+                    (click)="elegirCategoria('todos')"
+                  >
+                    Todos
+                  </button>
+                  @for (tipo of categoriasDelMenu(); track tipo) {
+                    <button
+                      class="menu-filtro"
+                      type="button"
+                      role="tab"
+                      [class.menu-filtro--activo]="categoriaMenu() === tipo"
+                      [attr.aria-selected]="categoriaMenu() === tipo"
+                      (click)="elegirCategoria(tipo)"
+                    >
+                      {{ etiquetaDeTipoProducto(tipo) }}
+                    </button>
+                  }
+                </div>
+              }
+
               <div class="menu-grid">
-                @for (producto of paginar(demo.productos()); track producto.id) {
+                @for (producto of paginar(productosDelMenu()); track producto.id) {
                   <article class="product-card">
                     <div class="product-card__image">
                       <img [ngSrc]="imagenActual(producto)" width="220" height="150" alt="" />
@@ -1445,7 +1489,10 @@
                     <article class="game-card">
                       <span>01</span>
                       <h2>Recolección tumbito</h2>
-                      <p>Recolecta la mayor cantidad de comida posible, Cuidado! A tumbito no le gusta el brocoli....</p>
+                      <p>
+                        Recolecta la mayor cantidad de comida posible, Cuidado! A tumbito no le
+                        gusta el brocoli....
+                      </p>
                       <div>
                         <ion-button size="small" (click)="jugar('memoria', true)"
                           >Ganar primer intento</ion-button

@@ -30,4 +30,16 @@ declare module 'qrcode' {
 
   /** Dibuja el código y lo devuelve como `data:image/png;base64,...`. */
   export function toDataURL(contenido: string, opciones?: OpcionesDeQr): Promise<string>;
+
+  /**
+   * El mismo módulo, colgado de `default`.
+   *
+   * `qrcode` es CommonJS, y cómo se ve desde un `import()` depende de
+   * quién lo empaquete: el servidor de desarrollo deja las funciones
+   * como exports nombrados, y el paquete optimizado —el que va adentro
+   * del APK— las deja acá abajo. Declarar las dos formas es lo que
+   * permite que `comoPng` se sirva de cualquiera sin castear a `any`.
+   */
+  const qrcode: { readonly toDataURL: typeof toDataURL };
+  export default qrcode;
 }

@@ -79,6 +79,7 @@ import {
   AltaMesaDemo,
   AltaProductoDemo,
   ETIQUETA_DE_TIPO_MESA,
+  ETIQUETA_DE_TIPO_PRODUCTO,
   EstadoPedido,
   MesaDemo,
   ProductoDemo,
@@ -120,25 +121,6 @@ import {
   Seccion,
   puedeAcceder,
 } from '../../core/navegacion/secciones';
-/**
- * Cuántas mesas entran en una pantalla sin cortar ninguna.
- *
- * El enunciado es explícito con los listados: «no deben cortar elementos
- * del listado por la mitad. Procurar que entren de a uno por pantalla
- * visible o n elementos pero sin cortar».
- *
- * Eran 4, y entraban mientras la tarjeta de mesa era chiquita y la
- * grilla tenía dos columnas fijas. Con la fila de acciones la tarjeta
- * pasó a ~166 px y la grilla a una sola columna en teléfono: medido, la
- * grilla pedía 695 px en un contenedor de 563 y las dos últimas
- * quedaban cortadas.
- *
- * El número vive acá y no suelto en dos lugares porque ANTES estaba
- * duplicado —en la plantilla y en `totalPaginas`— y cambiar uno solo
- * hacía que el paginador dijera una cantidad de páginas que no existía.
- */
-const MESAS_POR_PAGINA = 1;
-
 type GraficoDemo = 'torta' | 'barras' | 'linea';
 
 @Component({
@@ -186,6 +168,46 @@ export class Operacion implements OnInit {
   /** Para redibujar en el acto desde los callbacks de la cámara. Ver `aplicarYRedibujar`. */
   private readonly detector = inject(ChangeDetectorRef);
   private readonly encabezado = viewChild<ElementRef<HTMLElement>>('encabezado');
+
+  /**
+   * La lista que se pagina sola, si la sección que se está viendo tiene una.
+   *
+   * Solo se dibuja una por vez —personal o productos, nunca las dos— así
+   * que alcanza con una referencia.
+   */
+  private readonly listaPaginada = viewChild<ElementRef<HTMLElement>>('listaPaginada');
+
+  /**
+   * Cuántas tarjetas entran en la pantalla SIN CORTAR NINGUNA.
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ SE MIDE Y NO ES UN NÚMERO FIJO
+   *
+   * El enunciado pide dos cosas que tiran para lados distintos. Por un
+   * lado, «no deben cortar elementos del listado por la mitad. Procurar
+   * que entren de a uno por pantalla visible o n elementos pero sin
+   * cortar. Esto va a depender de la complejidad de los elementos del
+   * listado». Por el otro, la figura «Distribución de elementos» marca
+   * como MALA la pantalla que deja espacio vacío abajo.
+   *
+   * Con un número fijo no se puede cumplir con los dos a la vez. Medido
+   * con la tarjeta de personal (115 px) y la de producto (122 px):
+   *
+   *     360 × 640  →  428 px útiles  →  entran 3
+   *     390 × 780  →  560 px útiles  →  entran 4
+   *     430 × 932  →  712 px útiles  →  entran 5
+   *
+   * Un 3 fijo corta nada pero deja media pantalla vacía en un teléfono
+   * grande; un 5 fijo llena la pantalla grande y corta la última tarjeta
+   * en la chica. Por eso se mide el alto real y se deriva el número.
+   *
+   * Arranca en 1 para que la primera pasada dibuje al menos una tarjeta:
+   * es la que se mide para saber cuántas entran.
+   */
+  protected readonly porPagina = signal(1);
+
+  /** Guardado en una propiedad para poder sacar el listener al destruir. */
+  private readonly alRedimensionar = () => this.medirCuantasEntran();
   private readonly formularioBuilder = inject(FormBuilder);
   private readonly errores = inject(ErroresService);
   private readonly router = inject(Router);
@@ -224,6 +246,56 @@ export class Operacion implements OnInit {
   protected readonly accesos = computed(() => accesosDelPerfil(this.usuario()?.perfil));
   protected readonly gestiona = computed(() => esGerencia(this.usuario()?.perfil));
   protected readonly tipoDeSector = computed(() => tipoProductoDelPerfil(this.usuario()?.perfil));
+  /**
+   * La categoría elegida en el menú del cliente (punto 11).
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ ARRANCA EN «TODOS» Y NO EN UNA PANTALLA DE CATEGORÍAS
+   *
+   * El punto 11 dice que al cargar el código QR de la mesa «se permite
+   * ver el listado de los productos». Si lo primero que aparece fuera
+   * una pantalla para elegir categoría, lo que se evalúa quedaría un
+   * toque más adentro. Arrancando en «Todos», el cliente escanea y ve el
+   * listado completo —el requisito se cumple tal cual está escrito— y
+   * el que busca algo puntual filtra.
+   *
+   * El problema que esto resuelve es real igual: con 40 productos de a
+   * uno por pantalla, llegar a las bebidas eran casi 40 toques.
+   */
+  protected readonly categoriaMenu = signal<TipoProducto | 'todos'>('todos');
+
+  /**
+   * Las categorías que se ofrecen, SACADAS DE LOS PRODUCTOS QUE HAY.
+   *
+   * No es una lista escrita a mano. Si la carta no tiene bebidas, no
+   * aparece el filtro «Bebidas», porque un filtro que lleva a una
+   * pantalla vacía es peor que no tenerlo.
+   *
+   * Y al revés: el enunciado nombra «comidas, bebidas, postres», y hoy
+   * la aplicación no maneja postres —el enum de la base sí los tiene,
+   * `TipoProducto` no—. El día que se agreguen, la categoría aparece
+   * sola acá, sin volver a tocar esta pantalla.
+   *
+   * El orden sale de `ETIQUETA_DE_TIPO_PRODUCTO` y no del azar de los
+   * datos: si saliera de los datos, la fila de filtros cambiaría de
+   * orden al dar de alta un producto.
+   */
+  protected readonly categoriasDelMenu = computed(() => {
+    const presentes = new Set(this.demo.productos().map((producto) => producto.tipo));
+    return (Object.keys(ETIQUETA_DE_TIPO_PRODUCTO) as TipoProducto[]).filter((tipo) =>
+      presentes.has(tipo),
+    );
+  });
+
+  /** Los productos que ve el cliente, según la categoría elegida. */
+  protected readonly productosDelMenu = computed(() => {
+    const categoria = this.categoriaMenu();
+    const productos = this.demo.productos();
+    return categoria === 'todos'
+      ? productos
+      : productos.filter((producto) => producto.tipo === categoria);
+  });
+
   protected readonly productosDelSector = computed(() =>
     this.demo
       .productos()
@@ -315,6 +387,23 @@ export class Operacion implements OnInit {
 
   /** El tipo de mesa como se lee, no como viaja. Ver `ETIQUETA_DE_TIPO_MESA`. */
   protected readonly etiquetaDeTipoMesa = (tipo: TipoMesa): string => ETIQUETA_DE_TIPO_MESA[tipo];
+
+  /** El tipo de producto en plural, para los filtros del menú. */
+  protected readonly etiquetaDeTipoProducto = (tipo: TipoProducto): string =>
+    ETIQUETA_DE_TIPO_PRODUCTO[tipo];
+
+  /**
+   * Cambia la categoría del menú y vuelve a la primera página.
+   *
+   * Sin el `pagina.set(0)` pasaba esto: estás en el producto 9 de
+   * «Todos», tocás «Bebidas» —que tiene 3— y te quedás mirando una
+   * pantalla vacía o la última bebida, sin entender por qué. El filtro
+   * tiene que empezar por el principio.
+   */
+  protected elegirCategoria(categoria: TipoProducto | 'todos'): void {
+    this.categoriaMenu.set(categoria);
+    this.pagina.set(0);
+  }
   protected readonly imagenes = signal<Record<string, number>>({});
   protected readonly nombreAnonimo = signal('');
   protected readonly qrSeleccionado = signal<number | null>(null);
@@ -546,7 +635,28 @@ export class Operacion implements OnInit {
         this.mesaEditada.set(null);
       });
     });
+    /*
+     * Volver a medir cuando aparece una lista paginada.
+     *
+     * Se dispara al entrar a personal o productos y al volver del
+     * formulario al listado. `afterNextRender` es necesario: cuando el
+     * efecto corre, la tarjeta todavía no está en el DOM y no se puede
+     * medir nada.
+     */
+    effect(() => {
+      if (!this.listaPaginada()) return;
+      afterNextRender(() => this.medirCuantasEntran(), { injector: this.injector });
+    });
+
+    /*
+     * Y al girar el teléfono, que cambia el alto disponible de golpe.
+     * `takeUntilDestroyed` no aplica acá porque no es un observable; se
+     * saca a mano en el onDestroy de abajo.
+     */
+    window.addEventListener('resize', this.alRedimensionar);
+
     inject(DestroyRef).onDestroy(() => {
+      window.removeEventListener('resize', this.alRedimensionar);
       this.limpiarFotosDeProducto();
       this.olvidarFotoEmpleado();
       const foto = this.fotoDeLaMesa();
@@ -658,6 +768,72 @@ export class Operacion implements OnInit {
     });
   }
 
+  /**
+   * Calcula cuántas tarjetas entran enteras y lo guarda en `porPagina`.
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * DE DÓNDE SALE CADA NÚMERO
+   *
+   * El alto disponible NO es el de la ventana: es lo que va desde donde
+   * arranca la lista hasta el borde de abajo de `.view-content`, que es
+   * el marco que la contiene. Así el cálculo no depende de cuánto midan
+   * el encabezado, el título ni el paginador, que cambian de alto entre
+   * secciones y entre teléfonos.
+   *
+   * El alto de la tarjeta se mide de la PRIMERA que ya está dibujada, en
+   * vez de anotarlo como constante. Si mañana alguien le agrega una
+   * línea a la tarjeta de producto, esto se entera solo; una constante
+   * habría que acordarse de cambiarla, y nadie se acuerda.
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ NO SE CICLA
+   *
+   * Escribir `porPagina` redibuja la lista, y redibujarla podría volver
+   * a disparar la medición. No se cicla por dos motivos: el alto
+   * disponible se mide desde el TOPE de la lista, que no se mueve cuando
+   * la lista crece hacia abajo, y además solo se escribe la señal si el
+   * número cambió.
+   *
+   * El `detectChanges` es por lo de siempre: la aplicación es zoneless y
+   * esto puede venir de un `resize`, que es un evento del navegador
+   * fuera de cualquier ciclo de Angular. Ver `aplicarYRedibujar`.
+   */
+  private medirCuantasEntran(): void {
+    const lista = this.listaPaginada()?.nativeElement;
+    const tarjeta = lista?.firstElementChild as HTMLElement | null;
+    const marco = lista?.closest('.view-content');
+    if (!lista || !tarjeta || !marco) return;
+
+    const alto = tarjeta.getBoundingClientRect().height;
+    if (!alto) return;
+
+    const estilo = getComputedStyle(lista);
+    const hueco = parseFloat(estilo.rowGap) || 0;
+
+    /*
+     * CUÁNTAS COLUMNAS TIENE LA LISTA.
+     *
+     * Personal y Productos apilan de a uno, pero la grilla de mesas es
+     * `repeat(auto-fit, minmax(240px, 1fr))`: en una pantalla ancha
+     * entran dos mesas por fila. Sin contar las columnas, el cálculo
+     * mostraría la mitad de las que entran y volvería a sobrar lugar.
+     *
+     * En un elemento que no es grilla, `grid-template-columns` computa
+     * a `none`, que partido da un solo pedazo. Así el mismo cálculo
+     * sirve para los tres listados sin preguntar cuál es cuál.
+     */
+    const columnas = estilo.gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+
+    const disponible = marco.getBoundingClientRect().bottom - lista.getBoundingClientRect().top;
+    const filas = Math.max(1, Math.floor((disponible + hueco) / (alto + hueco)));
+    const entran = filas * columnas;
+
+    if (entran !== this.porPagina()) {
+      this.porPagina.set(entran);
+      this.detector.detectChanges();
+    }
+  }
+
   ionViewWillEnter(): void {
     // NO `volver()`: esa ahora deshace un paso, y entrar a la pantalla
     // tiene que dejarla en el principio, venga de donde venga.
@@ -681,13 +857,13 @@ export class Operacion implements OnInit {
   protected readonly totalPaginas = computed(() => {
     switch (this.seccion()) {
       case 'personal':
-        return this.demo.empleados().length;
+        return Math.ceil(this.demo.empleados().length / this.porPagina());
       case 'productos':
-        return this.productosDelSector().length;
+        return Math.ceil(this.productosDelSector().length / this.porPagina());
       case 'menu':
-        return this.demo.productos().length;
+        return this.productosDelMenu().length;
       case 'mesas':
-        return Math.ceil(this.demo.mesas().length / MESAS_POR_PAGINA);
+        return Math.ceil(this.demo.mesas().length / this.porPagina());
       case 'clientes':
         return 1;
       case 'espera':
@@ -1228,7 +1404,18 @@ export class Operacion implements OnInit {
       const png = await this.qr.comoPng(this.qr.contenidoDeMesa(mesa.qrToken));
       if (this.mesaDelQr()?.id !== mesa.id) return;
       this.aplicarYRedibujar(() => this.qrDeLaMesa.set(png));
-    } catch {
+    } catch (falla) {
+      /*
+       * El `catch` mudo escondió un error de verdad.
+       *
+       * El QR fallaba SOLO en el APK y la pantalla decía «no se pudo
+       * dibujar» sin más. Para encontrar la causa hubo que agregar este
+       * log a mano, compilar de nuevo y volver a probar. Queda puesto
+       * para que la próxima vez el motivo esté a la vista en la
+       * consola, que es el mismo criterio que usa `registrarError` en
+       * `OperacionService`.
+       */
+      console.error('[TUMBO] Error al dibujar el QR de la mesa', falla);
       if (this.mesaDelQr()?.id !== mesa.id) return;
       this.aplicarYRedibujar(() => this.qrFallado.set(true));
     }
@@ -1343,8 +1530,6 @@ export class Operacion implements OnInit {
    * choque contra el número que se acaba de usar. Proponer el siguiente
    * libre es un empujón, no una imposición: el campo queda editable.
    */
-  /** Para la plantilla: ver `MESAS_POR_PAGINA`. */
-  protected readonly mesasPorPagina = MESAS_POR_PAGINA;
 
   private proximoNumeroDeMesa(): number {
     const usados = this.demo.mesas().map((mesa) => mesa.numero);
