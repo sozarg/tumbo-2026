@@ -12,12 +12,15 @@ import { SesionService } from '../services/sesion.service';
  * usuario nulo y mandaría al ingreso a alguien que en realidad tenía la
  * sesión abierta.
  */
-export const sesionGuard: CanActivateFn = async () => {
+export const sesionGuard: CanActivateFn = async (route) => {
   const autenticacion = inject(AUTENTICACION);
   const sesion = inject(SesionService);
   const router = inject(Router);
 
   await autenticacion.listo;
+
+  // La entrada anónima crea la sesión después de completar el formulario.
+  if (route.queryParamMap.get('entrada') === '1') return true;
 
   if (sesion.estaAutenticado()) {
     return true;

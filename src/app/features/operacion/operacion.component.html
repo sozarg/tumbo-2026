@@ -1343,9 +1343,16 @@
                   <p>
                     Registrate con tu nombre, accedé a la espera y consultá las encuestas previas.
                   </p>
+                  <ion-button fill="outline" (click)="escanearIngreso()">
+                    <ion-icon name="qr-code-outline" slot="start" />
+                    Escanear QR de ingreso
+                  </ion-button>
                 </div>
               </div>
               <div class="anonymous-form">
+                @if (ingresoEscaneado()) {
+                  <p class="form-hint">QR validado. Completá tus datos para anotarte.</p>
+                }
                 <ion-input
                   label="Nombre para la lista de espera"
                   label-placement="stacked"
@@ -1353,13 +1360,28 @@
                   [value]="nombreAnonimo()"
                   (ionInput)="actualizarNombreAnonimo($event)"
                 />
+                <div class="photo-control">
+                  @if (fotoAnonima(); as foto) {
+                    <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
+                    <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
+                  } @else {
+                    <ion-button fill="outline" (click)="elegirFotoAnonima()">
+                      <ion-icon name="camera-outline" slot="start" />
+                      Agregar foto
+                    </ion-button>
+                  }
+                </div>
                 <tumbo-boton-confirmacion
                   buttonClass="primary-action"
                   title="Confirmar ingreso a la lista"
                   message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
+                  [disabled]="!ingresoEscaneado()"
                   (confirmado)="anotarCliente()"
                   >Anotarme</tumbo-boton-confirmacion
                 >
+                <ion-button fill="clear" (click)="verResultadosEncuestas()">
+                  Ver resultados de encuestas previas
+                </ion-button>
               </div>
             </section>
           }
@@ -1826,6 +1848,62 @@
           </nav>
         }
       }
+    </div>
+  } @else if (seccion() === 'entrada') {
+    <div class="operation-layout operation-layout--detail">
+      <div class="view-heading"><h1 id="operation-title">Entrada al restaurante</h1></div>
+      <div class="view-content" role="region" aria-labelledby="operation-title">
+        <section class="section-block">
+          <div class="anonymous-entry">
+            <div class="qr-preview">
+              @if (qrImagen('entrada'); as qr) {
+                <img [src]="qr" alt="QR de ingreso al restaurante" />
+              } @else {
+                <span>QR</span>
+              }
+              <small>tumbo://ingreso</small>
+            </div>
+            <div>
+              <h2>Escaneá el QR de ingreso</h2>
+              <p>Escaneá el código y completá tus datos para entrar a la lista de espera.</p>
+              <ion-button fill="outline" (click)="escanearIngreso()">
+                <ion-icon name="qr-code-outline" slot="start" />
+                Escanear QR de ingreso
+              </ion-button>
+            </div>
+          </div>
+          <div class="anonymous-form">
+            @if (ingresoEscaneado()) {
+              <p class="form-hint">QR validado. Completá tus datos para anotarte.</p>
+            }
+            <ion-input
+              label="Nombre para la lista de espera"
+              label-placement="stacked"
+              fill="outline"
+              [value]="nombreAnonimo()"
+              (ionInput)="actualizarNombreAnonimo($event)"
+            />
+            <div class="photo-control">
+              @if (fotoAnonima(); as foto) {
+                <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
+                <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
+              } @else {
+                <ion-button fill="outline" (click)="elegirFotoAnonima()">
+                  <ion-icon name="camera-outline" slot="start" />Agregar foto
+                </ion-button>
+              }
+            </div>
+            <tumbo-boton-confirmacion
+              buttonClass="primary-action"
+              title="Confirmar ingreso a la lista"
+              message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
+              [disabled]="!ingresoEscaneado()"
+              (confirmado)="anotarCliente()"
+              >Anotarme</tumbo-boton-confirmacion
+            >
+          </div>
+        </section>
+      </div>
     </div>
   }
 </ion-content>
