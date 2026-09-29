@@ -1011,20 +1011,89 @@
                     ><ion-icon slot="icon-only" name="qr-code-outline" aria-hidden="true"
                   /></ion-button>
                 </div>
+                <!--
+                  La foto del cliente (punto 5). Arriba de todo por lo
+                  mismo que la del empleado: en el teléfono es lo primero
+                  que se hace, con la persona delante.
+                -->
+                <div class="employee-photo">
+                  @if (fotoDelCliente(); as foto) {
+                    <img
+                      class="employee-photo__preview"
+                      [src]="foto.previewUrl"
+                      alt="Foto del cliente"
+                    />
+                    <div class="employee-photo__actions">
+                      <ion-button
+                        fill="outline"
+                        size="small"
+                        type="button"
+                        (click)="sacarFotoCliente()"
+                      >
+                        <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                        Repetir
+                      </ion-button>
+                      <ion-button
+                        fill="clear"
+                        size="small"
+                        type="button"
+                        (click)="quitarFotoCliente()"
+                      >
+                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                        Quitar
+                      </ion-button>
+                    </div>
+                    @if (foto.simulada) {
+                      <p class="employee-photo__note">
+                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                      </p>
+                    }
+                  } @else {
+                    <ion-button
+                      class="employee-photo__take"
+                      fill="outline"
+                      type="button"
+                      (click)="sacarFotoCliente()"
+                    >
+                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                      {{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}
+                    </ion-button>
+                    @if (campoInvalido(clienteForm.controls.foto)) {
+                      <p class="employee-photo__error" role="alert">
+                        {{ mensajeCampo(clienteForm.controls.foto, 'foto personal') }}
+                      </p>
+                    } @else {
+                      <p class="employee-photo__note">La foto personal es obligatoria.</p>
+                    }
+                  }
+                </div>
+
                 <div class="employee-form__row">
                   <ion-input
                     label="Nombres"
                     label-placement="stacked"
                     formControlName="nombres"
                     fill="outline"
+                    [maxlength]="limites.nombres.max"
                   />
                   <ion-input
                     label="Apellidos"
                     label-placement="stacked"
                     formControlName="apellidos"
                     fill="outline"
+                    [maxlength]="limites.apellidos.max"
                   />
                 </div>
+                @if (campoInvalido(clienteForm.controls.nombres)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(clienteForm.controls.nombres, 'nombre') }}
+                  </p>
+                }
+                @if (campoInvalido(clienteForm.controls.apellidos)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(clienteForm.controls.apellidos, 'apellido') }}
+                  </p>
+                }
                 <ion-input
                   label="DNI"
                   label-placement="stacked"
@@ -1032,16 +1101,59 @@
                   fill="outline"
                   inputmode="numeric"
                 />
+                @if (campoInvalido(clienteForm.controls.dni)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(clienteForm.controls.dni, 'DNI') }}
+                  </p>
+                }
                 <ion-input
                   label="Correo"
                   label-placement="stacked"
                   formControlName="correo"
                   fill="outline"
                   type="email"
+                  [maxlength]="limites.correo.max"
                 />
+                @if (campoInvalido(clienteForm.controls.correo)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(clienteForm.controls.correo, 'correo') }}
+                  </p>
+                }
+                <div class="employee-form__row">
+                  <ion-input
+                    label="Contraseña"
+                    label-placement="stacked"
+                    formControlName="clave"
+                    fill="outline"
+                    type="password"
+                    [maxlength]="limites.clave.max"
+                  />
+                  <ion-input
+                    label="Repetir contraseña"
+                    label-placement="stacked"
+                    formControlName="repetirClave"
+                    fill="outline"
+                    type="password"
+                    [maxlength]="limites.clave.max"
+                  />
+                </div>
+                @if (campoInvalido(clienteForm.controls.clave)) {
+                  <p class="field-error" role="alert">
+                    {{ mensajeCampo(clienteForm.controls.clave, 'contraseña') }}
+                  </p>
+                }
+                @if (
+                  clienteForm.hasError('clavesDistintas') &&
+                  clienteForm.controls.repetirClave.touched
+                ) {
+                  <p class="field-error" role="alert">
+                    Las dos contraseñas tienen que ser iguales.
+                  </p>
+                }
                 <tumbo-boton-confirmacion
                   buttonClass="primary-action"
                   expand="block"
+                  [puedeConfirmar]="clienteEsValido"
                   title="Confirmar alta de cliente"
                   message="Vas a registrar este cliente para que quede pendiente de aprobación. ¿Querés continuar?"
                   (confirmado)="registrarCliente()"
@@ -1058,32 +1170,93 @@
                 <section class="person-list client-slots" aria-label="Clientes pendientes">
                   @for (cliente of demo.clientesPendientes(); track cliente.id) {
                     <article class="person-card client-entry">
-                      <div>
-                        <h2>{{ cliente.nombres }} {{ cliente.apellidos }}</h2>
-                        <p>{{ cliente.correo }}</p>
-                        <p>DNI {{ cliente.dni }}</p>
-                        <p class="client-entry__status">Pendiente de aprobación</p>
+                      <!--
+                        La foto la pide el punto 6 con todas las letras:
+                        «El listado debe contener como mínimo, apellidos,
+                        nombres y la foto del cliente. Cada foto se debe
+                        ver con buen tamaño y relacionada con los nombres
+                        y apellidos de cada cliente». Por eso va al lado
+                        del nombre y no en una fila aparte.
+                      -->
+                      <div class="client-entry__cuerpo">
+                        <img
+                          class="client-entry__foto"
+                          [src]="cliente.foto"
+                          [alt]="'Foto de ' + cliente.nombres + ' ' + cliente.apellidos"
+                          width="96"
+                          height="96"
+                        />
+                        <div>
+                          <h2>{{ cliente.nombres }} {{ cliente.apellidos }}</h2>
+                          <p>{{ cliente.correo }}</p>
+                          <p>DNI {{ cliente.dni }}</p>
+                          <p class="client-entry__status">Pendiente de aprobación</p>
+                        </div>
                       </div>
                       @if (gestiona()) {
-                        <div class="row-actions">
-                          <tumbo-boton-confirmacion
-                            buttonClass="approve-button"
-                            size="small"
-                            title="Confirmar aprobación"
-                            message="Vas a aprobar el acceso de este cliente. ¿Querés continuar?"
-                            (confirmado)="resolverCliente(cliente.id, 'aprobado')"
-                            >Aprobar</tumbo-boton-confirmacion
-                          >
-                          <tumbo-boton-confirmacion
-                            buttonClass="reject-button"
-                            fill="outline"
-                            size="small"
-                            title="Confirmar rechazo"
-                            message="Vas a rechazar la solicitud de este cliente. ¿Querés continuar?"
-                            (confirmado)="resolverCliente(cliente.id, 'rechazado')"
-                            >Rechazar</tumbo-boton-confirmacion
-                          >
-                        </div>
+                        @if (resolviendoCliente() === cliente.id) {
+                          <tumbo-espera
+                            [etiqueta]="'Resolviendo el registro de ' + cliente.nombres"
+                          />
+                        } @else if (clienteARechazar() === cliente.id) {
+                          <div class="client-entry__rechazo">
+                            <label [for]="'motivo-' + cliente.id">Motivo del rechazo</label>
+                            <ion-textarea
+                              [id]="'motivo-' + cliente.id"
+                              fill="outline"
+                              autoGrow="true"
+                              [maxlength]="300"
+                              [value]="motivoDeRechazo()"
+                              (ionInput)="escribirMotivoDeRechazo($any($event.target).value)"
+                              placeholder="Contale por qué no se aprueba su registro."
+                            />
+                            @if (!motivoValido) {
+                              <p class="field-error" role="alert">
+                                El motivo tiene que tener entre 5 y 300 caracteres.
+                              </p>
+                            }
+                            <div class="row-actions">
+                              <tumbo-boton-confirmacion
+                                buttonClass="reject-button"
+                                fill="outline"
+                                size="small"
+                                [disabled]="!motivoValido"
+                                title="Confirmar rechazo"
+                                message="Vas a rechazar la solicitud de este cliente y se le va a informar el motivo. ¿Querés continuar?"
+                                (confirmado)="
+                                  resolverCliente(cliente.id, 'rechazado', motivoDeRechazo())
+                                "
+                                >Confirmar rechazo</tumbo-boton-confirmacion
+                              >
+                              <ion-button
+                                fill="clear"
+                                size="small"
+                                (click)="cerrarRechazoDeCliente()"
+                                >Cancelar</ion-button
+                              >
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="row-actions">
+                            <tumbo-boton-confirmacion
+                              buttonClass="approve-button"
+                              size="small"
+                              [disabled]="resolviendoCliente() !== null"
+                              title="Confirmar aprobación"
+                              message="Vas a aprobar el acceso de este cliente. ¿Querés continuar?"
+                              (confirmado)="resolverCliente(cliente.id, 'aprobado')"
+                              >Aprobar</tumbo-boton-confirmacion
+                            >
+                            <ion-button
+                              class="reject-button"
+                              fill="outline"
+                              size="small"
+                              [disabled]="resolviendoCliente() !== null"
+                              (click)="abrirRechazoDeCliente(cliente.id)"
+                              >Rechazar</ion-button
+                            >
+                          </div>
+                        }
                       }
                     </article>
                   }

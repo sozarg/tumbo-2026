@@ -1404,53 +1404,6 @@ strong {
   gap: 8px;
 }
 
-.clients-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.person-card.client-entry {
-  flex-direction: column;
-  align-items: stretch;
-}
-.clients-panel .section-heading h2 {
-  font-size: 14px;
-  font-weight: 600;
-}
-.client-entry__status {
-  color: #526582;
-  margin-top: 8px !important;
-}
-.client-entry .row-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 14px;
-}
-.client-entry ion-button {
-  flex: 1;
-  min-height: 44px;
-  --border-radius: 10px;
-  --box-shadow: none;
-  font-weight: 600;
-}
-.client-slot {
-  min-height: 120px;
-  display: grid;
-  place-items: center;
-  color: #526582;
-  font-size: 12px;
-  border-style: dashed;
-  background: transparent;
-}
-.client-slots {
-  display: grid;
-  gap: 10px;
-}
-.client-slots .person-card {
-  margin: 0;
-  min-height: 0;
-  padding: 14px 18px;
-}
 
 .status-pill {
   max-width: 100%;

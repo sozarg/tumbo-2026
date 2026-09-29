@@ -1,0 +1,110 @@
+/**
+ * La sección Clientes de operación (puntos 5 al 8).
+ *
+ * ───────────────────────────────────────────────────────────────────
+ * POR QUÉ ES UNA HOJA APARTE
+ *
+ * Estaba adentro de `operacion.component.scss`, que llegó al límite de
+ * 20 kB que fija el presupuesto de `angular.json`. Agregarle la foto que
+ * pide el punto 6 lo pasaba, y bajar el presupuesto para tapar el aviso
+ * sería mentirle a la herramienta que lo detecta.
+ *
+ * Separarlo, además, deja junto todo lo de una misma sección, que es lo
+ * que ya hacen `operacion-layout` y `operacion-fotos`.
+ */
+
+.clients-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.person-card.client-entry {
+  flex-direction: column;
+  align-items: stretch;
+}
+.clients-panel .section-heading h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+// La foto al lado de los datos, no arriba.
+//
+// El punto 6 pide que cada foto se vea «con buen tamaño y relacionada
+// con los nombres y apellidos». En fila las dos cosas se leen juntas de
+// un vistazo, y la tarjeta no crece tanto como para que entre una sola
+// por pantalla, que es el problema que ya tuvimos en los otros listados.
+//
+// Comentarios con `//` y no con `/* */` a propósito: estos se van en la
+// compilación, y la hoja ya está al límite del presupuesto de 20 kB.
+.client-entry__cuerpo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.client-entry__foto {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+  border: 2px solid var(--tumbo-crema-brillante);
+  // Recorta desde el centro: la cámara saca vertical y sin esto la cara
+  // queda estirada.
+  object-fit: cover;
+  object-position: center;
+  background: var(--tumbo-azul-brillante);
+}
+.client-entry__status {
+  color: #526582;
+  margin-top: 8px !important;
+}
+// El recuadro del motivo, que reemplaza a los botones al rechazar.
+.client-entry__rechazo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+.client-entry__rechazo label {
+  color: var(--tumbo-azul-sombra);
+  font-size: 13px;
+  font-weight: 700;
+}
+.client-entry__rechazo ion-textarea {
+  --background: var(--tumbo-azul-brillante);
+  --border-radius: 10px;
+  --color: var(--tumbo-azul-sombra);
+  --padding-start: 12px;
+  --padding-end: 12px;
+}
+.client-entry__rechazo .row-actions {
+  margin-top: 4px;
+}
+.client-entry .row-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.client-entry ion-button {
+  flex: 1;
+  min-height: 44px;
+  --border-radius: 10px;
+  --box-shadow: none;
+  font-weight: 600;
+}
+.client-slot {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: #526582;
+  font-size: 12px;
+  border-style: dashed;
+  background: transparent;
+}
+.client-slots {
+  display: grid;
+  gap: 10px;
+}
+.client-slots .person-card {
+  margin: 0;
+  min-height: 0;
+  padding: 14px 18px;
+}

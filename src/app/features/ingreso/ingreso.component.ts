@@ -140,6 +140,11 @@ export class Ingreso {
     }
   }
 
+  /** Lleva al alta de cliente registrado (punto 5). */
+  protected irAlRegistro(): void {
+    void this.router.navigate(['/registro']);
+  }
+
   protected ingresarRapido(acceso: AccesoRapido): void {
     this.enviado.set(false);
     this.errorMensaje.set('');

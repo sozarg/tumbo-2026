@@ -1,0 +1,103 @@
+/**
+ * Lo propio de la pantalla de registro (punto 5).
+ *
+ * El resto —fondo, panel, tarjeta, campos, errores— sale de
+ * `ingreso.component.scss`, que esta pantalla importa junto con esta
+ * hoja. Acá va solo lo que el ingreso no tiene: la caja de la foto y el
+ * cartel del final.
+ */
+
+.registro-dni {
+  margin-bottom: 14px;
+  --border-radius: 0.7rem;
+  --color: var(--tumbo-azul-accion);
+  --border-color: rgb(0 106 231 / 35%);
+  text-transform: none;
+}
+
+/**
+ * La caja de la foto.
+ *
+ * «La foto se debe ver en un contenedor individual, con buen tamaño y
+ * centrada», dice el punto 5 con las mismas palabras que el punto 1.
+ * `aspect-ratio` reserva el lugar desde el principio: sin eso, al
+ * aparecer la foto el formulario entero salta hacia abajo.
+ */
+.registro-foto {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 2px dashed #bac5d3;
+  border-radius: 14px;
+  background: var(--tumbo-azul-brillante);
+  text-align: center;
+}
+
+.registro-foto__vista {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  /* Recorta desde el centro en vez de deformar: la cámara saca vertical. */
+  object-fit: cover;
+  object-position: center;
+}
+
+.registro-foto__acciones {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.registro-foto__acciones ion-button {
+  margin: 0;
+  text-transform: none;
+}
+
+.registro-foto__tomar {
+  --border-radius: 0.7rem;
+  --color: var(--tumbo-azul-accion);
+  --border-color: rgb(0 106 231 / 35%);
+  text-transform: none;
+}
+
+.registro-foto__nota {
+  margin: 0;
+  color: #526582;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/** El cartel que reemplaza al formulario cuando el registro salió bien. */
+.registro-final {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.registro-final p {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.registro-final__titulo {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.registro-final__aviso {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgb(220 91 2 / 10%);
+  color: var(--tumbo-naranja-profundo) !important;
+  font-weight: 600;
+}

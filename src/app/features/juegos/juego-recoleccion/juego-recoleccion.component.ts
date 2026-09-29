@@ -30,7 +30,7 @@ export class JuegoRecoleccionComponent implements OnInit, OnDestroy {
         }
       },
       scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.ENVELOP,
         autoCenter: Phaser.Scale.CENTER_BOTH
       },
       scene: [FrutiCatScene]
@@ -132,7 +132,7 @@ class FrutiCatScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.fruitsGroup, (player, object) => {
       const fruit = object as Phaser.Physics.Arcade.Sprite;
       
-      if (fruit.texture.key === 'tortita') {
+      if (fruit.texture.key === 'tortita' || fruit.texture.key === 'pollo' || fruit.texture.key === 'sopa' || fruit.texture.key === 'pizza') {
         this.score += 10; // Suma puntos
       } else if (fruit.texture.key === 'brocoli') {
         // Resta 10, pero nos aseguramos de que nunca baje de 0
@@ -160,17 +160,22 @@ class FrutiCatScene extends Phaser.Scene {
     });
     
     // Texto de Puntuación
-    this.scoreText = this.add.text(20, 20, 'Puntuación: 0', {
-      fontSize: '24px',
-      color: 'black',
-      fontStyle: 'bold'
+    // --- Texto de Puntuación con margen seguro ---
+    this.scoreText = this.add.text(60, 40, 'Puntuación: 0', {
+      fontSize: '26px',
+      color: '#black',
+      fontStyle: 'bold',
+      stroke: '#000000', // Borde negro alrededor de las letras para que se lea perfecto
+      strokeThickness: 2
     });
 
-    // Texto del Timer en pantalla
-    this.timerText = this.add.text(20, 55, 'Tiempo: 30s', {
-      fontSize: '24px',
-      color: '#d9534f',
-      fontStyle: 'bold'
+    // --- Texto del Timer con espacio debajo del puntaje ---
+    this.timerText = this.add.text(60, 80, 'Tiempo: 30s', {
+      fontSize: '26px',
+      color: '#380000', // Color rojizo destacado
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2
     });
 
     // Temporizador de cuenta regresiva
@@ -199,7 +204,12 @@ class FrutiCatScene extends Phaser.Scene {
     const texturaAleatoria = Phaser.Math.RND.pick(items);
 
     const fruit = this.physics.add.sprite(randomX, -50, texturaAleatoria);
-    fruit.setScale(0.2);
+    if (texturaAleatoria === 'sopa' || texturaAleatoria === 'pizza') {
+      fruit.setScale(0.1);
+    }
+    else{
+      fruit.setScale(0.2);
+    }
     this.fruitsGroup.add(fruit);
     
   }

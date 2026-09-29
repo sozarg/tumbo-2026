@@ -179,22 +179,30 @@ export class DemoRestauranteService {
       apellidos: datos.apellidos,
       dni: datos.dni,
       correo: datos.correo,
-      foto: 'imagenes/logo.png',
+      // La que sacó la cámara si la hay; el logo solo como respaldo,
+      // para que el listado de pendientes no quede con un hueco.
+      foto: datos.foto?.previewUrl ?? 'imagenes/logo.png',
       estado: 'pendiente',
     };
     this.clientes.update((clientes) => [...clientes, cliente]);
     this.notificar('Nuevo cliente pendiente de aprobación.', ['dueno', 'supervisor']);
   }
 
-  resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): void {
+  resolverCliente(id: string, estado: 'aprobado' | 'rechazado', motivo?: string | null): void {
     this.clientes.update((clientes) =>
-      clientes.map((cliente) => (cliente.id === id ? { ...cliente, estado } : cliente)),
+      clientes.map((cliente) =>
+        cliente.id === id
+          ? { ...cliente, estado, motivoRechazo: estado === 'rechazado' ? (motivo ?? '') : '' }
+          : cliente,
+      ),
     );
     const cliente = this.clientes().find((item) => item.id === id);
     if (cliente) {
-      this.notificar(`${cliente.nombres} ${cliente.apellidos}: registro ${estado}.`, [
-        'cliente_registrado',
-      ]);
+      this.notificar(
+        `${cliente.nombres} ${cliente.apellidos}: registro ${estado}.` +
+          (estado === 'rechazado' && motivo ? ` Motivo: ${motivo}` : ''),
+        ['cliente_registrado'],
+      );
     }
   }
 
