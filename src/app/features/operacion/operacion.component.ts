@@ -160,6 +160,7 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     './operacion.component.scss',
     './operacion-layout.component.scss',
     './operacion-fotos.component.scss',
+    './operacion-clientes.component.scss',
   ],
   templateUrl: './operacion.component.html',
 })
@@ -352,6 +353,21 @@ export class Operacion implements OnInit {
   /** El id de la mesa que se está sacando del salón, o `null`. */
   protected readonly sacandoMesa = signal<string | null>(null);
 
+  /** El id del cliente que se está aprobando o rechazando, o `null`. */
+  protected readonly resolviendoCliente = signal<string | null>(null);
+
+  /**
+   * El cliente para el que está abierto el recuadro del motivo, o `null`.
+   *
+   * El punto 7 pide que el rechazo llegue explicado, así que rechazar no
+   * es un botón solo: abre el recuadro en ESA tarjeta. Guardar el id y
+   * no un booleano es lo que permite que se abra uno por vez.
+   */
+  protected readonly clienteARechazar = signal<string | null>(null);
+
+  /** Lo que se escribió como motivo del rechazo. */
+  protected readonly motivoDeRechazo = signal('');
+
   /**
    * La foto de la mesa que se está cargando (punto 4).
    *
@@ -515,6 +531,9 @@ export class Operacion implements OnInit {
   /** Ídem, para la única foto del empleado (punto 1). */
   protected readonly fotoDelEmpleado = signal<FotoTomada | null>(null);
 
+  /** Ídem, para la foto del cliente registrado (punto 5). */
+  protected readonly fotoDelCliente = signal<FotoTomada | null>(null);
+
   /** Lo consulta el botón de confirmar antes de abrir el cartel. */
   protected readonly productoEsValido = (): boolean => this.validar(this.productoForm);
   /**
@@ -599,12 +618,41 @@ export class Operacion implements OnInit {
     this.mesaForm.controls.foto.setValue(foto);
     this.mesaForm.controls.foto.markAsTouched();
   }
-  protected readonly clienteForm = this.formularioBuilder.nonNullable.group({
-    nombres: ['', Validators.required],
-    apellidos: ['', Validators.required],
-    dni: ['', [Validators.required, Validators.minLength(7)]],
-    correo: ['', [Validators.required, Validators.email]],
-  });
+  /**
+   * Alta de cliente registrado (punto 5).
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ SE VALIDA COMO EL EMPLEADO Y NO CON `required` SUELTOS
+   *
+   * Tenía `Validators.required` a secas, `minLength(7)` en el DNI y el
+   * `Validators.email` de Angular. Eso dejaba pasar un nombre con
+   * números, un DNI de siete letras y `a@b`, que el `email` de Angular
+   * acepta. El punto 5 dice «Validar todos los campos. TODOS. Formatos,
+   * campos vacíos, tipos de datos», y es el mismo texto que el punto 1,
+   * donde sí se validaba en serio.
+   *
+   * Ahora usa exactamente los mismos validadores que el alta de
+   * empleado, que ya están escritos y probados. Lo único que no lleva es
+   * el CUIL: el punto 5 pide nombres, apellidos, DNI, correo, contraseña
+   * y foto, y nada más.
+   *
+   * `clave` y `repetirClave` son de verdad —el cliente va a ingresar con
+   * esa contraseña— y `claveEnBytes` está porque Supabase Auth corta en
+   * 72 BYTES, no caracteres: una clave de 70 letras con tildes no entra.
+   */
+  protected readonly clienteForm = this.formularioBuilder.nonNullable.group(
+    {
+      nombres: ['', validadoresDeNombre('nombres')],
+      apellidos: ['', validadoresDeNombre('apellidos')],
+      dni: ['', [Validators.required, dniValido]],
+      correo: ['', [Validators.required, sinEspaciosSolos, correoValido, ...conLimite('correo')]],
+      clave: ['', [Validators.required, sinEspaciosSolos, claveEnBytes, ...conLimite('clave')]],
+      repetirClave: ['', Validators.required],
+      /** Misma razón que en el empleado: vive en el formulario para entrar en la validación. */
+      foto: [null as FotoTomada | null, [fotoRequerida]],
+    },
+    { validators: [clavesCoinciden] },
+  );
   protected readonly mensajeForm = this.formularioBuilder.nonNullable.group({
     texto: ['', [Validators.required, Validators.maxLength(180)]],
   });
@@ -621,8 +669,10 @@ export class Operacion implements OnInit {
         this.fotoEnCarga.set(null);
         this.limpiarFotosDeProducto();
         this.quitarFotoEmpleado();
+        this.quitarFotoCliente();
         this.cambiarFotoDeMesa(null);
         this.empleadoForm.reset({ perfil: 'cocinero' });
+        this.clienteForm.reset();
         this.productoForm.reset({
           tipo: this.tipoDeSector() ?? 'plato',
           minutos: 10,
@@ -659,6 +709,7 @@ export class Operacion implements OnInit {
       window.removeEventListener('resize', this.alRedimensionar);
       this.limpiarFotosDeProducto();
       this.olvidarFotoEmpleado();
+      this.olvidarFotoCliente();
       const foto = this.fotoDeLaMesa();
       if (foto) this.olvidarFoto(foto);
     });
@@ -844,7 +895,9 @@ export class Operacion implements OnInit {
     // `quitarFotoEmpleado` y no solo el `reset`: el reset limpia el
     // control, y la foto que DIBUJA la pantalla vive en la señal.
     this.quitarFotoEmpleado();
+    this.quitarFotoCliente();
     this.empleadoForm.reset({ perfil: 'cocinero' });
+    this.clienteForm.reset();
     void this.demo.cargar();
   }
 
@@ -971,6 +1024,16 @@ export class Operacion implements OnInit {
    * que es lo que tiene que ver la persona.
    */
   protected readonly empleadoEsValido = (): boolean => this.validar(this.empleadoForm);
+
+  /**
+   * Lo mismo para el cliente (punto 5).
+   *
+   * Sin esto el cartel de confirmación se abría con el formulario a
+   * medias: la persona apretaba Confirmar, contestaba que sí, y recién
+   * ahí aparecían los errores. Ahora el cartel no se abre y los errores
+   * se marcan de una.
+   */
+  protected readonly clienteEsValido = (): boolean => this.validar(this.clienteForm);
 
   protected async registrarEmpleado(): Promise<void> {
     const actor = this.usuario()?.id;
@@ -1536,19 +1599,110 @@ export class Operacion implements OnInit {
     return usados.length ? Math.max(...usados) + 1 : 1;
   }
 
+  /**
+   * El alta de cliente que hace el metre, punto 5.
+   *
+   * Desde que `RegistroClienteService` usa un cliente aislado esto crea
+   * la cuenta de verdad, así que tarda, puede fallar y necesita el mismo
+   * cuidado que el alta de empleado: guarda contra doble envío y el
+   * `enviando` liberado en un `finally`.
+   */
   protected async registrarCliente(): Promise<void> {
-    if (!this.validar(this.clienteForm)) {
+    if (this.enviando()) return;
+    if (!this.validar(this.clienteForm)) return;
+    if (!puedeAcceder(this.usuario()?.perfil, 'clientes')) return;
+
+    const actor = this.usuario()?.id;
+    const { repetirClave, foto, ...cliente } = this.clienteForm.getRawValue();
+
+    this.enviando.set(true);
+    let resultado;
+    try {
+      resultado = await this.demo.registrarCliente({
+        ...cliente,
+        foto: foto ?? undefined,
+      } as AltaClienteDemo);
+    } finally {
+      this.enviando.set(false);
+    }
+
+    // Si mientras tanto cambió quién está operando, este resultado ya no
+    // le corresponde a la pantalla que se está viendo.
+    if (actor !== this.usuario()?.id) return;
+
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo registrar el cliente.');
       return;
     }
-    await this.demo.registrarCliente(this.clienteForm.getRawValue() as AltaClienteDemo);
+
+    if (resultado.aviso) {
+      await this.avisarError(resultado.aviso);
+    }
+
+    // `quitarFotoCliente` y no solo el `reset`: el reset limpia el
+    // control, y la foto que DIBUJA la pantalla vive en la señal. Es la
+    // misma trampa que ya se arregló en el alta de empleado.
+    this.quitarFotoCliente();
     this.clienteForm.reset();
-    this.mensaje.set('Cliente creado en estado pendiente de aprobación.');
+    this.avisarExito('Cliente registrado. Queda pendiente de aprobación.');
   }
 
-  protected async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<void> {
+  /**
+   * El rechazo del punto 7 necesita un motivo, así que se abre el
+   * recuadro en la tarjeta de ese cliente y no se resuelve nada todavía.
+   */
+  protected abrirRechazoDeCliente(id: string): void {
     if (!this.gestiona()) return;
-    await this.demo.resolverCliente(id, estado);
-    this.mensaje.set(estado === 'aprobado' ? 'Cliente aprobado.' : 'Cliente rechazado.');
+    this.clienteARechazar.set(id);
+    this.motivoDeRechazo.set('');
+  }
+
+  protected cerrarRechazoDeCliente(): void {
+    this.clienteARechazar.set(null);
+    this.motivoDeRechazo.set('');
+  }
+
+  protected escribirMotivoDeRechazo(valor: string | null | undefined): void {
+    this.motivoDeRechazo.set(valor ?? '');
+  }
+
+  /**
+   * El motivo tiene que entrar entre 5 y 300 caracteres porque eso es lo
+   * que acepta la base (`largo_motivo_rechazo`). Verificarlo acá evita
+   * el viaje al servidor y un error en inglés.
+   */
+  protected get motivoValido(): boolean {
+    const largo = this.motivoDeRechazo().trim().length;
+    return largo >= 5 && largo <= 300;
+  }
+
+  protected async resolverCliente(
+    id: string,
+    estado: 'aprobado' | 'rechazado',
+    motivo?: string,
+  ): Promise<void> {
+    if (!this.gestiona() || this.resolviendoCliente()) return;
+    if (estado === 'rechazado' && !this.motivoValido) return;
+
+    this.resolviendoCliente.set(id);
+    let resultado;
+    try {
+      resultado = await this.demo.resolverCliente(id, estado, motivo);
+    } finally {
+      this.resolviendoCliente.set(null);
+    }
+
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo resolver el registro del cliente.');
+      return;
+    }
+
+    this.cerrarRechazoDeCliente();
+    this.avisarExito(
+      estado === 'aprobado'
+        ? 'Cliente aprobado. Ya puede ingresar con su correo y contraseña.'
+        : 'Cliente rechazado. Va a ver el motivo cuando intente ingresar.',
+    );
   }
 
   protected async asignarMesa(idEspera: string, numero: number): Promise<void> {
@@ -1710,6 +1864,54 @@ export class Operacion implements OnInit {
 
   private olvidarFotoEmpleado(): void {
     const anterior = this.fotoDelEmpleado();
+    if (anterior?.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(anterior.previewUrl);
+    }
+  }
+
+  /**
+   * La foto del cliente registrado (punto 5).
+   *
+   * El enunciado la pide igual que la del empleado: «La foto se tomará
+   * desde el dispositivo (no se tiene que elegir desde la galería de
+   * fotos)». Por eso usa `sacarFoto()` —cámara y nada más— y no el
+   * selector de archivo que sí vale para los productos.
+   */
+  protected async sacarFotoCliente(): Promise<void> {
+    const actor = this.usuario()?.id;
+    const resultado = await this.camara.sacarFoto();
+
+    // Si cambió la sesión mientras estaba abierta la cámara, la foto no
+    // es de quien la pidió: se descarta en vez de meterla en otro alta.
+    if (actor !== this.usuario()?.id) {
+      if (resultado.estado === 'tomada') this.olvidarFoto(resultado.foto);
+      return;
+    }
+
+    if (resultado.estado === 'cancelado') return;
+
+    if (resultado.estado === 'error') {
+      await this.avisarError(resultado.mensaje);
+      return;
+    }
+
+    this.aplicarYRedibujar(() => this.cambiarFotoDeCliente(resultado.foto));
+  }
+
+  protected quitarFotoCliente(): void {
+    this.cambiarFotoDeCliente(null);
+  }
+
+  /** El único lugar que toca la foto del cliente. Ver `cambiarFotoDeEmpleado`. */
+  private cambiarFotoDeCliente(foto: FotoTomada | null): void {
+    this.olvidarFotoCliente();
+    this.fotoDelCliente.set(foto);
+    this.clienteForm.controls.foto.setValue(foto);
+    this.clienteForm.controls.foto.markAsTouched();
+  }
+
+  private olvidarFotoCliente(): void {
+    const anterior = this.fotoDelCliente();
     if (anterior?.previewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(anterior.previewUrl);
     }

@@ -12,6 +12,19 @@ export const routes: Routes = [
       import('./features/ingreso/ingreso.component').then(({ Ingreso }) => Ingreso),
   },
   {
+    /*
+     * El registro del cliente (punto 5) vive AFUERA de la sesión.
+     *
+     * No lleva `sesionGuard` a propósito: el enunciado lo ubica en el
+     * dispositivo 2 —el teléfono del cliente—, que por definición no
+     * tiene a nadie logueado. Es lo que hace posible usar `signUp` sin
+     * robarle la sesión a un empleado. Ver `RegistroClienteService`.
+     */
+    path: 'registro',
+    loadComponent: () =>
+      import('./features/registro/registro.component').then(({ Registro }) => Registro),
+  },
+  {
     path: 'operacion',
     canActivate: [sesionGuard],
     loadComponent: () =>

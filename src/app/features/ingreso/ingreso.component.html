@@ -93,6 +93,21 @@
                   >
                 }
               </ion-button>
+
+              <!--
+                La puerta de entrada al punto 5. Sin esto la pantalla de
+                registro existe pero no se llega desde ningún lado, que
+                es como no existir.
+              -->
+              <ion-button
+                class="login-card__registro"
+                fill="clear"
+                expand="block"
+                type="button"
+                (click)="irAlRegistro()"
+              >
+                ¿No tenés cuenta? Registrate
+              </ion-button>
             </form>
           </div>
         </div>

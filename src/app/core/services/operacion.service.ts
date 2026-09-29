@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, inject, signal, computed, effect } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Tablas } from '../models/base-de-datos';
+import { comprimirFoto } from '../imagenes/comprimir-foto';
 import {
   AltaClienteDemo,
   AltaEmpleadoDemo,
@@ -23,6 +24,7 @@ import {
 } from '../models/demo-restaurante';
 import { PerfilUsuario, Usuario, etiquetaDePerfil } from '../models/usuario';
 import { DemoRestauranteService } from './demo-restaurante.service';
+import { RegistroClienteService } from './registro-cliente.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
 
@@ -139,6 +141,7 @@ const COMO_SE_LLAMA: Readonly<
 @Injectable({ providedIn: 'root' })
 export class OperacionService {
   private readonly mock = inject(DemoRestauranteService);
+  private readonly registroDeClientes = inject(RegistroClienteService);
   private readonly sesion = inject(SesionService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cliente: SupabaseClient | null = supabaseConfigurado
@@ -316,8 +319,7 @@ export class OperacionService {
       if (destino) body.set('destino', destino);
       for (let i = 0; i < fotos.length; i++) {
         const foto = fotos[i];
-        if (foto)
-          body.set(`foto${i + 1}`, await this.comprimirImagen(foto.file), `foto${i + 1}.jpg`);
+        if (foto) body.set(`foto${i + 1}`, await comprimirFoto(foto.file), `foto${i + 1}.jpg`);
       }
       if (this.sesion.usuario()?.id !== actor)
         return { ok: false, error: 'La sesión cambió. Volvé a abrir el formulario.' };
@@ -623,23 +625,6 @@ export class OperacionService {
    * Un lugar en `null` significa «esta no se tocó»: se saltea.
    */
   /** Comprime fotos de cámara antes de enviarlas a Storage. */
-  private async comprimirImagen(archivo: File): Promise<Blob> {
-    if (!archivo.size || archivo.size > 5 * 1024 * 1024) throw new Error('Foto: máximo 5 MB.');
-    const bitmap = await createImageBitmap(archivo);
-    const escala = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(bitmap.width * escala));
-    canvas.height = Math.max(1, Math.round(bitmap.height * escala));
-    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    return new Promise((resolve, reject) =>
-      canvas.toBlob(
-        (salida) => (salida ? resolve(salida) : reject(new Error('compresión fallida'))),
-        'image/jpeg',
-        0.82,
-      ),
-    );
-  }
   /**
    * Da de alta una mesa (punto 4).
    *
@@ -670,18 +655,73 @@ export class OperacionService {
     const { foto, ...datos } = d;
     return this.guardarAlta('guardar-mesa', { ...datos, tipo: this.tipoMesa(d.tipo) }, [foto]);
   }
+  /**
+   * El alta de cliente hecha por el metre (punto 5, «Perfiles: cliente
+   * o metre»).
+   *
+   * Es el mismo recorrido que el de `/registro`, y a propósito: un solo
+   * lugar decide qué se manda, cómo se sube la foto y cómo se traducen
+   * los errores. Acá era mock porque `signUp` le robaba la sesión a
+   * quien estuviera operando; `RegistroClienteService` lo resolvió con
+   * un cliente aislado, así que ya no hay razón para inventar nada.
+   */
   async registrarCliente(d: AltaClienteDemo): Promise<Resultado> {
-    // La creación de auth.users requiere service_role, que nunca se expone al navegador.
-    // Hasta contar con una Edge Function, las altas siguen siendo explícitamente mock.
-    this.mock.registrarCliente(d);
-    return { ok: true };
+    const resultado = await this.registroDeClientes.registrar(d);
+    if (!resultado.ok) return { ok: false, error: resultado.error };
+
+    // Para que el listado de pendientes lo muestre sin esperar al
+    // canal de tiempo real, que no avisa de filas que el actor todavía
+    // no tenía cargadas.
+    await this.recargarUsuarios();
+    return { ok: true, aviso: resultado.aviso };
   }
-  async resolverCliente(id: string, estado: 'aprobado' | 'rechazado'): Promise<Resultado> {
+  /**
+   * Aprueba o rechaza a un cliente (puntos 7 y 8).
+   *
+   * El motivo va junto con el estado en el MISMO update, no en dos: la
+   * base tiene un disparador que impide cambiar estas columnas a
+   * cualquiera que no sea gerencia, y partirlo en dos escrituras
+   * abriría una ventana en la que el cliente figura rechazado sin
+   * motivo. La pantalla de ingreso lo lee para explicarle al cliente
+   * por qué no puede entrar.
+   */
+  async resolverCliente(
+    id: string,
+    estado: 'aprobado' | 'rechazado',
+    motivo?: string,
+  ): Promise<Resultado> {
+    const limpio = motivo?.trim() || null;
+
     if (!this.cliente) {
-      this.mock.resolverCliente(id, estado);
+      this.mock.resolverCliente(id, estado, limpio);
       return { ok: true };
     }
-    return this.actualizar('usuarios', id, { estado });
+
+    const resultado = await this.actualizar('usuarios', id, {
+      estado,
+      // Al aprobar se borra el motivo anterior: si un cliente rechazado
+      // se acepta después, dejarlo colgado haría que el ingreso le
+      // siguiera mostrando el rechazo.
+      motivo_rechazo: estado === 'rechazado' ? limpio : null,
+    });
+
+    /*
+     * Y SE RECARGA, COMO EN LAS ALTAS.
+     *
+     * El canal de tiempo real escucha `usuarios`, pero no se puede
+     * depender de él para redibujar lo que acaba de hacer ESTA
+     * pantalla: si el canal no llegó a suscribirse, si se cayó, o si el
+     * aviso tarda, el cliente resuelto se queda en la lista de
+     * pendientes y parece que el botón no hizo nada.
+     *
+     * Es exactamente lo que pasó al probar los puntos 7 y 8: la base
+     * decía `aprobado` y la tarjeta seguía ahí.
+     *
+     * El canal sigue haciendo falta, pero para lo que sirve de verdad:
+     * enterarse de lo que hicieron los OTROS dispositivos.
+     */
+    if (resultado.ok) await this.recargarUsuarios();
+    return resultado;
   }
   /**
    * Cambia los datos de una mesa (punto 4, «gestión de mesas»).
@@ -1233,6 +1273,7 @@ export class OperacionService {
           correo: f.correo ?? '',
           foto: f.foto_url ?? 'imagenes/logo.png',
           estado: f.estado,
+          motivoRechazo: f.motivo_rechazo ?? '',
         })),
     );
     if (!this.empleados().some((e) => e.id === actual.id) && actual.perfil !== 'dueno')
@@ -1395,8 +1436,27 @@ export class OperacionService {
     cambios: import('../models/base-de-datos').Database['public']['Tables'][T]['Update'],
   ): Promise<Resultado> {
     if (!this.cliente) return { ok: false };
-    const r = await this.cliente.from(tabla).update(cambios).eq('id', id);
-    return r.error ? this.fallo(`actualizar ${String(tabla)}`, r.error) : { ok: true };
+    /*
+     * `select('id')` NO ES DECORATIVO.
+     *
+     * PostgREST no distingue «no tenías permiso» de «no había nada que
+     * actualizar»: un update que RLS deniega vuelve sin error y con cero
+     * filas. Sin esto, rechazar a un cliente sin permisos mostraba
+     * «Cliente rechazado» y no pasaba nada, que es exactamente el tipo
+     * de falla que nos costó una tarde en el alta de mesas.
+     *
+     * Todas las tablas que pasan por acá —usuarios, lista_espera,
+     * pedidos, cuentas— tienen política de lectura para el mismo actor
+     * que puede escribirlas, así que una fila realmente actualizada
+     * siempre vuelve.
+     */
+    const r = await this.cliente.from(tabla).update(cambios).eq('id', id).select('id');
+    if (r.error) return this.fallo(`actualizar ${String(tabla)}`, r.error);
+    if (!r.data?.length) {
+      this.registrarError(`actualizar ${String(tabla)}`, 'sin filas afectadas');
+      return { ok: false, error: 'No tenés permisos para realizar esta operación.' };
+    }
+    return { ok: true };
   }
   private fallo(accion: string, error: unknown): Resultado {
     this.registrarError(accion, error);

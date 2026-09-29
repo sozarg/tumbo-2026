@@ -1,0 +1,210 @@
+<ion-content class="login-page" [fullscreen]="true">
+  <tumbo-fondo-decorativo aria-hidden="true" />
+  <div class="login-layout">
+    <section class="login-panel" aria-labelledby="registro-title">
+      <header class="login-intro">
+        <div class="login-brand" aria-label="Tumbito">
+          <img
+            class="login-brand__lockup"
+            ngSrc="imagenes/logo-nombre-mobile.webp"
+            width="480"
+            height="161"
+            priority
+            alt="Tumbito"
+          />
+        </div>
+        <h1 id="registro-title">
+          {{ registrado() ? 'Registro enviado' : 'Creá tu cuenta' }}
+        </h1>
+      </header>
+
+      <div class="login-card-wrapper">
+        <div class="login-card">
+          <div class="login-card__content">
+            @if (registrado()) {
+              <!--
+                El punto 5 es terminante: «El cliente NO podrá ingresar a
+                la aplicación si no es aceptado previamente». Así que al
+                terminar no se entra a ningún lado: se explica qué pasa
+                ahora y se vuelve al ingreso.
+              -->
+              <div class="registro-final" role="status">
+                <p class="registro-final__titulo">Tu registro quedó pendiente de aprobación.</p>
+                <p>
+                  El dueño o el supervisor lo van a revisar. Cuando te acepten vas a poder ingresar
+                  con tu correo y tu contraseña.
+                </p>
+                @if (avisoFinal()) {
+                  <p class="registro-final__aviso">{{ avisoFinal() }}</p>
+                }
+                <ion-button expand="block" (click)="volverAlIngreso()">
+                  <ion-icon slot="start" name="arrow-back-outline" aria-hidden="true" />
+                  Volver al ingreso
+                </ion-button>
+              </div>
+            } @else {
+              <form [formGroup]="formulario" (ngSubmit)="registrarse()" novalidate>
+                <!--
+                  El lector de QR del DNI, que el punto 5 pide: «Brindar
+                  la posibilidad de contar con un lector de código QR
+                  para el DNI, que cargará la información disponible en
+                  los campos correspondientes».
+                -->
+                <ion-button
+                  class="registro-dni"
+                  fill="outline"
+                  expand="block"
+                  type="button"
+                  (click)="leerDni()"
+                >
+                  <ion-icon slot="start" name="qr-code-outline" aria-hidden="true" />
+                  {{ lectorReal ? 'Leer el código del DNI' : 'Lector disponible en Android' }}
+                </ion-button>
+
+                <!-- La foto primero: en el teléfono es lo primero que se hace. -->
+                <div class="registro-foto">
+                  @if (foto(); as tomada) {
+                    <img class="registro-foto__vista" [src]="tomada.previewUrl" alt="Tu foto" />
+                    <div class="registro-foto__acciones">
+                      <ion-button fill="outline" size="small" type="button" (click)="sacarFoto()">
+                        <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                        Repetir
+                      </ion-button>
+                      <ion-button fill="clear" size="small" type="button" (click)="quitarFoto()">
+                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                        Quitar
+                      </ion-button>
+                    </div>
+                    @if (tomada.simulada) {
+                      <p class="registro-foto__nota">
+                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                      </p>
+                    }
+                  } @else {
+                    <ion-button
+                      class="registro-foto__tomar"
+                      fill="outline"
+                      type="button"
+                      (click)="sacarFoto()"
+                    >
+                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                      {{ camaraReal ? 'Sacar tu foto' : 'Tomar foto en Android' }}
+                    </ion-button>
+                    @if (campoInvalido('foto')) {
+                      <p class="field-error" role="alert">
+                        {{ mensajeCampo('foto', 'foto personal') }}
+                      </p>
+                    } @else {
+                      <p class="registro-foto__nota">La foto personal es obligatoria.</p>
+                    }
+                  }
+                </div>
+
+                <div class="field" [class.field--invalid]="campoInvalido('nombres')">
+                  <label for="nombres">Nombres</label>
+                  <ion-input
+                    id="nombres"
+                    formControlName="nombres"
+                    fill="outline"
+                    autocomplete="given-name"
+                    [maxlength]="limites.nombres.max"
+                  />
+                  @if (campoInvalido('nombres')) {
+                    <p class="field-error" role="alert">{{ mensajeCampo('nombres', 'nombre') }}</p>
+                  }
+                </div>
+
+                <div class="field" [class.field--invalid]="campoInvalido('apellidos')">
+                  <label for="apellidos">Apellidos</label>
+                  <ion-input
+                    id="apellidos"
+                    formControlName="apellidos"
+                    fill="outline"
+                    autocomplete="family-name"
+                    [maxlength]="limites.apellidos.max"
+                  />
+                  @if (campoInvalido('apellidos')) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo('apellidos', 'apellido') }}
+                    </p>
+                  }
+                </div>
+
+                <div class="field" [class.field--invalid]="campoInvalido('dni')">
+                  <label for="dni">DNI</label>
+                  <ion-input id="dni" formControlName="dni" fill="outline" inputmode="numeric" />
+                  @if (campoInvalido('dni')) {
+                    <p class="field-error" role="alert">{{ mensajeCampo('dni', 'DNI') }}</p>
+                  }
+                </div>
+
+                <div class="field" [class.field--invalid]="campoInvalido('correo')">
+                  <label for="correo">Correo electrónico</label>
+                  <ion-input
+                    id="correo"
+                    formControlName="correo"
+                    fill="outline"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    [maxlength]="limites.correo.max"
+                  />
+                  @if (campoInvalido('correo')) {
+                    <p class="field-error" role="alert">{{ mensajeCampo('correo', 'correo') }}</p>
+                  }
+                </div>
+
+                <div class="field" [class.field--invalid]="campoInvalido('clave')">
+                  <label for="clave">Clave</label>
+                  <ion-input
+                    id="clave"
+                    formControlName="clave"
+                    fill="outline"
+                    type="password"
+                    autocomplete="new-password"
+                    [maxlength]="limites.clave.max"
+                  />
+                  @if (campoInvalido('clave')) {
+                    <p class="field-error" role="alert">{{ mensajeCampo('clave', 'clave') }}</p>
+                  }
+                </div>
+
+                <div class="field" [class.field--invalid]="clavesDistintas">
+                  <label for="repetirClave">Repetir clave</label>
+                  <ion-input
+                    id="repetirClave"
+                    formControlName="repetirClave"
+                    fill="outline"
+                    type="password"
+                    autocomplete="new-password"
+                    [maxlength]="limites.clave.max"
+                  />
+                  @if (clavesDistintas) {
+                    <p class="field-error" role="alert">Las dos claves tienen que ser iguales.</p>
+                  }
+                </div>
+
+                @if (errorMensaje()) {
+                  <p class="login-error" role="alert">{{ errorMensaje() }}</p>
+                }
+
+                @if (enviando()) {
+                  <tumbo-espera etiqueta="Creando tu cuenta" />
+                } @else {
+                  <ion-button class="login-submit" expand="block" type="submit">
+                    <ion-icon slot="start" name="person-add-outline" aria-hidden="true" />
+                    Crear mi cuenta
+                  </ion-button>
+                }
+
+                <ion-button fill="clear" expand="block" type="button" (click)="volverAlIngreso()">
+                  Ya tengo cuenta: ingresar
+                </ion-button>
+              </form>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</ion-content>

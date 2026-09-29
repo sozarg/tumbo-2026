@@ -78,6 +78,12 @@ export interface ClientePendienteDemo {
   readonly correo: string;
   readonly foto: string;
   readonly estado: 'pendiente' | 'aprobado' | 'rechazado';
+  /**
+   * Por qué se lo rechazó (punto 7). Vacío mientras no haya rechazo.
+   * La pantalla de ingreso lo muestra para que el cliente entienda por
+   * qué no puede entrar, en vez de leer un «no podés» sin explicación.
+   */
+  readonly motivoRechazo?: string;
 }
 
 export interface PersonaEsperaDemo {
@@ -212,4 +218,23 @@ export interface AltaClienteDemo {
   readonly apellidos: string;
   readonly dni: string;
   readonly correo: string;
+  /**
+   * La contraseña con la que el cliente va a ingresar.
+   *
+   * La pide el punto 5 y faltaba. Nunca se guarda en `public.usuarios`
+   * —la maneja Supabase Auth, cifrada— y viaja una sola vez, al
+   * registrarse.
+   *
+   * No lleva CUIL, a diferencia del empleado: el punto 5 pide nombres,
+   * apellidos, DNI, correo, contraseña y foto, y nada más.
+   */
+  readonly clave: string;
+  /**
+   * La foto personal, tomada con la cámara (punto 5).
+   *
+   * Opcional en el tipo y obligatoria en el formulario, igual que la del
+   * empleado: el modo demostración no tiene dónde subirla y el alta de
+   * demostración tiene que seguir funcionando sin cámara.
+   */
+  readonly foto?: FotoDePersona;
 }
