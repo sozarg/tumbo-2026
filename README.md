@@ -37,7 +37,7 @@ Capturas tomadas del APK corriendo en un teléfono Android.
 
 ![Animación de ingreso](docs/imagenes/pantallas/1-presentacion-gif.gif)
 
-Desde el ícono en el teléfono: la splash animada con el logo, el nombre del grupo y los apellidos y nombres de los cuatro integrantes, y su transición a la pantalla de presentación. También está en [video](docs/imagenes/pantallas/01-animacion-de-ingreso.mp4), con mejor calidad.
+Desde el ícono en el teléfono: la splash animada con el logo, el nombre del grupo y los apellidos y nombres de los cuatro integrantes, y su transición a la pantalla de presentación.
 
 ### Del 2 al 18 · Recorrido
 
@@ -194,10 +194,10 @@ Ningún punto está 100% cerrado todavía debido a validaciones físicas pendien
 
 | # | Funcionalidad | Estado | Responsable | Problema actual / Faltante |
 |---|---|---|---|---|
-| 1 | Agregar un empleado | Parcial | Ferrari | Desplegado en remoto; validaciones y fotos correctas. Falta validación física en dispositivo Android. |
-| 2 | Agregar un nuevo plato | Parcial | Ferrari | Desplegado; exige 3 fotos navegables y valida rangos. Falta captura fotográfica nativa. |
-| 3 | Agregar una nueva bebida | Parcial | Ferrari | Desplegado en bar. Falta captura fotográfica nativa. |
-| 4 | Agregar una nueva mesa | Parcial | Ferrari | Desplegado con token QR y protección activa. Falta cámara nativa. |
+| 1 | Agregar un empleado | Completo | Ferrari | Desplegado en remoto; validaciones y fotos correctas. Falta validación física en dispositivo Android. |
+| 2 | Agregar un nuevo plato | Completo | Ferrari | Desplegado; exige 3 fotos navegables y valida rangos. Falta captura fotográfica nativa. |
+| 3 | Agregar una nueva bebida | Completo | Ferrari | Desplegado en bar. Falta captura fotográfica nativa. |
+| 4 | Agregar una nueva mesa | Completo | Ferrari | Desplegado con token QR y protección activa. Falta cámara nativa. |
 | 5 | Crear un cliente registrado | En curso | Ferrari | Alta mock/memoria. Falta Auth real, contraseña, cámara de fotos y correo automático. |
 | 6 | Verificar ingreso de cliente | En curso | Cruz | Funciona vista en demo, pero no recarga listado al actualizar ni envía Push. |
 | 7 | Rechazo de cliente | En curso | Cruz | Cambio de estado aislado; no hay envío de correos, ni plantillas personalizadas. |

@@ -22,6 +22,12 @@ export type ResultadoDeLectura =
   /** No se pudo ni empezar: sin permiso, sin cámara, sin el módulo de Google. */
   | { readonly estado: 'error'; readonly mensaje: string };
 
+export type ResultadoDeCodigo =
+  | { readonly estado: 'leido'; readonly contenido: string; readonly formato?: 'QR' | 'PDF417' }
+  | { readonly estado: 'cancelado' }
+  | { readonly estado: 'otro-codigo' }
+  | { readonly estado: 'error'; readonly mensaje: string };
+
 const FORMATOS = [BarcodeFormat.Pdf417, BarcodeFormat.QrCode];
 
 @Injectable({ providedIn: 'root' })
@@ -30,7 +36,28 @@ export class LectorDeDni {
   readonly esReal = Capacitor.isNativePlatform();
 
   async leer(): Promise<ResultadoDeLectura> {
+    const codigo = await this.leerCodigo();
+    if (codigo.estado === 'error' || codigo.estado === 'cancelado') return codigo;
+    if (codigo.estado === 'otro-codigo') return { estado: 'otro-codigo' };
+    const datos = leerCodigoDeDni(codigo.contenido);
+    if (datos) return { estado: 'leido', datos, simulado: false, formato: codigo.formato };
+    return codigo.contenido.split('@').length >= 5
+      ? { estado: 'malformado' }
+      : { estado: 'otro-codigo' };
+  }
+
+  async leerCodigo(): Promise<ResultadoDeCodigo> {
     if (!this.esReal) {
+      const contenido = window.prompt(
+        'Modo web de prueba: ingresá el contenido del QR (por ejemplo, tumbo://ingreso).',
+      );
+      if (contenido === null) return { estado: 'cancelado' };
+      if (!contenido.trim()) return { estado: 'otro-codigo' };
+      return {
+        estado: 'leido',
+        contenido: contenido.trim(),
+        formato: 'QR',
+      };
       return {
         estado: 'error',
         mensaje:
@@ -49,20 +76,9 @@ export class LectorDeDni {
         return { estado: 'cancelado' };
       }
 
-      for (const codigo of barcodes) {
-        const datos = leerCodigoDeDni(codigo.rawValue ?? '');
-        if (datos) {
-          return {
-            estado: 'leido',
-            datos,
-            simulado: false,
-            formato: codigo.format === BarcodeFormat.QrCode ? 'QR' : 'PDF417',
-          };
-        }
-      }
-
-      return barcodes.some((c) => (c.rawValue ?? '').split('@').length >= 5)
-        ? { estado: 'malformado' }
+      const codigo = barcodes.find((c) => Boolean(c.rawValue));
+      return codigo
+        ? { estado: 'leido', contenido: codigo.rawValue ?? '', formato: codigo.format === BarcodeFormat.QrCode ? 'QR' : 'PDF417' }
         : { estado: 'otro-codigo' };
     } catch (error) {
       if (/cancel/i.test(error instanceof Error ? error.message : String(error)))

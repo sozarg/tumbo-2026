@@ -56,7 +56,12 @@ export const SECCIONES: readonly AccesoSeccion[] = [
     icono: 'game-controller-outline',
     perfiles: ['cliente_registrado'],
   },
-  { id: 'encuesta', titulo: 'Encuesta', icono: 'document-text-outline', perfiles: clientes },
+  {
+    id: 'encuesta',
+    titulo: 'Encuesta',
+    icono: 'document-text-outline',
+    perfiles: ['cliente_registrado'],
+  },
   {
     id: 'reportes',
     titulo: 'Reportes',
