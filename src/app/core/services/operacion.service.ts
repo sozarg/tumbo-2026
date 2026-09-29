@@ -25,6 +25,7 @@ import { PerfilUsuario, Usuario, etiquetaDePerfil } from '../models/usuario';
 import { DemoRestauranteService } from './demo-restaurante.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
+import { FotoTomada } from '../dispositivo/camara.service';
 
 type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
@@ -853,15 +854,47 @@ export class OperacionService {
     await this.cargar();
     return { ok: true };
   }
-  async anotarEnEspera(nombre: string): Promise<Resultado> {
+  async anotarEnEspera(nombre: string, foto?: FotoTomada | null): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.anotarEnEspera(nombre);
       return { ok: true };
     }
-    const id = this.sesion.usuario()?.id;
-    return id
-      ? this.insertar('lista_espera', { cliente_id: id })
-      : { ok: false, error: 'No hay sesión activa.' };
+    let id = this.sesion.usuario()?.id;
+    if (!id) {
+      const { data, error } = await this.cliente.auth.signInAnonymously({
+        options: { data: { nombres: nombre } },
+      });
+      if (error || !data.user) {
+        return { ok: false, error: error?.message ?? 'No se pudo crear la sesión anónima.' };
+      }
+      id = data.user.id;
+      const { data: perfil, error: errorPerfil } = await this.cliente
+        .from('usuarios')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (errorPerfil || !perfil) {
+        return { ok: false, error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.' };
+      }
+      this.sesion.iniciar(this.aUsuario(perfil));
+    }
+
+    if (foto) {
+      const ruta = `${id}/perfil.jpg`;
+      const archivo = await this.comprimirImagen(foto.file);
+      const { error: errorFoto } = await this.cliente.storage
+        .from('fotos-usuarios')
+        .upload(ruta, archivo, { upsert: true, contentType: 'image/jpeg' });
+      if (errorFoto) return { ok: false, error: 'No se pudo subir la foto de perfil.' };
+      const { data: publica } = this.cliente.storage.from('fotos-usuarios').getPublicUrl(ruta);
+      const { error: errorPerfil } = await this.cliente
+        .from('usuarios')
+        .update({ foto_url: publica.publicUrl })
+        .eq('id', id);
+      if (errorPerfil) return { ok: false, error: 'La foto subió, pero no se pudo guardar el perfil.' };
+    }
+
+    return this.insertar('lista_espera', { cliente_id: id });
   }
   async eliminarDeEspera(id: string): Promise<Resultado> {
     if (!this.cliente) {
@@ -1035,6 +1068,9 @@ export class OperacionService {
   async registrarEncuesta(): Promise<Resultado> {
     if (!this.cliente) {
       return { ok: this.mock.registrarEncuesta() };
+    }
+    if (this.sesion.usuario()?.perfil === 'cliente_anonimo') {
+      return { ok: false, error: 'El cliente anónimo solo puede consultar resultados previos.' };
     }
     return this.sesionActiva && this.sesion.usuario()
       ? this.insertar('encuestas', {
