@@ -921,7 +921,11 @@ export class OperacionService {
 
     if (foto) {
       const ruta = `${id}/perfil.jpg`;
-      const archivo = await this.comprimirImagen(foto.file);
+      // `comprimirFoto` y no un método de este servicio: la compresión
+      // se extrajo a `core/imagenes` cuando apareció la cuarta alta con
+      // foto. Ver el comentario de ese archivo: tenerla duplicada ya
+      // causó una vez que ninguna alta con foto funcionara.
+      const archivo = await comprimirFoto(foto.file);
       const { error: errorFoto } = await this.cliente.storage
         .from('fotos-usuarios')
         .upload(ruta, archivo, { upsert: true, contentType: 'image/jpeg' });
