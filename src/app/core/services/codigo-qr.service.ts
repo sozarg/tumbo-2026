@@ -36,6 +36,10 @@ import { Injectable } from '@angular/core';
  */
 @Injectable({ providedIn: 'root' })
 export class CodigoQrService {
+  /** Contenido fijo del cartel de entrada; no cambiar porque puede haber QR impresos. */
+  contenidoDeEntrada(): string {
+    return 'tumbo://ingreso';
+  }
   /**
    * El módulo, una sola vez.
    *

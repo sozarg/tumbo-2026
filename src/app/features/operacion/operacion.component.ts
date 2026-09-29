@@ -17,7 +17,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IonBadge } from '@ionic/angular/ion-badge';
 import { IonButton } from '@ionic/angular/ion-button';
 import { IonCard } from '@ionic/angular/ion-card';
@@ -91,7 +91,11 @@ import { OperacionService } from '../../core/services/operacion.service';
 import { CodigoQrService } from '../../core/services/codigo-qr.service';
 import { ErroresService } from '../../core/services/errores.service';
 import { Camara, FotoTomada } from '../../core/dispositivo/camara.service';
-import { LectorDeDni, ResultadoDeLectura } from '../../core/dispositivo/lector-de-dni.service';
+import {
+  LectorDeDni,
+  ResultadoDeCodigo,
+  ResultadoDeLectura,
+} from '../../core/dispositivo/lector-de-dni.service';
 import { DatosDeDni } from '../../core/dni/codigo-de-dni';
 import { LIMITES, RANGOS } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
@@ -211,6 +215,7 @@ export class Operacion implements OnInit {
   private readonly formularioBuilder = inject(FormBuilder);
   private readonly errores = inject(ErroresService);
   private readonly router = inject(Router);
+  private readonly ruta = inject(ActivatedRoute);
   private readonly sesion = inject(SesionService);
   private readonly autenticacion = inject(AUTENTICACION);
   protected readonly demo = inject(OperacionService);
@@ -406,6 +411,8 @@ export class Operacion implements OnInit {
   }
   protected readonly imagenes = signal<Record<string, number>>({});
   protected readonly nombreAnonimo = signal('');
+  protected readonly fotoAnonima = signal<FotoTomada | null>(null);
+  protected readonly ingresoEscaneado = signal(false);
   protected readonly qrSeleccionado = signal<number | null>(null);
 
   /** `false` en el navegador: ahí la cámara y el lector se simulan. */
@@ -695,6 +702,10 @@ export class Operacion implements OnInit {
 
   ngOnInit(): void {
     if (!this.sesion.estaAutenticado()) {
+      if (this.ruta.snapshot.queryParamMap.get('entrada') === '1') {
+        this.seccion.set('entrada');
+        return;
+      }
       void this.router.navigate(['/ingreso'], { replaceUrl: true });
     }
   }
@@ -1559,14 +1570,63 @@ export class Operacion implements OnInit {
   }
 
   protected async anotarCliente(): Promise<void> {
+    if (!this.ingresoEscaneado()) {
+      this.mensaje.set('Primero escaneá el QR de ingreso del restaurante.');
+      return;
+    }
     const nombre = this.nombreAnonimo().trim();
     if (!nombre) {
       this.mensaje.set('Ingresá tu nombre para entrar a la lista de espera.');
       return;
     }
-    await this.demo.anotarEnEspera(nombre);
+    const resultado = await this.demo.anotarEnEspera(nombre, this.fotoAnonima());
+    if (!resultado.ok) {
+      this.mensaje.set(resultado.error ?? 'No se pudo completar el ingreso.');
+      return;
+    }
     this.nombreAnonimo.set('');
+    this.quitarFotoAnonima();
     this.mensaje.set('Te anotamos en la lista de espera.');
+  }
+
+  protected async escanearIngreso(): Promise<void> {
+    const lectura: ResultadoDeCodigo = await this.lector.leerCodigo();
+    if (lectura.estado === 'leido' && lectura.contenido === this.qr.contenidoDeEntrada()) {
+      this.ingresoEscaneado.set(true);
+      this.mensaje.set('QR válido. Ahora completá tu nombre y foto.');
+      return;
+    }
+    this.ingresoEscaneado.set(false);
+    this.mensaje.set(
+      lectura.estado === 'leido'
+        ? 'Ese código no es el QR de ingreso. Escaneá el cartel de la puerta.'
+        : lectura.estado === 'error'
+          ? lectura.mensaje
+          : lectura.estado === 'cancelado'
+            ? 'Escaneo cancelado.'
+            : 'No se encontró un código válido.',
+    );
+  }
+
+  protected async elegirFotoAnonima(): Promise<void> {
+    const resultado = await this.camara.elegirImagen();
+    if (resultado.estado === 'tomada') {
+      const anterior = this.fotoAnonima();
+      if (anterior?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(anterior.previewUrl);
+      this.fotoAnonima.set(resultado.foto);
+    } else if (resultado.estado === 'error') {
+      this.mensaje.set(resultado.mensaje);
+    }
+  }
+
+  protected quitarFotoAnonima(): void {
+    const foto = this.fotoAnonima();
+    if (foto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(foto.previewUrl);
+    this.fotoAnonima.set(null);
+  }
+
+  protected verResultadosEncuestas(): void {
+    this.abrir('reportes');
   }
 
   protected actualizarNombreAnonimo(evento: CustomEvent<{ value?: string | null }>): void {
