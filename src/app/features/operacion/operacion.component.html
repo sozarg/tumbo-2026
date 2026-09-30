@@ -1375,7 +1375,7 @@
                   buttonClass="primary-action"
                   title="Confirmar ingreso a la lista"
                   message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
-                  [disabled]="!ingresoEscaneado()"
+                  [disabled]="!ingresoEscaneado() || !fotoAnonima()"
                   (confirmado)="anotarCliente()"
                   >Anotarme</tumbo-boton-confirmacion
                 >
@@ -1383,6 +1383,29 @@
                   Ver resultados de encuestas previas
                 </ion-button>
               </div>
+              @if (demo.mesaAsignada(); as mesaAsignada) {
+                <div class="table-link-card" aria-live="polite">
+                  <div>
+                    <strong>Mesa asignada: {{ mesaAsignada }}</strong>
+                    <p>Escaneá el QR de esa mesa para vincular tu estadía.</p>
+                  </div>
+                  <ion-button fill="outline" (click)="escanearMesaAsignada()">
+                    <ion-icon name="qr-code-outline" slot="start" />
+                    Escanear QR de mi mesa
+                  </ion-button>
+                  @if (estadoQrMesa() === 'correcto') {
+                    <p class="qr-link-status qr-link-status--ok" role="status">
+                      Mesa vinculada correctamente.
+                    </p>
+                  } @else if (estadoQrMesa() === 'incorrecto') {
+                    <p class="qr-link-status qr-link-status--error" role="alert">
+                      QR rechazado. Solo podés vincular la mesa {{ mesaAsignada }}.
+                    </p>
+                  }
+                </div>
+              } @else if (demo.mesaVinculada() === null) {
+                <p class="form-hint">Esperá la asignación del maître para vincular una mesa.</p>
+              }
             </section>
           }
 
@@ -1390,7 +1413,7 @@
             <section class="section-block">
               <div class="section-heading">
                 <div><h2>Menú Tumbito</h2></div>
-                <ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 2 }}</ion-chip>
+                <ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 'Sin vincular' }}</ion-chip>
               </div>
 
               <!--
@@ -1475,8 +1498,8 @@
                 <span>Importe acumulado</span
                 ><strong>{{ formatearPrecio(demo.totalCarrito()) }}</strong
                 ><small>Tiempo estimado: {{ demo.tiempoCarrito() }} minutos</small>
-              </div>
-              <tumbo-boton-confirmacion
+             </div>
+             <tumbo-boton-confirmacion
                 buttonClass="primary-action"
                 [disabled]="demo.carrito().length === 0"
                 title="Confirmar envío del pedido"
@@ -1719,9 +1742,9 @@
                           <strong>{{ propina }}%</strong
                           ><small>{{ propina === 0 ? 'Sin propina' : 'Gracias' }}</small>
                         </button>
-                      }
-                    </div>
-                    <tumbo-boton-confirmacion
+                  }
+                </div>
+                <tumbo-boton-confirmacion
                       buttonClass="primary-action"
                       expand="block"
                       [disabled]="demo.porcentajePropina() === null"
@@ -1883,25 +1906,51 @@
               [value]="nombreAnonimo()"
               (ionInput)="actualizarNombreAnonimo($event)"
             />
-            <div class="photo-control">
-              @if (fotoAnonima(); as foto) {
-                <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
-                <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
-              } @else {
-                <ion-button fill="outline" (click)="elegirFotoAnonima()">
-                  <ion-icon name="camera-outline" slot="start" />Agregar foto
-                </ion-button>
-              }
-            </div>
+             <div class="photo-control">
+               @if (fotoAnonima(); as foto) {
+                 <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
+                 <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
+               } @else {
+                 <ion-button fill="outline" (click)="elegirFotoAnonima()">
+                   <ion-icon name="camera-outline" slot="start" />Agregar foto
+                 </ion-button>
+               }
+             </div>
+             @if (ingresoEscaneado() && !fotoAnonima()) {
+               <p class="form-hint" role="status">La foto es obligatoria para registrarte como cliente anónimo.</p>
+             }
             <tumbo-boton-confirmacion
               buttonClass="primary-action"
               title="Confirmar ingreso a la lista"
               message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
-              [disabled]="!ingresoEscaneado()"
+              [disabled]="!ingresoEscaneado() || !fotoAnonima()"
               (confirmado)="anotarCliente()"
-              >Anotarme</tumbo-boton-confirmacion
+            >Anotarme</tumbo-boton-confirmacion
             >
           </div>
+          @if (demo.mesaAsignada(); as mesaAsignada) {
+            <div class="table-link-card" aria-live="polite">
+              <div>
+                <strong>Mesa asignada: {{ mesaAsignada }}</strong>
+                <p>Escaneá el QR de esa mesa para vincular tu estadía.</p>
+              </div>
+              <ion-button fill="outline" (click)="escanearMesaAsignada()">
+                <ion-icon name="qr-code-outline" slot="start" />
+                Escanear QR de mi mesa
+              </ion-button>
+              @if (estadoQrMesa() === 'correcto') {
+                <p class="qr-link-status qr-link-status--ok" role="status">
+                  Mesa vinculada correctamente.
+                </p>
+              } @else if (estadoQrMesa() === 'incorrecto') {
+                <p class="qr-link-status qr-link-status--error" role="alert">
+                  QR rechazado. Solo podés vincular la mesa {{ mesaAsignada }}.
+                </p>
+              }
+            </div>
+          } @else if (demo.mesaVinculada() === null) {
+            <p class="form-hint">Esperá la asignación del maître para vincular una mesa.</p>
+          }
         </section>
       </div>
     </div>

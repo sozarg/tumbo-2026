@@ -26,6 +26,7 @@ import { DemoRestauranteService } from './demo-restaurante.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
 import { FotoTomada } from '../dispositivo/camara.service';
+import { NotificacionesPushService } from './notificaciones-push.service';
 
 type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
@@ -141,6 +142,7 @@ const COMO_SE_LLAMA: Readonly<
 export class OperacionService {
   private readonly mock = inject(DemoRestauranteService);
   private readonly sesion = inject(SesionService);
+  private readonly push = inject(NotificacionesPushService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cliente: SupabaseClient | null = supabaseConfigurado
     ? (exigirCliente() as unknown as SupabaseClient)
@@ -177,6 +179,12 @@ export class OperacionService {
     : this.mock.porcentajePropina;
   readonly cuenta = this.cliente ? signal<CuentaDemo | null>(null) : this.mock.cuenta;
   readonly mesaVinculada = this.cliente ? signal<number | null>(null) : this.mock.mesaVinculada;
+  /** Mesa asignada por el maître, antes de que el cliente escanee su QR. */
+  readonly mesaAsignada = computed(() => {
+    if (this.mesaVinculada() !== null) return null;
+    const asignacion = this.espera().find((persona) => persona.mesaAsignada !== undefined);
+    return asignacion?.mesaAsignada ?? null;
+  });
   readonly clientesPendientes = computed(() =>
     this.clientes().filter((c) => c.estado === 'pendiente'),
   );
@@ -855,6 +863,8 @@ export class OperacionService {
     return { ok: true };
   }
   async anotarEnEspera(nombre: string, foto?: FotoTomada | null): Promise<Resultado> {
+    if (!nombre.trim()) return { ok: false, error: 'Ingresá tu nombre para entrar a la lista de espera.' };
+    if (!foto) return { ok: false, error: 'La foto es obligatoria para registrarte como cliente anónimo.' };
     if (!this.cliente) {
       this.mock.anotarEnEspera(nombre);
       return { ok: true };
@@ -877,6 +887,7 @@ export class OperacionService {
         return { ok: false, error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.' };
       }
       this.sesion.iniciar(this.aUsuario(perfil));
+      void this.push.registrarParaUsuario(id);
     }
 
     if (foto) {
@@ -894,7 +905,9 @@ export class OperacionService {
       if (errorPerfil) return { ok: false, error: 'La foto subió, pero no se pudo guardar el perfil.' };
     }
 
-    return this.insertar('lista_espera', { cliente_id: id });
+    const resultado = await this.insertar('lista_espera', { cliente_id: id });
+    if (resultado.ok) void this.solicitarPush({ evento: 'cliente_en_espera' });
+    return resultado;
   }
   async eliminarDeEspera(id: string): Promise<Resultado> {
     if (!this.cliente) {
@@ -911,25 +924,43 @@ export class OperacionService {
     if (!this.cliente) return { ok: this.mock.asignarMesa(idEspera, numero) };
     const mesa = this.mesas().find((m) => m.numero === numero);
     if (!mesa || !mesa.disponible) return { ok: false, error: 'Esa mesa no está disponible.' };
-    const r = await this.actualizar('lista_espera', idEspera, {
-      estado: 'asignado',
-      mesa_id: mesa.id,
-      asignado_en: new Date().toISOString(),
+    const r = await this.cliente.rpc('asignar_mesa_a_cliente', {
+      p_espera_id: idEspera,
+      p_mesa_id: mesa.id,
     });
-    if (!r.ok) return r;
-    // El trigger de sesiones toma el bloqueo de mesa y actualiza ocupación atómicamente.
-    const espera = this.espera().find((e) => e.id === idEspera);
-    const clienteId = espera ? this.clientePorEspera.get(espera.id) : undefined;
-    if (clienteId)
-      await this.insertar('sesiones_mesa', {
-        mesa_id: mesa.id,
-        cliente_id: clienteId,
-        comensales: mesa.comensales,
-      });
+    if (r.error) return this.resultadoRpc('asignar la mesa', r.error);
+    const clienteId = this.clientePorEspera.get(idEspera);
+    if (clienteId) void this.solicitarPush({ evento: 'mesa_asignada', usuarioId: clienteId });
+    await this.cargar();
     return { ok: true };
   }
-  vincularMesa(numero: number): boolean {
-    return this.mesaVinculada() === numero;
+
+  private async solicitarPush(datos: {
+    evento: 'cliente_en_espera' | 'mesa_asignada';
+    usuarioId?: string;
+  }): Promise<void> {
+    if (!this.cliente) return;
+    try {
+      await this.cliente.functions.invoke('enviar-push', { body: datos });
+    } catch {
+      // La notificación persistida y Realtime siguen funcionando si FCM no está configurado.
+    }
+  }
+
+  /** Vincula al cliente mediante el token leído del QR, no por número visible. */
+  async vincularMesaPorQr(token: string): Promise<Resultado> {
+    if (!this.cliente) {
+      const mesa = this.mesas().find((item) => item.qrToken === token);
+      if (!mesa) return { ok: false, error: 'El QR no corresponde a una mesa válida.' };
+      return this.mock.vincularMesa(mesa.numero)
+        ? { ok: true }
+        : { ok: false, error: `Tenés asignada la mesa ${this.mesaAsignada() ?? 'indicada por el maître'}. Escaneá el QR de esa mesa.` };
+    }
+
+    const r = await this.cliente.rpc('vincular_mesa_asignada', { p_qr_token: token });
+    if (r.error) return this.resultadoRpc('vincular la mesa', r.error);
+    await this.cargar();
+    return { ok: true };
   }
   agregarAlCarrito(p: ProductoDemo): void {
     this.carrito.update((items) => {
@@ -1229,6 +1260,11 @@ export class OperacionService {
         { event: '*', schema: 'public', table: 'mensajes' },
         () => void this.cargar(),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notificaciones' },
+        () => void this.cargar(),
+      )
       .subscribe();
   }
   /**
@@ -1445,6 +1481,19 @@ export class OperacionService {
       error: mensaje.toLowerCase().includes('row-level')
         ? 'No tenés permisos para realizar esta operación.'
         : `No se pudo ${accion}. Revisá la conexión e intentá nuevamente.`,
+    };
+  }
+  private resultadoRpc(accion: string, error: unknown): Resultado {
+    this.registrarError(accion, error);
+    const mensaje =
+      typeof error === 'object' && error && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : '';
+    return {
+      ok: false,
+      error: mensaje.toLowerCase().includes('row-level')
+        ? 'No tenés permisos para realizar esta operación.'
+        : mensaje || `No se pudo ${accion}. Revisá la conexión e intentá nuevamente.`,
     };
   }
   private registrarError(accion: string, error: unknown): void {

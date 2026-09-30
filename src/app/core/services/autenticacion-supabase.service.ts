@@ -6,6 +6,7 @@ import { AutenticacionPort, ModoAutenticacion, ResultadoAutenticacion } from './
 import { SesionService } from './sesion.service';
 import { almacenamientoSesion } from './almacenamiento-sesion';
 import { exigirCliente, supabaseClient } from './supabase.client';
+import { NotificacionesPushService } from './notificaciones-push.service';
 
 type FilaUsuario = Tablas<'usuarios'>;
 
@@ -25,6 +26,7 @@ type FilaAccesoRapido = Vistas<'accesos_rapidos'>;
 @Injectable({ providedIn: 'root' })
 export class AutenticacionSupabaseService implements AutenticacionPort {
   private readonly sesion = inject(SesionService);
+  private readonly push = inject(NotificacionesPushService);
 
   readonly modo: ModoAutenticacion = 'supabase';
   readonly claveDemostracion = environment.claveDemostracion;
@@ -86,6 +88,7 @@ export class AutenticacionSupabaseService implements AutenticacionPort {
       }
 
       this.sesion.iniciar(this.aUsuario(fila));
+      void this.push.registrarParaUsuario(fila.id);
     } catch {
       this.sesion.cerrar();
     }
@@ -151,6 +154,7 @@ export class AutenticacionSupabaseService implements AutenticacionPort {
 
     const usuario = this.aUsuario(fila);
     this.sesion.iniciar(usuario);
+    void this.push.registrarParaUsuario(usuario.id);
     return { usuario };
   }
 

@@ -60,7 +60,7 @@ export class DemoRestauranteService {
   readonly encuestaRespondida = signal(false);
   readonly porcentajePropina = signal<number | null>(null);
   readonly cuenta = signal<CuentaDemo | null>(null);
-  readonly mesaVinculada = signal<number | null>(2);
+  readonly mesaVinculada = signal<number | null>(null);
 
   readonly clientesPendientes = computed(() =>
     this.clientes().filter((cliente) => cliente.estado === 'pendiente'),
@@ -236,16 +236,25 @@ export class DemoRestauranteService {
     this.espera.update((personas) =>
       personas.map((item) => (item.id === idEspera ? { ...item, mesaAsignada: numeroMesa } : item)),
     );
-    this.mesaVinculada.set(numeroMesa);
-    this.notificar(`Mesa ${numeroMesa} asignada a ${persona.nombre}.`, ['cliente_registrado']);
+    this.notificar(`Mesa ${numeroMesa} asignada a ${persona.nombre}.`, [
+      'cliente_registrado',
+      'cliente_anonimo',
+    ]);
     return true;
   }
 
   vincularMesa(numeroMesa: number): boolean {
     const mesa = this.mesas().find((item) => item.numero === numeroMesa);
-    if (!mesa || !this.mesaVinculada() || this.mesaVinculada() !== numeroMesa) {
+    const asignacion = this.espera().find((item) => item.mesaAsignada !== undefined);
+    if (
+      !mesa ||
+      !asignacion ||
+      this.mesaVinculada() !== null ||
+      asignacion.mesaAsignada !== numeroMesa
+    ) {
       return false;
     }
+    this.mesaVinculada.set(numeroMesa);
     return true;
   }
 

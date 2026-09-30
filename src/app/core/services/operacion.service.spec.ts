@@ -17,6 +17,46 @@ describe('Adaptador de operación en demostración', () => {
     expect(servicio.pedidoActivo().items[0].productoId).toBe(producto.id);
     expect(servicio.carrito()).toEqual([]);
   });
+
+  it('implementa el flujo del punto 10 sin permitir QR equivocado ni doble vinculación', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const espera = servicio.espera()[0];
+    const mesa = servicio.mesas().find((item) => item.disponible)!;
+    const otraMesa = servicio.mesas().find((item) => item.numero !== mesa.numero)!;
+
+    expect((await servicio.asignarMesa(espera.id, mesa.numero)).ok).toBe(true);
+    expect(servicio.mesaVinculada()).toBeNull();
+
+    const qrEquivocado = await servicio.vincularMesaPorQr(otraMesa.qrToken);
+    expect(qrEquivocado.ok).toBe(false);
+    expect(qrEquivocado.error).toContain(`mesa ${mesa.numero}`);
+
+    expect((await servicio.vincularMesaPorQr(mesa.qrToken)).ok).toBe(true);
+    expect(servicio.mesaVinculada()).toBe(mesa.numero);
+    expect((await servicio.vincularMesaPorQr(otraMesa.qrToken)).ok).toBe(false);
+  });
+
+  it('rechaza vincular una mesa si no hay una asignación previa', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mesa = servicio.mesas().find((item) => item.disponible)!;
+    servicio.espera.set([]);
+
+    const resultado = await servicio.vincularMesaPorQr(mesa.qrToken);
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toContain('asignada');
+  });
+
+  it('exige una foto para registrar un cliente anónimo en la espera', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const cantidadAntes = servicio.espera().length;
+
+    const resultado = await servicio.anotarEnEspera('Cliente sin foto');
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toContain('foto');
+    expect(servicio.espera().length).toBe(cantidadAntes);
+  });
 });
 
 /**

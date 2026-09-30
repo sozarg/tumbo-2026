@@ -202,8 +202,8 @@ Ningún punto está 100% cerrado todavía debido a validaciones físicas pendien
 | 6 | Verificar ingreso de cliente | En curso | Cruz | Funciona vista en demo, pero no recarga listado al actualizar ni envía Push. |
 | 7 | Rechazo de cliente | En curso | Cruz | Cambio de estado aislado; no hay envío de correos, ni plantillas personalizadas. |
 | 8 | Aceptación de cliente | Parcial | Cruz | Update en DB, pero falta disparador de correos de resolución. |
-| 9 | Cliente anónimo y espera | En curso | Cruz | Sin Auth real, no lee QR óptico y el cliente puede autoasignarse mesa sin pasar por espera. |
-| 10 | Metre asigna mesa a un cliente | En curso | Cruz | Escrituras parciales no atómicas; RLS permisiva que falla al actualizar la mesa. |
+| 9 | Cliente anónimo y espera | Implementado | Cruz | Nombre y foto obligatorios, QR real, RLS, lista Realtime y disparo de push al maître. Requiere configurar FCM y probar en APK. |
+| 10 | Metre asigna mesa a un cliente | Implementado | Cruz | Asignación/vinculación atómica, QR exclusivo, bloqueo de doble mesa y disparo de push al cliente. Requiere configurar FCM y probar en APK. |
 | 11 | Menú por QR de mesa y consulta | En curso | Cruz | Carta funcional pero el chat falla (autor figura como "Equipo TUMBO", mozos ven sesiones ajenas). No hay Push. |
 | 12 | Cliente realiza el pedido | En curso | Terrile | **Bloqueo RLS (P0)**: intenta insertar pedido `pendiente_confirmacion` vacío, generando error 42501. |
 | 13 | Mozo rechaza el pedido | En curso | Terrile | No se precarga el pedido para editar tras rechazo; el reenvío duplica órdenes en la base. |

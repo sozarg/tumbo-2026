@@ -349,3 +349,16 @@ migración nueva.
 **No tocar tablas desde el panel web.** Es cómodo y rompe el esquema
 versionado: el repositorio deja de reflejar la base y el próximo
 `npx supabase db push` de otro integrante puede fallar o pisar algo.
+## Notificaciones push de los puntos 9 y 10
+
+La aplicación registra el token de cada dispositivo Android en `dispositivos_push` y la Edge Function `enviar-push` entrega los avisos de cliente en espera y mesa asignada.
+
+Para habilitar el envío real en el proyecto remoto, configurar sin versionar:
+
+```text
+supabase secrets set FCM_SERVICE_ACCOUNT_JSON='{"project_id":"...","client_email":"...","private_key":"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"}'
+supabase db push
+supabase functions deploy enviar-push
+```
+
+La clave se obtiene de Firebase Cloud Messaging. Nunca debe escribirse en `environment.ts`, en el APK ni en este repositorio. También hay que habilitar el ingreso anónimo en Auth; la configuración local ya lo deja activo.
