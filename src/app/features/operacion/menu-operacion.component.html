@@ -38,16 +38,18 @@
     <section class="sector-status" aria-labelledby="sector-status-title">
       <h2 id="sector-status-title">{{ tituloEstado() }}</h2>
       <div class="sector-status__surface">
-        @if (pendientes().length) {
+        @if (cola()[0]; as primera) {
           <div class="sector-order">
             <div class="sector-order__heading">
-              <h3>Mesa {{ pedido().mesa }}</h3>
-              <time>{{ pedido().creadoEn }}</time>
+              <h3>Mesa {{ primera.mesa }}</h3>
+              <time>{{ primera.pedidos[0].creadoEn }}</time>
             </div>
-            @for (item of pendientes(); track item.productoId) {
-              <p>
-                <strong>{{ item.cantidad }} ×</strong> {{ item.nombre }}
-              </p>
+            @for (pedido of primera.pedidos; track pedido.id) {
+              @for (item of pedido.items; track item.productoId) {
+                <p>
+                  <strong>{{ item.cantidad }} ×</strong> {{ item.nombre }}
+                </p>
+              }
             }
           </div>
         } @else if (sector() || !actividad().length) {
@@ -57,8 +59,13 @@
           </div>
         }
         @if (sector()) {
-          <div class="queue-vacancy"><span>Sin pedido</span></div>
-          <div class="queue-vacancy"><span>Sin pedido</span></div>
+          @for (lugar of siguientes(); track $index) {
+            <div class="queue-vacancy">
+              <span>{{
+                lugar ? 'Mesa ' + lugar.mesa + ' · ' + lugar.pedidos[0].creadoEn : 'Sin pedido'
+              }}</span>
+            </div>
+          }
         }
       </div>
     </section>

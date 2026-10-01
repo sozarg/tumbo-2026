@@ -85,7 +85,7 @@
         <tumbo-menu-operacion
           [accesos]="accesos()"
           [actividad]="actividad()"
-          [pedido]="demo.pedidoActivo()"
+          [pedidos]="demo.pedidosEnCurso()"
           [perfil]="usuarioActual.perfil"
           (seleccionar)="abrir($event)"
         />
@@ -1324,53 +1324,13 @@
             </section>
           }
           @if (seccion() === 'cocina' || seccion() === 'barra') {
-            <section class="section-block">
-              <div class="section-heading">
-                <div>
-                  <h2>Sector {{ seccion() === 'cocina' ? 'cocina' : 'bar' }}</h2>
-                </div>
-                <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
-              </div>
-              <ion-card class="sector-card">
-                <ion-card-header
-                  ><ion-card-title>Mesa {{ demo.pedidoActivo().mesa }}</ion-card-title
-                  ><ion-card-subtitle
-                    >{{ demo.pedidoActivo().creadoEn }} ·
-                    {{ demo.pedidoActivo().cliente }}</ion-card-subtitle
-                  ></ion-card-header
-                >
-                <ion-card-content>
-                  <ul class="sector-items">
-                    @for (item of itemVisible(); track item.productoId) {
-                      @if (
-                        (seccion() === 'cocina' && item.sector === 'cocina') ||
-                        (seccion() === 'barra' && item.sector === 'bar')
-                      ) {
-                        <li>
-                          <strong>{{ item.cantidad }} ×</strong><span>{{ item.nombre }}</span
-                          ><small>{{ item.minutos }} min</small>
-                        </li>
-                      }
-                    }
-                  </ul>
-                  <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
-                  <tumbo-boton-confirmacion
-                    buttonClass="primary-action"
-                    expand="block"
-                    [disabled]="
-                      demo.pedidoActivo().estado !== 'confirmado' &&
-                      demo.pedidoActivo().estado !== 'en_preparacion'
-                    "
-                    title="Confirmar sector listo"
-                    message="Vas a marcar este sector como listo y avisar que sus productos están preparados. ¿Querés continuar?"
-                    (confirmado)="marcarSectorListo(seccion() === 'cocina' ? 'cocina' : 'bar')"
-                  >
-                    <ion-icon aria-hidden="true" slot="start" name="checkmark-done-outline" />Marcar
-                    sector listo
-                  </tumbo-boton-confirmacion>
-                </ion-card-content>
-              </ion-card>
-            </section>
+            <tumbo-sector-pedidos
+              [sector]="sectorActual()"
+              [mesas]="mesasDelSector()"
+              [procesando]="procesandoSector()"
+              (empezar)="empezarSector($event)"
+              (listo)="marcarSectorListo($event)"
+            />
           }
           @if (seccion() === 'pedidos') {
             @if (perfilEsCliente()) {
@@ -1411,6 +1371,16 @@
                       <span>Cocina y bar</span>
                       <span>Entrega</span>
                     </div>
+                    @if (sectoresDelCliente().length) {
+                      <ul class="sector-progress" aria-label="Avance por sector">
+                        @for (parte of sectoresDelCliente(); track parte.sector) {
+                          <li [class.sector-progress--listo]="parte.estado === 'listo'">
+                            <span>{{ parte.nombre }}</span>
+                            <strong>{{ etiquetaSector[parte.estado] }}</strong>
+                          </li>
+                        }
+                      </ul>
+                    }
                     <p class="order-summary-card__date">
                       <ion-icon aria-hidden="true" name="time-outline" />
                       {{ demo.pedidoActivo().creadoEn }}
@@ -1493,6 +1463,7 @@
                     </div>
                   </ion-card-content>
                 </ion-card>
+                <tumbo-avance-pedidos [pedidosEnCurso]="demo.pedidosEnCurso()" />
               </section>
             }
           }

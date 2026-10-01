@@ -309,6 +309,38 @@ puesto no es peligroso, pero conviene decidirlo entre los cuatro.
 
 ---
 
+## 11. El aviso de pedido completo (punto 18)
+
+Cuando cocina y bar terminan, el trigger `avisar_pedido_listo` llama a
+la función `avisar-push`, que avisa a los mozos. La dirección y la firma
+**no están en la migración** —el repositorio es público—: se leen de
+Vault. Se cargan una sola vez, desde el SQL Editor:
+
+```sql
+select vault.create_secret('https://<REF>.supabase.co/functions/v1', 'tumbo_url_funciones');
+select vault.create_secret('<el mismo valor que TUMBO_FIRMA_WEBHOOK>', 'tumbo_firma_webhook');
+```
+
+La firma tiene que coincidir con el secret `TUMBO_FIRMA_WEBHOOK` de las
+funciones. Sin estos dos secretos el pedido igual queda listo; solo no
+sale la push. Por eso una base local nunca llama a producción.
+
+### Probarlo sin tocar producción
+
+Todo corre contra el Supabase local de Docker:
+
+```bash
+npx supabase start
+npx supabase test db                       # RLS, triggers y aviso (pgTAP, termina en ROLLBACK)
+cd supabase/functions && npx -y deno@2 test avisar-push/reglas_test.ts
+```
+
+Para el recorrido completo con cuatro teléfonos simulados, ver el
+encabezado de `tests/ui-puntos-16-18.mjs`: se niega a correr si
+`environment.local.ts` no apunta a `127.0.0.1:54321`.
+
+---
+
 ## Cómo comprobar que quedó bien
 
 Con `npm run start:local` andando:

@@ -416,3 +416,74 @@ describe('Gestión de mesas · modificar y sacar (punto 4)', () => {
     expect((await servicio.eliminarMesa('mesa-inexistente')).ok).toBe(false);
   });
 });
+
+/**
+ * Puntos 16 a 18 en modo demostración: el mock tiene tres mesas con
+ * pedidos en curso (2, 4 y 5) y sigue las mismas reglas que la base.
+ */
+describe('Cocina, bar y pedido completo (puntos 16 a 18)', () => {
+  it('cada sector avanza su parte y el pedido queda completo una sola vez', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mock = TestBed.inject(DemoRestauranteService);
+    const id = servicio.pedidoActivo().id;
+
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('en_preparacion');
+    expect(servicio.pedidoActivo().sectores).toEqual({
+      cocina: 'en_preparacion',
+      bar: 'pendiente',
+    });
+
+    expect((await servicio.marcarSectorListo(id, 'cocina')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('en_preparacion');
+    const avisosAntes = mock.notificaciones().length;
+
+    expect((await servicio.marcarSectorListo(id, 'bar')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('listo');
+    expect(mock.notificaciones().length).toBe(avisosAntes + 1);
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['mozo']);
+    expect(mock.notificaciones()[0].mensaje).toContain('mesa 2');
+
+    // Repetir no vuelve a avisar ni rompe nada.
+    const repetido = await servicio.marcarSectorListo(id, 'bar');
+    expect(repetido.ok).toBe(false);
+    expect(repetido.error).toBe('El pedido ya no está pendiente en este sector.');
+    expect(mock.notificaciones().length).toBe(avisosAntes + 1);
+  });
+
+  it('no deja volver atrás ni empezar dos veces', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const id = servicio.pedidoActivo().id;
+    await servicio.empezarSector(id, 'cocina');
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(false);
+    await servicio.marcarSectorListo(id, 'cocina');
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(false);
+  });
+
+  it('no toca un pedido que el mozo todavía no confirmó', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    expect((await servicio.marcarSectorListo(servicio.pedidoActivo().id, 'cocina')).ok).toBe(false);
+  });
+
+  it('un pedido de solo bebidas se completa cuando termina el bar', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({
+      ...p,
+      items: p.items.filter((i) => i.sector === 'bar'),
+      sectores: { cocina: 'sin_items', bar: 'pendiente' },
+    }));
+    const id = servicio.pedidoActivo().id;
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(false);
+    expect((await servicio.marcarSectorListo(id, 'bar')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('listo');
+  });
+
+  it('los pedidos de otras mesas también se pueden avanzar', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mesa4 = servicio.pedidosEnCurso().find((p) => p.mesa === 4)!;
+    expect(mesa4.sectores).toEqual({ cocina: 'en_preparacion', bar: 'listo' });
+    expect((await servicio.marcarSectorListo(mesa4.id, 'cocina')).ok).toBe(true);
+    expect(servicio.pedidosEnCurso().find((p) => p.mesa === 4)!.estado).toBe('listo');
+  });
+});

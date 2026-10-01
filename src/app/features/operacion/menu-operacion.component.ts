@@ -3,6 +3,7 @@ import { PerfilUsuario } from '../../core/models/usuario';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { AccesoSeccion, Seccion } from '../../core/navegacion/secciones';
 import { NotificacionDemo, PedidoDemo, SectorProducto } from '../../core/models/demo-restaurante';
+import { MesaDeSector, agruparPorMesa } from '../../core/services/pedidos-por-sector';
 
 @Component({
   selector: 'tumbo-menu-operacion',
@@ -14,7 +15,8 @@ import { NotificacionDemo, PedidoDemo, SectorProducto } from '../../core/models/
 export class MenuOperacion {
   readonly accesos = input.required<readonly AccesoSeccion[]>();
   readonly actividad = input.required<readonly NotificacionDemo[]>();
-  readonly pedido = input.required<PedidoDemo>();
+  /** Los pedidos en curso de todas las mesas; el inicio del sector muestra su cola. */
+  readonly pedidos = input.required<readonly PedidoDemo[]>();
   readonly perfil = input.required<PerfilUsuario>();
   readonly seleccionar = output<Seccion>();
 
@@ -31,17 +33,15 @@ export class MenuOperacion {
         ? 'Estado de barra'
         : 'Actividad',
   );
-  protected readonly pendientes = computed(() => {
+  /** La cola del sector, agrupada por mesa y con la más antigua primero (punto 16). */
+  protected readonly cola = computed<readonly MesaDeSector[]>(() => {
     const sector = this.sector();
-    const pedido = this.pedido();
-    if (
-      !sector ||
-      !['confirmado', 'en_preparacion'].includes(pedido.estado) ||
-      pedido.sectoresListos[sector]
-    )
-      return [];
-    return pedido.items.filter((item) => item.sector === sector);
+    return sector ? agruparPorMesa(this.pedidos(), sector) : [];
   });
+  /** Las dos mesas que siguen, o un lugar vacío si no hay: la tarjeta no cambia de alto. */
+  protected readonly siguientes = computed(() =>
+    [0, 1].map((lugar) => this.cola()[lugar + 1] ?? null),
+  );
   protected readonly administracion = computed(() =>
     ['dueno', 'supervisor'].includes(this.perfil()),
   );

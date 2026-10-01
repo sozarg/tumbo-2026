@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject, signal, computed, effect } from '@angular/core';
+import { DestroyRef, Injectable, Signal, inject, signal, computed, effect } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Tablas } from '../models/base-de-datos';
 import { comprimirFoto } from '../imagenes/comprimir-foto';
@@ -28,11 +28,22 @@ import { RegistroClienteService } from './registro-cliente.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
 import { FotoTomada } from '../dispositivo/camara.service';
+import { estadoDeSector, formatearFechaHora } from './pedidos-por-sector';
 
 type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
 type Item = Tablas<'pedido_items'>;
 type Producto = Tablas<'productos'>;
+
+/** Quiénes ven los pedidos de todas las mesas: el personal (`es_staff()` en la base). */
+const PERSONAL: readonly PerfilUsuario[] = [
+  'dueno',
+  'supervisor',
+  'metre',
+  'mozo',
+  'cocinero',
+  'cantinero',
+];
 /** Resultado confirmado; aviso agrega contexto sin sustituir un error de alta. */
 type Resultado = { ok: boolean; error?: string; aviso?: string };
 
@@ -152,6 +163,7 @@ export class OperacionService {
   private readonly enviandoAltas = new Set<string>();
   private canal: ReturnType<NonNullable<typeof this.cliente>['channel']> | null = null;
   private sesionActiva: Sesion | null = null;
+  private cargaProgramada: ReturnType<typeof setTimeout> | null = null;
   private pedidoReal: Pedido | null = null;
   private cuentaReal: Tablas<'cuentas'> | null = null;
   private readonly clientePorEspera = new Map<string, string>();
@@ -165,6 +177,15 @@ export class OperacionService {
   readonly pedidoActivo = this.cliente
     ? signal<PedidoDemo>(this.pedidoVacio())
     : this.mock.pedidoActivo;
+  private readonly pedidosEnCursoReal = signal<PedidoDemo[]>([]);
+  /**
+   * Todos los pedidos que el mozo ya confirmó y todavía no se entregaron,
+   * de todas las mesas (puntos 16 a 18). Solo se carga para el personal:
+   * es la fuente de las pantallas de cocina, bar y del avance del mozo.
+   */
+  readonly pedidosEnCurso: Signal<readonly PedidoDemo[]> = this.cliente
+    ? this.pedidosEnCursoReal.asReadonly()
+    : this.mock.pedidosEnCurso;
   readonly carrito = this.cliente ? signal<PedidoItemDemo[]>([]) : this.mock.carrito;
   readonly mensajes = this.cliente ? signal<MensajeDemo[]>([]) : this.mock.mensajes;
   readonly notificaciones = this.cliente
@@ -194,6 +215,7 @@ export class OperacionService {
 
   constructor() {
     this.destroyRef.onDestroy(() => {
+      if (this.cargaProgramada) clearTimeout(this.cargaProgramada);
       if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
     });
     effect(() => {
@@ -202,6 +224,7 @@ export class OperacionService {
       if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
       this.canal = null;
       if (this.cliente) {
+        this.pedidosEnCursoReal.set([]);
         this.empleados.set([]);
         this.productos.set([]);
         this.mesas.set([]);
@@ -262,7 +285,7 @@ export class OperacionService {
       this.mesaVinculada.set(
         this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? null,
       );
-      await this.cargarPedidoYCuenta();
+      await Promise.all([this.cargarPedidoYCuenta(), this.cargarPedidosEnCurso(usuario)]);
       if (mensajes.data) this.mensajes.set(mensajes.data.map((m) => this.aMensaje(m, usuario.id)));
       this.suscribirRealtime();
     } catch (error) {
@@ -1037,19 +1060,70 @@ export class OperacionService {
   async confirmarPedido(): Promise<Resultado> {
     return this.cambiarEstadoPedido('confirmado', { motivo_rechazo: null });
   }
-  async marcarSectorListo(sector: SectorProducto): Promise<Resultado> {
+  /**
+   * El sector empieza su parte de un pedido (punto 18).
+   *
+   * Recibe el pedido explícito y no usa «el pedido activo»: cocina y bar
+   * atienden varias mesas a la vez, y el activo es el de UNA estadía.
+   */
+  async empezarSector(pedidoId: string, sector: SectorProducto): Promise<Resultado> {
     if (!this.cliente) {
-      this.mock.marcarSectorListo(sector);
-      return { ok: true };
+      return this.mock.empezarSector(pedidoId, sector)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no está pendiente en este sector.' };
     }
-    if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
-    const { error } = await this.cliente
+    return this.avanzarSector(pedidoId, sector, ['pendiente'], 'en_preparacion');
+  }
+
+  /**
+   * El sector terminó su parte. Cuando termina el último, la base pasa el
+   * pedido a «listo» y dispara el aviso al mozo (trigger
+   * `evaluar_pedido_listo` y `avisar_pedido_listo`): eso no depende de
+   * que este teléfono siga abierto.
+   */
+  async marcarSectorListo(pedidoId: string, sector: SectorProducto): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.marcarSectorListo(pedidoId, sector)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no está pendiente en este sector.' };
+    }
+    // La hora de «listo» la pone la base (`proteger_item_de_sector`), no
+    // el reloj del teléfono.
+    return this.avanzarSector(pedidoId, sector, ['pendiente', 'en_preparacion'], 'listo');
+  }
+
+  private async avanzarSector(
+    pedidoId: string,
+    sector: SectorProducto,
+    desde: Item['estado'][],
+    estado: Item['estado'],
+  ): Promise<Resultado> {
+    if (!this.cliente) return { ok: false, error: 'No hay conexión con la base.' };
+    const { data, error } = await this.cliente
       .from('pedido_items')
-      .update({ estado: 'listo', listo_en: new Date().toISOString() })
-      .eq('pedido_id', this.pedidoReal.id)
-      .eq('sector', sector);
-    if (error) return this.fallo('marcar sector listo', error);
-    await this.cargarPedidoYCuenta();
+      .update({ estado })
+      .eq('pedido_id', pedidoId)
+      .eq('sector', sector)
+      .in('estado', desde)
+      .select('id');
+    // Los rechazos de `proteger_item_de_sector` ya vienen en español y
+    // dicen qué pasó («El pedido no está en preparación.»): se muestran
+    // tal cual en vez del genérico «revisá la conexión».
+    if (error?.code === '42501' && !error.message.toLowerCase().includes('row-level')) {
+      this.registrarError('actualizar el sector', error);
+      return { ok: false, error: error.message };
+    }
+    if (error) return this.fallo('actualizar el sector', error);
+    // Cero filas no es un error de la base: otro teléfono del mismo
+    // sector ya lo hizo, o el pedido cambió. Decir «listo» ahí mentiría.
+    if (!data?.length) {
+      await this.cargarPedidosEnCurso(this.sesion.usuario());
+      return { ok: false, error: 'El pedido ya no está pendiente en este sector.' };
+    }
+    await Promise.all([
+      this.cargarPedidosEnCurso(this.sesion.usuario()),
+      this.cargarPedidoYCuenta(),
+    ]);
     return { ok: true };
   }
   async marcarEntregado(): Promise<Resultado> {
@@ -1191,6 +1265,64 @@ export class OperacionService {
         })
       : { ok: false, error: 'No hay cuenta activa.' };
   }
+  /**
+   * Lee los pedidos en curso de todas las mesas (puntos 16 a 18).
+   *
+   * Son dos idas al servidor y no una consulta anidada: los tipos de la
+   * base no declaran las relaciones de `pedidos`, y una consulta anidada
+   * sin tipos obligaría a usar `any`. Los ítems y las estadías se piden
+   * juntas, en paralelo.
+   */
+  private async cargarPedidosEnCurso(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario || !PERSONAL.includes(usuario.perfil)) return;
+    const pedidos = await this.cliente
+      .from('pedidos')
+      .select('*')
+      .in('estado', ['confirmado', 'en_preparacion', 'listo'])
+      .order('creado_en');
+    if (pedidos.error) {
+      this.registrarError('cargar pedidos en curso', pedidos.error);
+      return;
+    }
+    const filas = pedidos.data ?? [];
+    if (!filas.length) {
+      this.pedidosEnCursoReal.set([]);
+      return;
+    }
+    const [items, sesiones] = await Promise.all([
+      this.cliente
+        .from('pedido_items')
+        .select('*')
+        .in(
+          'pedido_id',
+          filas.map((p) => p.id),
+        ),
+      this.cliente
+        .from('sesiones_mesa')
+        .select('*')
+        .in('id', [...new Set(filas.map((p) => p.sesion_mesa_id))]),
+    ]);
+    if (items.error || sesiones.error) {
+      this.registrarError('cargar pedidos en curso', items.error ?? sesiones.error);
+      return;
+    }
+    if (this.sesion.usuario()?.id !== usuario.id) return;
+    const mesaDeSesion = new Map(
+      (sesiones.data ?? []).map((s) => [
+        s.id,
+        this.mesas().find((m) => m.id === s.mesa_id)?.numero ?? 0,
+      ]),
+    );
+    this.pedidosEnCursoReal.set(
+      filas.map((p) =>
+        this.aPedido(
+          p,
+          (items.data ?? []).filter((i) => i.pedido_id === p.id),
+          mesaDeSesion.get(p.sesion_mesa_id) ?? 0,
+        ),
+      ),
+    );
+  }
   private async cargarPedidoYCuenta(): Promise<void> {
     if (!this.cliente || !this.sesionActiva) return;
     const q = await this.cliente
@@ -1229,6 +1361,20 @@ export class OperacionService {
           : null,
       );
   }
+  /**
+   * Junta en una sola recarga los cambios que llegan en ráfaga.
+   *
+   * Marcar un sector listo actualiza cada ítem y, al final, el pedido:
+   * con tres ítems son cuatro eventos casi simultáneos. Sin esto serían
+   * cuatro recargas completas en paralelo, en cada teléfono conectado.
+   */
+  private programarCarga(): void {
+    if (this.cargaProgramada) clearTimeout(this.cargaProgramada);
+    this.cargaProgramada = setTimeout(() => {
+      this.cargaProgramada = null;
+      void this.cargar();
+    }, 250);
+  }
   private suscribirRealtime(): void {
     if (!this.cliente || this.canal) return;
     this.canal = this.cliente
@@ -1256,12 +1402,12 @@ export class OperacionService {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pedidos' },
-        () => void this.cargar(),
+        () => this.programarCarga(),
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pedido_items' },
-        () => void this.cargar(),
+        () => this.programarCarga(),
       )
       .on(
         'postgres_changes',
@@ -1378,7 +1524,13 @@ export class OperacionService {
       fotoUrl: f.foto_url,
     };
   }
-  private aPedido(p: Pedido, items: Item[]): PedidoDemo {
+  private aPedido(
+    p: Pedido,
+    items: Item[],
+    mesa = this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0,
+  ): PedidoDemo {
+    const estadoDe = (sector: SectorProducto) =>
+      estadoDeSector(items.filter((i) => i.sector === sector).map((i) => i.estado));
     const estado =
       p.estado === 'entregado' && p.recibido_en !== null
         ? 'recibido'
@@ -1387,9 +1539,10 @@ export class OperacionService {
           : (p.estado as EstadoPedido);
     return {
       id: p.id,
-      mesa: this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0,
+      mesa,
       cliente: 'Cliente de la mesa',
-      creadoEn: new Date(p.creado_en).toLocaleString('es-AR'),
+      creadoEn: formatearFechaHora(new Date(p.creado_en)),
+      momento: new Date(p.creado_en).getTime(),
       items: items.map((i) => ({
         productoId: i.producto_id,
         nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto',
@@ -1401,10 +1554,7 @@ export class OperacionService {
       estado,
       motivoRechazo: p.motivo_rechazo ?? '',
       descuentoPorJuego: this.descuento(),
-      sectoresListos: {
-        cocina: items.filter((i) => i.sector === 'cocina').every((i) => i.estado === 'listo'),
-        bar: items.filter((i) => i.sector === 'bar').every((i) => i.estado === 'listo'),
-      },
+      sectores: { cocina: estadoDe('cocina'), bar: estadoDe('bar') },
     };
   }
   private aMensaje(m: Tablas<'mensajes'>, id: string): MensajeDemo {
@@ -1437,11 +1587,12 @@ export class OperacionService {
       mesa: 0,
       cliente: 'Sin pedido activo',
       creadoEn: '',
+      momento: 0,
       items: [],
       estado: 'pendiente_confirmacion',
       motivoRechazo: '',
       descuentoPorJuego: 0,
-      sectoresListos: { cocina: false, bar: false },
+      sectores: { cocina: 'sin_items', bar: 'sin_items' },
     };
   }
   private validar(error: unknown, recurso: string): void {

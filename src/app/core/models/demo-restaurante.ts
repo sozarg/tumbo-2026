@@ -103,16 +103,32 @@ export interface PedidoItemDemo {
   readonly minutos: number;
 }
 
+/**
+ * En qué anda cada sector con su parte de un pedido (puntos 16 a 18).
+ *
+ * `sin_items` existe porque no todo pedido pasa por los dos sectores:
+ * uno de solo bebidas no espera a la cocina, y la pantalla tiene que
+ * poder decirlo en vez de mostrar «cocina pendiente» para siempre.
+ */
+export type EstadoSector = 'sin_items' | 'pendiente' | 'en_preparacion' | 'listo';
+
 export interface PedidoDemo {
   readonly id: string;
   readonly mesa: number;
   readonly cliente: string;
+  /** Fecha con hora y minutos, ya lista para mostrar: «26/08/2026 20:18». */
   readonly creadoEn: string;
+  /**
+   * El mismo momento en milisegundos, para ordenar. Cocina y bar
+   * atienden primero al pedido más viejo, y ordenar por el texto de
+   * arriba pondría el 02/09 antes que el 26/08.
+   */
+  readonly momento: number;
   readonly items: readonly PedidoItemDemo[];
   readonly estado: EstadoPedido;
   readonly motivoRechazo: string;
   readonly descuentoPorJuego: number;
-  readonly sectoresListos: Readonly<Record<SectorProducto, boolean>>;
+  readonly sectores: Readonly<Record<SectorProducto, EstadoSector>>;
 }
 
 export interface MensajeDemo {

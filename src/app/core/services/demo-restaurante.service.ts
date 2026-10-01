@@ -8,6 +8,7 @@ import {
   ClientePendienteDemo,
   CuentaDemo,
   EstadoPedido,
+  EstadoSector,
   MensajeDemo,
   MesaDemo,
   NotificacionDemo,
@@ -18,6 +19,12 @@ import {
   SectorProducto,
   TipoMesa,
 } from '../models/demo-restaurante';
+import {
+  formatearFechaHora,
+  pedidoCompleto,
+  pedidosEnSeguimiento,
+  sectoresSinEmpezar,
+} from './pedidos-por-sector';
 
 /** Los tres lugares de foto del punto 2, en el orden en que se ven. */
 const LUGARES_DE_FOTO = [0, 1, 2] as const;
@@ -44,6 +51,15 @@ export class DemoRestauranteService {
     },
   ]);
   readonly pedidoActivo = signal<PedidoDemo>(this.pedidoInicial());
+  /**
+   * Los pedidos de las OTRAS mesas, para que cocina y bar tengan algo que
+   * agrupar en modo demostración (punto 16). El de la mesa del cliente
+   * es `pedidoActivo`; juntos forman lo que ve el personal.
+   */
+  readonly otrosPedidos = signal<PedidoDemo[]>(this.otrosPedidosIniciales());
+  readonly pedidosEnCurso = computed(() =>
+    pedidosEnSeguimiento([this.pedidoActivo(), ...this.otrosPedidos()]),
+  );
   readonly carrito = signal<PedidoItemDemo[]>([]);
   readonly mensajes = signal<MensajeDemo[]>([
     {
@@ -298,11 +314,12 @@ export class DemoRestauranteService {
       mesa,
       cliente,
       creadoEn: this.ahora(),
+      momento: Date.now(),
       items: this.carrito(),
       estado: 'pendiente_confirmacion',
       motivoRechazo: '',
       descuentoPorJuego: this.descuento(),
-      sectoresListos: { cocina: false, bar: false },
+      sectores: sectoresSinEmpezar(this.carrito()),
     };
     this.pedidoActivo.set(pedido);
     this.carrito.set([]);
@@ -320,22 +337,53 @@ export class DemoRestauranteService {
     this.notificar('Pedido confirmado y derivado a cocina y bar.', ['cocinero', 'cantinero']);
   }
 
-  marcarSectorListo(sector: SectorProducto): void {
-    const pedido = this.pedidoActivo();
-    const sectores = { ...pedido.sectoresListos, [sector]: true };
-    const participaCocina = pedido.items.some((item) => item.sector === 'cocina');
-    const participaBar = pedido.items.some((item) => item.sector === 'bar');
-    const completo = (!participaCocina || sectores.cocina) && (!participaBar || sectores.bar);
-    this.actualizarPedido({
-      sectoresListos: sectores,
+  /** El sector empieza su parte (punto 18): el cliente pasa a ver «en preparación». */
+  empezarSector(pedidoId: string, sector: SectorProducto): boolean {
+    return this.avanzarSector(pedidoId, sector, 'en_preparacion');
+  }
+
+  /**
+   * El sector terminó su parte. Si era la última, el pedido queda
+   * completo y se avisa al mozo UNA vez: el aviso sale en la transición,
+   * no cada vez que alguien toca el botón (punto 18).
+   */
+  marcarSectorListo(pedidoId: string, sector: SectorProducto): boolean {
+    return this.avanzarSector(pedidoId, sector, 'listo');
+  }
+
+  private avanzarSector(
+    pedidoId: string,
+    sector: SectorProducto,
+    hasta: Extract<EstadoSector, 'en_preparacion' | 'listo'>,
+  ): boolean {
+    const pedido = [this.pedidoActivo(), ...this.otrosPedidos()].find((p) => p.id === pedidoId);
+    if (
+      !pedido ||
+      !['confirmado', 'en_preparacion'].includes(pedido.estado) ||
+      pedido.sectores[sector] === 'sin_items' ||
+      pedido.sectores[sector] === 'listo'
+    )
+      return false;
+    // Marcar listo sin haber tocado «Empezar» también vale: el cocinero
+    // puede tener algo que sale al instante. Lo que no se permite es
+    // volver atrás.
+    if (hasta === 'en_preparacion' && pedido.sectores[sector] !== 'pendiente') return false;
+
+    const sectores = { ...pedido.sectores, [sector]: hasta };
+    const completo = pedidoCompleto(sectores);
+    const cambios: Partial<PedidoDemo> = {
+      sectores,
       estado: completo ? 'listo' : 'en_preparacion',
-    });
+    };
+    if (pedido.id === this.pedidoActivo().id) this.actualizarPedido(cambios);
+    else
+      this.otrosPedidos.update((pedidos) =>
+        pedidos.map((p) => (p.id === pedidoId ? { ...p, ...cambios } : p)),
+      );
     if (completo) {
-      this.notificar('Pedido completo: todos los sectores terminaron.', [
-        'mozo',
-        'cliente_registrado',
-      ]);
+      this.notificar(`Pedido completo de la mesa ${pedido.mesa}: listo para entregar.`, ['mozo']);
     }
+    return true;
   }
 
   marcarEntregado(): void {
@@ -576,6 +624,7 @@ export class DemoRestauranteService {
       mesa: 2,
       cliente: 'Camila Pérez',
       creadoEn: '26/08/2026 20:18',
+      momento: new Date(2026, 7, 26, 20, 18).getTime(),
       items: [
         {
           productoId: 'plato-1',
@@ -597,8 +646,66 @@ export class DemoRestauranteService {
       estado: 'confirmado',
       motivoRechazo: '',
       descuentoPorJuego: 0,
-      sectoresListos: { cocina: false, bar: false },
+      sectores: { cocina: 'pendiente', bar: 'pendiente' },
     };
+  }
+
+  /**
+   * Dos mesas más con pedidos en curso, en distintos momentos del punto
+   * 18: una recién confirmada y otra con el bar ya terminado. Así se ve
+   * la agrupación por mesa y el orden por antigüedad sin cargar nada.
+   */
+  private otrosPedidosIniciales(): PedidoDemo[] {
+    const pedido = (
+      id: string,
+      mesa: number,
+      momento: Date,
+      items: PedidoItemDemo[],
+      sectores: Record<SectorProducto, EstadoSector>,
+    ): PedidoDemo => ({
+      id,
+      mesa,
+      cliente: 'Cliente de la mesa',
+      creadoEn: formatearFechaHora(momento),
+      momento: momento.getTime(),
+      items,
+      estado: Object.values(sectores).some((e) => e !== 'pendiente' && e !== 'sin_items')
+        ? 'en_preparacion'
+        : 'confirmado',
+      motivoRechazo: '',
+      descuentoPorJuego: 0,
+      sectores,
+    });
+    const item = (
+      productoId: string,
+      nombre: string,
+      cantidad: number,
+      sector: SectorProducto,
+    ): PedidoItemDemo => ({ productoId, nombre, cantidad, precio: 0, sector, minutos: 0 });
+
+    return [
+      pedido(
+        'pedido-demo-4',
+        4,
+        new Date(2026, 7, 26, 20, 5),
+        [
+          item('plato-2', 'Ravioles de la abuela', 2, 'cocina'),
+          item('plato-3', 'Ensalada fresca', 1, 'cocina'),
+          item('bebida-3', 'Gaseosa', 3, 'bar'),
+        ],
+        { cocina: 'en_preparacion', bar: 'listo' },
+      ),
+      pedido(
+        'pedido-demo-5',
+        5,
+        new Date(2026, 7, 26, 20, 31),
+        [
+          item('plato-4', 'Papas crocantes', 1, 'cocina'),
+          item('bebida-2', 'TUMBO Spritz', 2, 'bar'),
+        ],
+        { cocina: 'pendiente', bar: 'pendiente' },
+      ),
+    ];
   }
 
   private slug(texto: string): string {

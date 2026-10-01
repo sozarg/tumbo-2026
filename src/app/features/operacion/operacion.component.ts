@@ -1,4 +1,6 @@
 import { MenuOperacion } from './menu-operacion.component';
+import { AccionDeSector, SectorPedidos } from './sector-pedidos.component';
+import { AvancePedidos } from './avance-pedidos.component';
 import { NgOptimizedImage } from '@angular/common';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -22,9 +24,6 @@ import { IonBadge } from '@ionic/angular/ion-badge';
 import { IonButton } from '@ionic/angular/ion-button';
 import { IonCard } from '@ionic/angular/ion-card';
 import { IonCardContent } from '@ionic/angular/ion-card-content';
-import { IonCardHeader } from '@ionic/angular/ion-card-header';
-import { IonCardSubtitle } from '@ionic/angular/ion-card-subtitle';
-import { IonCardTitle } from '@ionic/angular/ion-card-title';
 import { IonChip } from '@ionic/angular/ion-chip';
 import { IonHeader } from '@ionic/angular/ion-header';
 import { IonContent } from '@ionic/angular/ion-content';
@@ -87,6 +86,7 @@ import {
   TipoMesa,
   TipoProducto,
 } from '../../core/models/demo-restaurante';
+import { ETIQUETA_DE_ESTADO_SECTOR, agruparPorMesa } from '../../core/services/pedidos-por-sector';
 import { OperacionService } from '../../core/services/operacion.service';
 import { CodigoQrService } from '../../core/services/codigo-qr.service';
 import { ErroresService } from '../../core/services/errores.service';
@@ -130,13 +130,12 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
 @Component({
   imports: [
     MenuOperacion,
+    SectorPedidos,
+    AvancePedidos,
     IonBadge,
     IonButton,
     IonCard,
     IonCardContent,
-    IonCardHeader,
-    IonCardSubtitle,
-    IonCardTitle,
     IonChip,
     IonContent,
     IonHeader,
@@ -329,6 +328,28 @@ export class Operacion implements OnInit {
 
   protected readonly enviando = signal(false);
   protected readonly confirmandoRecepcion = signal(false);
+  /** El pedido que cocina o bar está guardando; bloquea el doble toque. */
+  protected readonly procesandoSector = signal<string | null>(null);
+  protected readonly etiquetaSector = ETIQUETA_DE_ESTADO_SECTOR;
+  protected readonly sectorActual = computed<SectorProducto>(() =>
+    this.seccion() === 'barra' ? 'bar' : 'cocina',
+  );
+  /** Puntos 16 y 17: lo pendiente del sector, agrupado por mesa. */
+  protected readonly mesasDelSector = computed(() =>
+    agruparPorMesa(this.demo.pedidosEnCurso(), this.sectorActual()),
+  );
+  /** Lo que el cliente ve de cada sector que interviene en su pedido. */
+  protected readonly sectoresDelCliente = computed(() => {
+    const pedido = this.demo.pedidoActivo();
+    if (!['confirmado', 'en_preparacion', 'listo'].includes(pedido.estado)) return [];
+    return (['cocina', 'bar'] as const)
+      .filter((sector) => pedido.sectores[sector] !== 'sin_items')
+      .map((sector) => ({
+        sector,
+        nombre: sector === 'cocina' ? 'Cocina' : 'Bar',
+        estado: pedido.sectores[sector],
+      }));
+  });
 
   /**
    * El id del empleado que se está dando de baja, o `null`.
@@ -2054,9 +2075,36 @@ export class Operacion implements OnInit {
     this.mensaje.set('Pedido confirmado: cocina y bar recibieron sus ítems.');
   }
 
-  protected async marcarSectorListo(sector: SectorProducto): Promise<void> {
-    await this.demo.marcarSectorListo(sector);
-    this.mensaje.set('Sector ' + sector + ' actualizado.');
+  protected async empezarSector(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.empezarSector(accion.pedidoId, this.sectorActual()),
+      `Mesa ${accion.mesa}: en preparación.`,
+    );
+  }
+
+  protected async marcarSectorListo(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.marcarSectorListo(accion.pedidoId, this.sectorActual()),
+      `Mesa ${accion.mesa}: ${this.sectorActual() === 'cocina' ? 'cocina' : 'bar'} listo.`,
+    );
+  }
+
+  private async avanzarSector(
+    accion: AccionDeSector,
+    guardar: () => Promise<{ ok: boolean; error?: string }>,
+    exito: string,
+  ): Promise<void> {
+    if (this.procesandoSector()) return;
+    this.procesandoSector.set(accion.pedidoId);
+    try {
+      const resultado = await guardar();
+      if (resultado.ok) this.avisarExito(exito);
+      else await this.avisarError(resultado.error ?? 'No se pudo actualizar el pedido.');
+    } finally {
+      this.procesandoSector.set(null);
+    }
   }
 
   protected async entregarPedido(): Promise<void> {
