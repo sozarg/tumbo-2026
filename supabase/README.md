@@ -337,7 +337,9 @@ cd supabase/functions && npx -y deno@2 test avisar-push/reglas_test.ts
 
 Para el recorrido completo con cuatro teléfonos simulados, ver el
 encabezado de `tests/ui-puntos-16-18.mjs`: se niega a correr si
-`environment.local.ts` no apunta a `127.0.0.1:54321`.
+`environment.local.ts` no apunta a `127.0.0.1:54321`. La entrega y la
+recepción del punto 19 tienen el suyo, `tests/ui-punto-19.mjs`, con la
+misma guarda.
 
 ---
 

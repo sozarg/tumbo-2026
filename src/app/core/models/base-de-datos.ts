@@ -2,7 +2,7 @@
 // TUMBO · Tipos de la base de datos
 //
 // Contratos 01–04 sincronizados con generación CLI del proyecto de desarrollo (18/09/2026).
-// Se preservan contratos históricos fuera de alcance; recibido_en sigue pendiente (punto 19).
+// Se preservan contratos históricos fuera de alcance. recibido_en y confirmar_recepcion: punto 19.
 // Se regenera con el CLI de Supabase, desde la raíz del proyecto:
 //
 //   supabase gen types typescript --linked > src/app/core/models/base-de-datos.ts
@@ -663,6 +663,14 @@ export interface Database {
       };
     };
     Functions: {
+      confirmar_recepcion: {
+        Args: { p_pedido_id: string };
+        Returns: string;
+      };
+      estadia_con_pedido_recibido: {
+        Args: { p_sesion: string };
+        Returns: boolean;
+      };
       cuil_coherente: {
         Args: { p_cuil: string; p_dni: string };
         Returns: boolean;

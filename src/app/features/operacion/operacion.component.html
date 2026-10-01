@@ -86,6 +86,7 @@
           [accesos]="accesos()"
           [actividad]="actividad()"
           [pedidos]="demo.pedidosEnCurso()"
+          [bloqueadas]="seccionesBloqueadas()"
           [perfil]="usuarioActual.perfil"
           (seleccionar)="abrir($event)"
         />
@@ -1446,14 +1447,6 @@
                     </div>
                     <div class="button-row">
                       <tumbo-boton-confirmacion
-                        fill="outline"
-                        [disabled]="demo.pedidoActivo().estado !== 'listo'"
-                        title="Confirmar entrega"
-                        message="Vas a marcar el pedido como entregado. ¿Querés continuar?"
-                        (confirmado)="entregarPedido()"
-                        >Marcar entregado</tumbo-boton-confirmacion
-                      >
-                      <tumbo-boton-confirmacion
                         [disabled]="demo.cuenta()?.estado !== 'pagada'"
                         title="Confirmar pago"
                         message="Vas a confirmar el pago y liberar la mesa. ¿Querés continuar?"
@@ -1463,7 +1456,11 @@
                     </div>
                   </ion-card-content>
                 </ion-card>
-                <tumbo-avance-pedidos [pedidosEnCurso]="demo.pedidosEnCurso()" />
+                <tumbo-avance-pedidos
+                  [pedidosEnCurso]="demo.pedidosEnCurso()"
+                  [procesando]="procesandoSector()"
+                  (entregar)="entregarPedido($event)"
+                />
               </section>
             }
           }
@@ -1649,6 +1646,14 @@
                     </p>
                   </div>
                 </div>
+              } @else if (perfilEsCliente() && !demo.juegosHabilitados()) {
+                <div class="locked-card" role="status">
+                  <ion-icon aria-hidden="true" name="time-outline" />
+                  <div>
+                    <strong>Los juegos se habilitan con tu pedido</strong>
+                    <p>Vas a poder jugar apenas el mozo confirme tu pedido.</p>
+                  </div>
+                </div>
               } @else {
                 <div class="games-grid">
                   @if (pagina() === 0) {
@@ -1709,39 +1714,56 @@
                   demo.encuestaRespondida() ? 'Respondida' : 'Pendiente'
                 }}</span>
               </div>
-              <form class="survey-card" [formGroup]="encuestaForm" (ngSubmit)="registrarEncuesta()">
-                <div class="survey-question">
-                  <strong>¿Cómo fue tu experiencia?</strong
-                  ><ion-range formControlName="satisfaccion" min="1" max="5" pin="true"
-                    ><ion-label slot="start">1</ion-label
-                    ><ion-label slot="end">5</ion-label></ion-range
-                  >
+              @if (perfilEsCliente() && !demo.encuestaYCuentaHabilitadas()) {
+                <div class="locked-card" role="status">
+                  <ion-icon aria-hidden="true" name="time-outline" />
+                  <div>
+                    <strong>La encuesta se habilita con tu pedido</strong>
+                    <p>Confirmá que recibiste tu pedido y vas a poder contarnos cómo te fue.</p>
+                  </div>
                 </div>
-                <ion-textarea
-                  label="Contanos un poco más"
-                  label-placement="stacked"
-                  formControlName="comentario"
-                  fill="outline"
-                  auto-grow="true"
-                  placeholder="Tu opinión nos ayuda a mejorar."
-                />
-                <ion-item lines="none"
-                  ><ion-label>¿Recomendarías Tumbito?</ion-label
-                  ><ion-toggle
-                    aria-label="¿Recomendarías Tumbito?"
-                    slot="end"
-                    formControlName="recomendaria"
-                /></ion-item>
-                <tumbo-boton-confirmacion
-                  buttonClass="primary-action"
-                  [disabled]="demo.encuestaRespondida()"
-                  title="Confirmar envío de encuesta"
-                  message="Vas a guardar tus respuestas de satisfacción. ¿Querés continuar?"
-                  (confirmado)="registrarEncuesta()"
-                  ><ion-icon aria-hidden="true" slot="start" name="document-text-outline" />Guardar
-                  encuesta</tumbo-boton-confirmacion
+              } @else {
+                <form
+                  class="survey-card"
+                  [formGroup]="encuestaForm"
+                  (ngSubmit)="registrarEncuesta()"
                 >
-              </form>
+                  <div class="survey-question">
+                    <strong>¿Cómo fue tu experiencia?</strong
+                    ><ion-range formControlName="satisfaccion" min="1" max="5" pin="true"
+                      ><ion-label slot="start">1</ion-label
+                      ><ion-label slot="end">5</ion-label></ion-range
+                    >
+                  </div>
+                  <ion-textarea
+                    label="Contanos un poco más"
+                    label-placement="stacked"
+                    formControlName="comentario"
+                    fill="outline"
+                    auto-grow="true"
+                    placeholder="Tu opinión nos ayuda a mejorar."
+                  />
+                  <ion-item lines="none"
+                    ><ion-label>¿Recomendarías Tumbito?</ion-label
+                    ><ion-toggle
+                      aria-label="¿Recomendarías Tumbito?"
+                      slot="end"
+                      formControlName="recomendaria"
+                  /></ion-item>
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
+                    [disabled]="demo.encuestaRespondida()"
+                    title="Confirmar envío de encuesta"
+                    message="Vas a guardar tus respuestas de satisfacción. ¿Querés continuar?"
+                    (confirmado)="registrarEncuesta()"
+                    ><ion-icon
+                      aria-hidden="true"
+                      slot="start"
+                      name="document-text-outline"
+                    />Guardar encuesta</tumbo-boton-confirmacion
+                  >
+                </form>
+              }
             </section>
           }
 
@@ -1837,7 +1859,21 @@
 
           @if (seccion() === 'cuenta') {
             @if (perfilEsCliente()) {
-              @if (!demo.cuenta()) {
+              @if (!demo.cuenta() && !demo.encuestaYCuentaHabilitadas()) {
+                <section class="section-block">
+                  <div class="section-heading">
+                    <div><h2>Cuenta y propina</h2></div>
+                    <ion-icon aria-hidden="true" class="section-icon" name="wallet-outline" />
+                  </div>
+                  <div class="locked-card" role="status">
+                    <ion-icon aria-hidden="true" name="time-outline" />
+                    <div>
+                      <strong>La cuenta se habilita con tu pedido</strong>
+                      <p>Confirmá que recibiste tu pedido para poder pedir la cuenta.</p>
+                    </div>
+                  </div>
+                </section>
+              } @else if (!demo.cuenta()) {
                 <section class="section-block">
                   <div class="section-heading">
                     <div><h2>Cuenta y propina</h2></div>

@@ -386,16 +386,27 @@ export class DemoRestauranteService {
     return true;
   }
 
-  marcarEntregado(): void {
-    this.actualizarPedido({ estado: 'entregado' });
+  /** Punto 19: el mozo entrega un pedido completo, y solo si está listo. */
+  marcarEntregado(pedidoId: string): boolean {
+    const pedido = [this.pedidoActivo(), ...this.otrosPedidos()].find((p) => p.id === pedidoId);
+    if (!pedido || pedido.estado !== 'listo') return false;
+    if (pedido.id === this.pedidoActivo().id) this.actualizarPedido({ estado: 'entregado' });
+    else
+      this.otrosPedidos.update((pedidos) =>
+        pedidos.map((p) => (p.id === pedidoId ? { ...p, estado: 'entregado' } : p)),
+      );
     this.notificar('El pedido fue entregado. Confirmá la recepción.', [
       'cliente_registrado',
       'cliente_anonimo',
     ]);
+    return true;
   }
 
-  confirmarRecepcion(): void {
+  /** Punto 19: el cliente confirma que recibió su pedido, una vez y ya entregado. */
+  confirmarRecepcion(): boolean {
+    if (this.pedidoActivo().estado !== 'entregado') return false;
     this.actualizarPedido({ estado: 'recibido' });
+    return true;
   }
 
   agregarMensaje(autor: string, texto: string, esPropio: boolean): void {

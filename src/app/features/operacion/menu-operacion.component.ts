@@ -18,6 +18,11 @@ export class MenuOperacion {
   /** Los pedidos en curso de todas las mesas; el inicio del sector muestra su cola. */
   readonly pedidos = input.required<readonly PedidoDemo[]>();
   readonly perfil = input.required<PerfilUsuario>();
+  /**
+   * Accesos que el cliente ve pero todavía no puede usar (puntos 14 y 19):
+   * se marcan con un candado y, al tocarlos, la sección explica por qué.
+   */
+  readonly bloqueadas = input<readonly Seccion[]>([]);
   readonly seleccionar = output<Seccion>();
 
   protected readonly destacado = computed(() => this.accesos()[0]);

@@ -28,7 +28,12 @@ import { RegistroClienteService } from './registro-cliente.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
 import { FotoTomada } from '../dispositivo/camara.service';
-import { estadoDeSector, formatearFechaHora } from './pedidos-por-sector';
+import {
+  encuestaYCuentaHabilitadas,
+  estadoDeSector,
+  formatearFechaHora,
+  juegosHabilitados,
+} from './pedidos-por-sector';
 
 type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
@@ -209,6 +214,12 @@ export class OperacionService {
   );
   readonly tiempoCarrito = computed(() =>
     this.carrito().reduce((t, i) => Math.max(t, i.minutos), 0),
+  );
+  /** Punto 14: los juegos se abren cuando el mozo confirma el pedido. */
+  readonly juegosHabilitados = computed(() => juegosHabilitados(this.pedidoActivo().estado));
+  /** Punto 19: encuesta y cuenta, recién con la recepción confirmada. */
+  readonly encuestaYCuentaHabilitadas = computed(() =>
+    encuestaYCuentaHabilitadas(this.pedidoActivo().estado),
   );
   readonly productosCocina = computed(() => this.productos().filter((p) => p.sector === 'cocina'));
   readonly productosBar = computed(() => this.productos().filter((p) => p.sector === 'bar'));
@@ -1106,14 +1117,7 @@ export class OperacionService {
       .eq('sector', sector)
       .in('estado', desde)
       .select('id');
-    // Los rechazos de `proteger_item_de_sector` ya vienen en español y
-    // dicen qué pasó («El pedido no está en preparación.»): se muestran
-    // tal cual en vez del genérico «revisá la conexión».
-    if (error?.code === '42501' && !error.message.toLowerCase().includes('row-level')) {
-      this.registrarError('actualizar el sector', error);
-      return { ok: false, error: error.message };
-    }
-    if (error) return this.fallo('actualizar el sector', error);
+    if (error) return this.falloDeLaBase('actualizar el sector', error);
     // Cero filas no es un error de la base: otro teléfono del mismo
     // sector ya lo hizo, o el pedido cambió. Decir «listo» ahí mentiría.
     if (!data?.length) {
@@ -1126,12 +1130,59 @@ export class OperacionService {
     ]);
     return { ok: true };
   }
-  async marcarEntregado(): Promise<Resultado> {
-    return this.cambiarEstadoPedido('entregado');
+  /**
+   * El mozo entrega un pedido completo (punto 19).
+   *
+   * Recibe el pedido explícito por lo mismo que cocina y bar: el mozo
+   * atiende varias mesas, y «el pedido activo» es el de una sola. La
+   * base exige que esté listo y pone la hora de entrega.
+   */
+  async marcarEntregado(pedidoId: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.marcarEntregado(pedidoId)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no está listo para entregar.' };
+    }
+    const { data, error } = await this.cliente
+      .from('pedidos')
+      .update({ estado: 'entregado' })
+      .eq('id', pedidoId)
+      .eq('estado', 'listo')
+      .select('id');
+    if (error) return this.falloDeLaBase('entregar el pedido', error);
+    if (!data?.length) {
+      await this.cargarPedidosEnCurso(this.sesion.usuario());
+      return { ok: false, error: 'El pedido ya no está listo para entregar.' };
+    }
+    await Promise.all([
+      this.cargarPedidosEnCurso(this.sesion.usuario()),
+      this.cargarPedidoYCuenta(),
+    ]);
+    return { ok: true };
   }
+
+  /**
+   * El cliente confirma que recibió su pedido (punto 19).
+   *
+   * Va por `confirmar_recepcion` y no por un UPDATE: RLS no deja al
+   * cliente tocar un pedido ya entregado, y la función revisa que el
+   * pedido sea suyo y que el mozo lo haya entregado.
+   */
   async confirmarRecepcion(): Promise<Resultado> {
-    return this.cambiarEstadoPedido('recibido');
+    if (!this.cliente) {
+      return this.mock.confirmarRecepcion()
+        ? { ok: true }
+        : { ok: false, error: 'El mozo todavía no entregó este pedido.' };
+    }
+    if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
+    const { error } = await this.cliente.rpc('confirmar_recepcion', {
+      p_pedido_id: this.pedidoReal.id,
+    });
+    if (error) return this.falloDeLaBase('confirmar la recepción', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
   }
+
   async agregarMensaje(autor: string, texto: string, propio: boolean): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.agregarMensaje(autor, texto, propio);
@@ -1184,6 +1235,8 @@ export class OperacionService {
     this.porcentajePropina.set(p);
   }
   async registrarEncuesta(): Promise<Resultado> {
+    if (!this.encuestaYCuentaHabilitadas())
+      return { ok: false, error: 'Confirmá que recibiste tu pedido para responder la encuesta.' };
     if (!this.cliente) {
       return { ok: this.mock.registrarEncuesta() };
     }
@@ -1198,6 +1251,8 @@ export class OperacionService {
       : { ok: false, error: 'No hay estadía activa.' };
   }
   async generarCuenta(): Promise<Resultado> {
+    if (!this.encuestaYCuentaHabilitadas())
+      return { ok: false, error: 'Confirmá que recibiste tu pedido para pedir la cuenta.' };
     if (!this.cliente) return { ok: this.mock.generarCuenta() };
     const p = this.porcentajePropina();
     if (!this.sesionActiva || p === null)
@@ -1232,21 +1287,15 @@ export class OperacionService {
   }
 
   private async cambiarEstadoPedido(
-    estado: 'rechazado' | 'confirmado' | 'entregado' | 'recibido',
+    estado: 'rechazado' | 'confirmado',
     extra: Record<string, unknown> = {},
   ): Promise<Resultado> {
     if (!this.cliente) {
       if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? ''));
-      else if (estado === 'confirmado') this.mock.confirmarPedido();
-      else if (estado === 'entregado') this.mock.marcarEntregado();
-      else this.mock.confirmarRecepcion();
+      else this.mock.confirmarPedido();
       return { ok: true };
     }
     if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
-    if (estado === 'recibido')
-      return this.actualizar('pedidos', this.pedidoReal.id, {
-        recibido_en: new Date().toISOString(),
-      });
     return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra });
   }
   private async actualizarCuenta(estado: 'pagada' | 'confirmada'): Promise<Resultado> {
@@ -1278,7 +1327,8 @@ export class OperacionService {
     const pedidos = await this.cliente
       .from('pedidos')
       .select('*')
-      .in('estado', ['confirmado', 'en_preparacion', 'listo'])
+      .in('estado', ['confirmado', 'en_preparacion', 'listo', 'entregado'])
+      .is('recibido_en', null)
       .order('creado_en');
     if (pedidos.error) {
       this.registrarError('cargar pedidos en curso', pedidos.error);
@@ -1546,6 +1596,7 @@ export class OperacionService {
       items: items.map((i) => ({
         productoId: i.producto_id,
         nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto',
+        tipo: this.productosPorId.get(i.producto_id)?.tipo,
         cantidad: i.cantidad,
         precio: Number(i.precio_unitario),
         sector: i.sector,
@@ -1648,6 +1699,19 @@ export class OperacionService {
       return { ok: false, error: 'No tenés permisos para realizar esta operación.' };
     }
     return { ok: true };
+  }
+  /**
+   * Como `fallo`, pero muestra tal cual los rechazos de las reglas de la
+   * base. Los triggers y funciones de los puntos 16 a 19 los escriben en
+   * español y dicen qué pasó («El pedido no está en preparación.»), que
+   * sirve mucho más que el genérico «revisá la conexión».
+   */
+  private falloDeLaBase(accion: string, error: { code?: string; message: string }): Resultado {
+    if (error.code === '42501' && !error.message.toLowerCase().includes('row-level')) {
+      this.registrarError(accion, error);
+      return { ok: false, error: error.message };
+    }
+    return this.fallo(accion, error);
   }
   private fallo(accion: string, error: unknown): Resultado {
     this.registrarError(accion, error);

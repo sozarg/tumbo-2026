@@ -69,6 +69,7 @@ import {
   sendOutline,
   sparklesOutline,
   timeOutline,
+  lockClosedOutline,
   trashOutline,
   walletOutline,
 } from 'ionicons/icons';
@@ -338,6 +339,14 @@ export class Operacion implements OnInit {
   protected readonly mesasDelSector = computed(() =>
     agruparPorMesa(this.demo.pedidosEnCurso(), this.sectorActual()),
   );
+  /** Puntos 14 y 19: lo que el cliente todavía no puede usar según su pedido. */
+  protected readonly seccionesBloqueadas = computed<readonly Seccion[]>(() => {
+    if (!this.perfilEsCliente()) return [];
+    return [
+      ...(this.demo.juegosHabilitados() ? [] : (['juegos'] as const)),
+      ...(this.demo.encuestaYCuentaHabilitadas() ? [] : (['encuesta', 'cuenta'] as const)),
+    ];
+  });
   /** Lo que el cliente ve de cada sector que interviene en su pedido. */
   protected readonly sectoresDelCliente = computed(() => {
     const pedido = this.demo.pedidoActivo();
@@ -767,6 +776,7 @@ export class Operacion implements OnInit {
       sendOutline,
       sparklesOutline,
       timeOutline,
+      lockClosedOutline,
       trashOutline,
       walletOutline,
     });
@@ -2107,9 +2117,13 @@ export class Operacion implements OnInit {
     }
   }
 
-  protected async entregarPedido(): Promise<void> {
-    await this.demo.marcarEntregado();
-    this.mensaje.set('Pedido marcado como entregado; el cliente debe confirmar la recepción.');
+  /** Punto 19: el mozo entrega un pedido completo desde «Avance en cocina y bar». */
+  protected async entregarPedido(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.marcarEntregado(accion.pedidoId),
+      `Mesa ${accion.mesa}: pedido entregado. El cliente tiene que confirmar la recepción.`,
+    );
   }
 
   protected async recibirPedido(): Promise<void> {

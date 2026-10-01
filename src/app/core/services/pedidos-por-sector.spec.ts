@@ -1,8 +1,11 @@
 import { EstadoSector, PedidoDemo, PedidoItemDemo } from '../models/demo-restaurante';
 import {
   agruparPorMesa,
+  encuestaYCuentaHabilitadas,
   estadoDeSector,
   formatearFechaHora,
+  itemsPorTipo,
+  juegosHabilitados,
   pedidoCompleto,
   pedidosEnSeguimiento,
   sectoresSinEmpezar,
@@ -125,5 +128,35 @@ describe('Listado agrupado por mesa (puntos 16 y 17)', () => {
 describe('Fecha con hora y minutos', () => {
   it('usa dd/mm/aaaa hh:mm, sin segundos', () => {
     expect(formatearFechaHora(new Date(2026, 9, 1, 9, 5, 59))).toBe('01/10/2026 09:05');
+  });
+});
+
+describe('Entrega (punto 19)', () => {
+  it('agrupa lo que lleva el mozo en comidas, bebidas y postres', () => {
+    const grupos = itemsPorTipo([
+      { ...item('Flan', 'cocina'), tipo: 'postre' },
+      item('Agua', 'bar'),
+      { ...item('Bife', 'cocina', 2), tipo: 'plato' },
+    ]);
+    expect(grupos.map((g) => [g.tipo, g.items.map((i) => i.nombre)])).toEqual([
+      ['plato', ['Bife']],
+      ['bebida', ['Agua']],
+      ['postre', ['Flan']],
+    ]);
+  });
+
+  it('el mozo sigue un pedido entregado hasta que lo reciben', () => {
+    const entregado = pedido('x', 3, 1, { cocina: 'listo', bar: 'listo' }, 'entregado');
+    const recibido = pedido('y', 3, 2, { cocina: 'listo', bar: 'listo' }, 'recibido');
+    expect(pedidosEnSeguimiento([entregado, recibido]).map((p) => p.id)).toEqual(['x']);
+    expect(agruparPorMesa([entregado], 'cocina')).toEqual([]);
+  });
+
+  it('juegos desde la confirmación; encuesta y cuenta desde la recepción', () => {
+    expect(juegosHabilitados('pendiente_confirmacion')).toBe(false);
+    expect(juegosHabilitados('confirmado')).toBe(true);
+    expect(juegosHabilitados('recibido')).toBe(true);
+    expect(encuestaYCuentaHabilitadas('entregado')).toBe(false);
+    expect(encuestaYCuentaHabilitadas('recibido')).toBe(true);
   });
 });

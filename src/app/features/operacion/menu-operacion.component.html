@@ -151,7 +151,12 @@
             <button
               class="hub-tile dashboard-action"
               type="button"
-              [attr.aria-label]="acceso.titulo"
+              [class.dashboard-action--bloqueada]="bloqueadas().includes(acceso.id)"
+              [attr.aria-label]="
+                bloqueadas().includes(acceso.id)
+                  ? acceso.titulo + ', se habilita con tu pedido'
+                  : acceso.titulo
+              "
               (click)="seleccionar.emit(acceso.id)"
             >
               <span class="dashboard-action__icon"
@@ -163,6 +168,13 @@
                   <small>{{ descripcion(acceso) }}</small>
                 }
               </span>
+              @if (bloqueadas().includes(acceso.id)) {
+                <ion-icon
+                  class="dashboard-action__candado"
+                  name="lock-closed-outline"
+                  aria-hidden="true"
+                />
+              }
             </button>
           }
         </div>

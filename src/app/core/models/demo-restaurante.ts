@@ -94,6 +94,19 @@ export interface PersonaEsperaDemo {
   readonly mesaAsignada?: number;
 }
 
+/**
+ * El tipo de un ítem ya pedido. A diferencia de `TipoProducto` incluye
+ * el postre: la base lo tiene y el punto 19 pide que el mozo entregue
+ * «comidas, bebidas y postres», así que hay que poder separarlos.
+ */
+export type TipoDeItem = 'plato' | 'bebida' | 'postre';
+
+export const ETIQUETA_DE_TIPO_ITEM: Readonly<Record<TipoDeItem, string>> = {
+  plato: 'Comidas',
+  bebida: 'Bebidas',
+  postre: 'Postres',
+};
+
 export interface PedidoItemDemo {
   readonly productoId: string;
   readonly nombre: string;
@@ -101,6 +114,8 @@ export interface PedidoItemDemo {
   readonly precio: number;
   readonly sector: SectorProducto;
   readonly minutos: number;
+  /** Opcional porque el carrito no lo necesita; los pedidos cargados lo traen. */
+  readonly tipo?: TipoDeItem;
 }
 
 /**

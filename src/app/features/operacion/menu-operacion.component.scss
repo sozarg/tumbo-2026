@@ -397,3 +397,16 @@ h2 {
     transition: none;
   }
 }
+
+/* Puntos 14 y 19: acceso visible pero todavía no disponible para el cliente. */
+.dashboard-action--bloqueada {
+  position: relative;
+}
+
+.dashboard-action__candado {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  color: #003592;
+  font-size: 1rem;
+}

@@ -487,3 +487,71 @@ describe('Cocina, bar y pedido completo (puntos 16 a 18)', () => {
     expect(servicio.pedidosEnCurso().find((p) => p.mesa === 4)!.estado).toBe('listo');
   });
 });
+
+/** Punto 19 en modo demostración: entrega del mozo y recepción del cliente. */
+describe('Entrega y recepción del pedido (punto 19)', () => {
+  async function pedidoListo(servicio: OperacionService): Promise<string> {
+    const id = servicio.pedidoActivo().id;
+    await servicio.marcarSectorListo(id, 'cocina');
+    await servicio.marcarSectorListo(id, 'bar');
+    return id;
+  }
+
+  it('el mozo solo entrega un pedido listo', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const id = servicio.pedidoActivo().id;
+    const antes = await servicio.marcarEntregado(id);
+    expect(antes.ok).toBe(false);
+    expect(antes.error).toBe('El pedido ya no está listo para entregar.');
+
+    await pedidoListo(servicio);
+    expect((await servicio.marcarEntregado(id)).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('entregado');
+    expect((await servicio.marcarEntregado(id)).ok).toBe(false);
+  });
+
+  it('el entregado sigue a la vista del mozo hasta que el cliente confirma', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const id = await pedidoListo(servicio);
+    await servicio.marcarEntregado(id);
+    expect(servicio.pedidosEnCurso().some((p) => p.id === id)).toBe(true);
+    await servicio.confirmarRecepcion();
+    expect(servicio.pedidosEnCurso().some((p) => p.id === id)).toBe(false);
+  });
+
+  it('el cliente confirma la recepción solo después de la entrega, y una vez', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    expect((await servicio.confirmarRecepcion()).ok).toBe(false);
+    const id = await pedidoListo(servicio);
+    await servicio.marcarEntregado(id);
+    expect((await servicio.confirmarRecepcion()).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('recibido');
+    expect((await servicio.confirmarRecepcion()).ok).toBe(false);
+  });
+
+  it('encuesta y cuenta se habilitan recién con la recepción', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.seleccionarPropina(10);
+    expect(servicio.juegosHabilitados()).toBe(true);
+    expect(servicio.encuestaYCuentaHabilitadas()).toBe(false);
+    expect((await servicio.registrarEncuesta()).error).toBe(
+      'Confirmá que recibiste tu pedido para responder la encuesta.',
+    );
+    expect((await servicio.generarCuenta()).error).toBe(
+      'Confirmá que recibiste tu pedido para pedir la cuenta.',
+    );
+
+    const id = await pedidoListo(servicio);
+    await servicio.marcarEntregado(id);
+    await servicio.confirmarRecepcion();
+    expect(servicio.encuestaYCuentaHabilitadas()).toBe(true);
+    expect((await servicio.registrarEncuesta()).ok).toBe(true);
+    expect((await servicio.generarCuenta()).ok).toBe(true);
+  });
+
+  it('los juegos esperan a que el mozo confirme el pedido (punto 14)', () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    expect(servicio.juegosHabilitados()).toBe(false);
+  });
+});

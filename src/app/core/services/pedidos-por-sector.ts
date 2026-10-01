@@ -3,6 +3,7 @@ import {
   PedidoDemo,
   PedidoItemDemo,
   SectorProducto,
+  TipoDeItem,
 } from '../models/demo-restaurante';
 
 /**
@@ -34,6 +35,13 @@ export interface MesaDeSector {
 
 /** Los pedidos que ya salieron del mozo y todavía no se entregaron. */
 const EN_CURSO: readonly PedidoDemo['estado'][] = ['confirmado', 'en_preparacion', 'listo'];
+
+/**
+ * Lo que sigue el mozo: lo que está en cocina y bar, y lo que ya entregó
+ * pero el cliente todavía no confirmó (punto 19). Un pedido recibido
+ * sale de la lista: ya no le queda nada por hacer.
+ */
+const EN_SEGUIMIENTO: readonly PedidoDemo['estado'][] = [...EN_CURSO, 'entregado'];
 
 /**
  * El estado de un sector a partir de sus ítems.
@@ -107,10 +115,10 @@ export function agruparPorMesa(
   return [...mesas].map(([mesa, partes]) => ({ mesa, pedidos: partes }));
 }
 
-/** Los pedidos que el mozo sigue en «Avance en cocina y bar» (punto 18). */
+/** Los pedidos que el mozo sigue en «Avance en cocina y bar» (puntos 18 y 19). */
 export function pedidosEnSeguimiento(pedidos: readonly PedidoDemo[]): PedidoDemo[] {
   return pedidos
-    .filter((pedido) => EN_CURSO.includes(pedido.estado))
+    .filter((pedido) => EN_SEGUIMIENTO.includes(pedido.estado))
     .sort((a, b) => a.momento - b.momento);
 }
 
@@ -136,3 +144,30 @@ export const ETIQUETA_DE_ESTADO_SECTOR: Readonly<Record<EstadoSector, string>> =
   en_preparacion: 'En preparación',
   listo: 'Listo',
 };
+
+/**
+ * Los ítems de un pedido agrupados por tipo, para la entrega (punto 19):
+ * el mozo lleva comidas, bebidas y postres, y así ve qué lleva de cada
+ * cosa. Sin tipo conocido, el ítem va con su sector: bar es bebida y
+ * cocina, comida.
+ */
+export function itemsPorTipo(
+  items: readonly PedidoItemDemo[],
+): { tipo: TipoDeItem; items: PedidoItemDemo[] }[] {
+  const orden: readonly TipoDeItem[] = ['plato', 'bebida', 'postre'];
+  const tipoDe = (item: PedidoItemDemo): TipoDeItem =>
+    item.tipo ?? (item.sector === 'bar' ? 'bebida' : 'plato');
+  return orden
+    .map((tipo) => ({ tipo, items: items.filter((item) => tipoDe(item) === tipo) }))
+    .filter((grupo) => grupo.items.length > 0);
+}
+
+/** Punto 14: los juegos se abren cuando el mozo confirma el pedido. */
+export function juegosHabilitados(estado: PedidoDemo['estado']): boolean {
+  return [...EN_SEGUIMIENTO, 'recibido'].includes(estado);
+}
+
+/** Punto 19: encuesta y cuenta, recién cuando el cliente confirmó la recepción. */
+export function encuestaYCuentaHabilitadas(estado: PedidoDemo['estado']): boolean {
+  return estado === 'recibido';
+}

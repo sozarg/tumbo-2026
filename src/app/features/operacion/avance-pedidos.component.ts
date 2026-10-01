@@ -1,25 +1,36 @@
-import { Component, computed, input, signal } from '@angular/core';
-import { PedidoDemo, SectorProducto } from '../../core/models/demo-restaurante';
+import { Component, computed, input, output, signal } from '@angular/core';
+import {
+  ETIQUETA_DE_TIPO_ITEM,
+  PedidoDemo,
+  SectorProducto,
+} from '../../core/models/demo-restaurante';
 import {
   ETIQUETA_DE_ESTADO_SECTOR,
+  itemsPorTipo,
   pedidoCompleto,
   pedidosEnSeguimiento,
 } from '../../core/services/pedidos-por-sector';
+import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
+import { AccionDeSector } from './sector-pedidos.component';
 
 /**
- * Lo que el mozo ve de cada parte del pedido (punto 18).
+ * Lo que el mozo ve de cada parte del pedido (puntos 18 y 19).
  *
  * El enunciado pide que «cada parte del pedido» se vea en el listado del
  * mozo: no alcanza con un «listo» final, el mozo tiene que saber que la
  * cocina ya terminó y el bar no, para no ir a buscar media mesa.
+ *
+ * Cuando el pedido está completo, el mozo ve qué lleva —comidas,
+ * bebidas y postres— y lo marca entregado desde acá. Después queda a la
+ * espera de que el cliente confirme la recepción.
  *
  * Se muestra un pedido por página, igual que cocina y bar, para no
  * desplazar contenido.
  */
 @Component({
   selector: 'tumbo-avance-pedidos',
-  imports: [Paginador],
+  imports: [BotonConfirmacion, Paginador],
   template: `
     <section class="avance" aria-labelledby="avance-titulo">
       <h2 id="avance-titulo">Avance en cocina y bar</h2>
@@ -39,8 +50,39 @@ import { Paginador } from '../../shared/components/paginador/paginador.component
               }
             }
           </ul>
-          @if (completo(pedido)) {
+          @if (pedido.estado === 'listo') {
             <p class="avance__aviso" role="status">Pedido completo: listo para entregar.</p>
+            <div class="avance__entrega">
+              @for (grupo of grupos(pedido); track grupo.tipo) {
+                <h4>{{ etiquetaTipo[grupo.tipo] }}</h4>
+                <ul>
+                  @for (item of grupo.items; track item.productoId) {
+                    <li>
+                      <span>{{ item.nombre }}</span>
+                      <strong>{{ item.cantidad }} ×</strong>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <tumbo-boton-confirmacion
+              buttonClass="approve-button"
+              expand="block"
+              [disabled]="procesando() === pedido.id"
+              title="Confirmar entrega"
+              [message]="
+                'Vas a marcar como entregado el pedido de la mesa ' +
+                pedido.mesa +
+                '. ¿Querés continuar?'
+              "
+              (confirmado)="entregar.emit({ pedidoId: pedido.id, mesa: pedido.mesa })"
+            >
+              Marcar entregado
+            </tumbo-boton-confirmacion>
+          } @else if (pedido.estado === 'entregado') {
+            <p class="avance__espera" role="status">
+              Entregado. Esperando que el cliente confirme la recepción.
+            </p>
           }
         </article>
         <tumbo-paginador [total]="pedidos().length" [(pagina)]="pagina" />
@@ -112,6 +154,21 @@ import { Paginador } from '../../shared/components/paginador/paginador.component
       color: var(--tumbo-azul-brillante);
       font-weight: 700;
     }
+    .avance__entrega {
+      display: grid;
+      gap: 0.4rem;
+    }
+    h4 {
+      margin: 0.3rem 0 0;
+      font-size: 0.95rem;
+    }
+    .avance__espera {
+      margin: 0;
+      border-radius: 0.6rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--tumbo-azul-brillante);
+      font-weight: 700;
+    }
     .avance__vacio {
       margin: 0;
       border: 0.1rem dashed rgb(0 53 146 / 25%);
@@ -125,8 +182,13 @@ import { Paginador } from '../../shared/components/paginador/paginador.component
 })
 export class AvancePedidos {
   readonly pedidosEnCurso = input.required<readonly PedidoDemo[]>();
+  /** El pedido que se está guardando, para no aceptar un segundo toque. */
+  readonly procesando = input<string | null>(null);
+  readonly entregar = output<AccionDeSector>();
 
   protected readonly etiqueta = ETIQUETA_DE_ESTADO_SECTOR;
+  protected readonly etiquetaTipo = ETIQUETA_DE_TIPO_ITEM;
+  protected readonly grupos = (pedido: PedidoDemo) => itemsPorTipo(pedido.items);
   protected readonly sectores: readonly { id: SectorProducto; nombre: string }[] = [
     { id: 'cocina', nombre: 'Cocina' },
     { id: 'bar', nombre: 'Bar' },
