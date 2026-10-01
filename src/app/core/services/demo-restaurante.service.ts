@@ -450,14 +450,33 @@ export class DemoRestauranteService {
     return true;
   }
 
-  rechazarPedido(motivo: string): void {
-    this.actualizarPedido({ estado: 'rechazado', motivoRechazo: motivo });
+  /** Punto 13: el mozo rechaza un pedido que esperaba su confirmación. */
+  rechazarPedido(pedidoId: string, motivo: string): boolean {
+    if (!this.cambiarPedidoPendiente(pedidoId, { estado: 'rechazado', motivoRechazo: motivo })) {
+      return false;
+    }
     this.notificar(`Pedido rechazado: ${motivo}`, ['cliente_registrado', 'cliente_anonimo']);
+    return true;
   }
 
-  confirmarPedido(): void {
-    this.actualizarPedido({ estado: 'confirmado', motivoRechazo: '' });
+  /** Punto 14: el mozo confirma un pedido y lo deriva a cocina y bar. */
+  confirmarPedido(pedidoId: string): boolean {
+    if (!this.cambiarPedidoPendiente(pedidoId, { estado: 'confirmado', motivoRechazo: '' })) {
+      return false;
+    }
     this.notificar('Pedido confirmado y derivado a cocina y bar.', ['cocinero', 'cantinero']);
+    return true;
+  }
+
+  private cambiarPedidoPendiente(pedidoId: string, cambios: Partial<PedidoDemo>): boolean {
+    const pedido = [this.pedidoActivo(), ...this.otrosPedidos()].find((p) => p.id === pedidoId);
+    if (!pedido || pedido.estado !== 'pendiente_confirmacion') return false;
+    if (pedido.id === this.pedidoActivo().id) this.actualizarPedido(cambios);
+    else
+      this.otrosPedidos.update((pedidos) =>
+        pedidos.map((p) => (p.id === pedidoId ? { ...p, ...cambios } : p)),
+      );
+    return true;
   }
 
   /** El sector empieza su parte (punto 18): el cliente pasa a ver «en preparación». */

@@ -2061,26 +2061,33 @@ export class Operacion implements OnInit {
     return this.demo.carrito().find((item) => item.productoId === productoId)?.cantidad ?? 0;
   }
 
+  /** Punto 12: el pedido va al mozo; si la base lo rechaza, se dice por qué. */
   protected async enviarPedido(): Promise<void> {
-    const usuario = this.usuario();
-    const nombre = usuario ? usuario.nombres + ' ' + usuario.apellidos : 'Cliente';
-    const mesa = this.demo.mesaVinculada() ?? 2;
-    const enviado = (await this.demo.enviarPedido()).ok;
-    this.mensaje.set(
-      enviado ? 'Pedido enviado al mozo.' : 'Agregá productos antes de enviar el pedido.',
+    const resultado = await this.demo.enviarPedido();
+    if (resultado.ok) this.avisarExito('Pedido enviado al mozo. Esperá su confirmación.');
+    else await this.avisarError(resultado.error ?? 'No se pudo enviar el pedido.');
+  }
+
+  /** Punto 13: el mozo rechaza ESE pedido para que el cliente lo modifique. */
+  protected async rechazarPedido(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () =>
+        this.demo.rechazarPedido(
+          accion.pedidoId,
+          'Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.',
+        ),
+      `Mesa ${accion.mesa}: pedido rechazado y devuelto al cliente con el motivo.`,
     );
   }
 
-  protected async rechazarPedido(): Promise<void> {
-    this.demo.rechazarPedido(
-      'Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.',
+  /** Punto 14: el mozo confirma ESE pedido y lo deriva a cocina y bar. */
+  protected async confirmarPedido(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.confirmarPedido(accion.pedidoId),
+      `Mesa ${accion.mesa}: pedido confirmado. Cocina y bar ya lo tienen.`,
     );
-    this.mensaje.set('Pedido rechazado y devuelto al cliente con el motivo.');
-  }
-
-  protected async confirmarPedido(): Promise<void> {
-    await this.demo.confirmarPedido();
-    this.mensaje.set('Pedido confirmado: cocina y bar recibieron sus ítems.');
   }
 
   protected async empezarSector(accion: AccionDeSector): Promise<void> {

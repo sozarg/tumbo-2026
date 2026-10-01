@@ -672,6 +672,10 @@ export interface Database {
         Args: { p_sesion: string };
         Returns: boolean;
       };
+      enviar_pedido: {
+        Args: { p_items: Json };
+        Returns: string;
+      };
       solicitar_cuenta: {
         Args: Record<PropertyKey, never>;
         Returns: string;

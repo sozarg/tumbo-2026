@@ -244,7 +244,17 @@ export class OperacionService {
   readonly productosBar = computed(() => this.productos().filter((p) => p.sector === 'bar'));
 
   constructor() {
+    // Un teléfono que vuelve de estar bloqueado puede haber perdido
+    // eventos con la conexión dormida: al volver a la aplicación se
+    // relee todo, así nadie ve un pedido o una cuenta viejos.
+    const alVolver = () => {
+      if (document.visibilityState === 'visible' && this.cliente && this.sesion.usuario()) {
+        this.programarCarga();
+      }
+    };
+    document.addEventListener('visibilitychange', alVolver);
     this.destroyRef.onDestroy(() => {
+      document.removeEventListener('visibilitychange', alVolver);
       if (this.cargaProgramada) clearTimeout(this.cargaProgramada);
       if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
     });
@@ -974,7 +984,10 @@ export class OperacionService {
         .eq('id', id)
         .single();
       if (errorPerfil || !perfil) {
-        return { ok: false, error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.' };
+        return {
+          ok: false,
+          error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.',
+        };
       }
       this.sesion.iniciar(this.aUsuario(perfil));
     }
@@ -995,7 +1008,8 @@ export class OperacionService {
         .from('usuarios')
         .update({ foto_url: publica.publicUrl })
         .eq('id', id);
-      if (errorPerfil) return { ok: false, error: 'La foto subió, pero no se pudo guardar el perfil.' };
+      if (errorPerfil)
+        return { ok: false, error: 'La foto subió, pero no se pudo guardar el perfil.' };
     }
 
     return this.insertar('lista_espera', { cliente_id: id });
@@ -1070,32 +1084,62 @@ export class OperacionService {
         ),
       };
     }
-    if (!this.sesionActiva || !this.carrito().length)
-      return { ok: false, error: 'No hay mesa o productos seleccionados.' };
-    const p = await this.insertarConFila('pedidos', {
-      sesion_mesa_id: this.sesionActiva.id,
-      estado: 'pendiente_confirmacion',
+    if (!this.carrito().length)
+      return { ok: false, error: 'Agregá productos antes de enviar el pedido.' };
+    // Una sola llamada crea el pedido y sus ítems (punto 12). El precio lo
+    // pone la base desde la carta: acá solo viaja qué producto y cuántos.
+    const { error } = await this.cliente.rpc('enviar_pedido', {
+      p_items: this.carrito().map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad })),
     });
-    const pedidoCreado = p.fila;
-    if (!p.ok || !pedidoCreado) return p;
-    const items = this.carrito().map((i) => ({
-      pedido_id: pedidoCreado.id,
-      producto_id: i.productoId,
-      cantidad: i.cantidad,
-      precio_unitario: i.precio,
-      sector: i.sector,
-    }));
-    const { error } = await this.cliente.from('pedido_items').insert(items);
-    if (error) return this.fallo('crear ítems del pedido', error);
+    if (error) return this.falloDeLaBase('enviar el pedido', error);
     this.carrito.set([]);
     await this.cargarPedidoYCuenta();
     return { ok: true };
   }
-  async rechazarPedido(motivo: string): Promise<Resultado> {
-    return this.cambiarEstadoPedido('rechazado', { motivo_rechazo: motivo });
+  /** Punto 13: el mozo rechaza UN pedido concreto, con el motivo. */
+  async rechazarPedido(pedidoId: string, motivo: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.rechazarPedido(pedidoId, motivo)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no espera confirmación.' };
+    }
+    return this.decidirPedido(pedidoId, { estado: 'rechazado', motivo_rechazo: motivo });
   }
-  async confirmarPedido(): Promise<Resultado> {
-    return this.cambiarEstadoPedido('confirmado', { motivo_rechazo: null });
+  /** Punto 14: el mozo confirma UN pedido y lo deriva a cocina y bar. */
+  async confirmarPedido(pedidoId: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.confirmarPedido(pedidoId)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no espera confirmación.' };
+    }
+    return this.decidirPedido(pedidoId, {
+      estado: 'confirmado',
+      motivo_rechazo: null,
+      confirmado_en: new Date().toISOString(),
+      mozo_id: this.sesion.usuario()?.id ?? null,
+    });
+  }
+  private async decidirPedido(
+    pedidoId: string,
+    cambios: Partial<Pick<Pedido, 'estado' | 'motivo_rechazo' | 'confirmado_en' | 'mozo_id'>>,
+  ): Promise<Resultado> {
+    if (!this.cliente) return { ok: false, error: 'No hay conexión con la base.' };
+    const { data, error } = await this.cliente
+      .from('pedidos')
+      .update(cambios)
+      .eq('id', pedidoId)
+      .eq('estado', 'pendiente_confirmacion')
+      .select('id');
+    if (error) return this.falloDeLaBase('actualizar el pedido', error);
+    if (!data?.length) {
+      await this.cargarPedidosEnCurso(this.sesion.usuario());
+      return { ok: false, error: 'El pedido ya no espera confirmación.' };
+    }
+    await Promise.all([
+      this.cargarPedidosEnCurso(this.sesion.usuario()),
+      this.cargarPedidoYCuenta(),
+    ]);
+    return { ok: true };
   }
   /**
    * El sector empieza su parte de un pedido (punto 18).
@@ -1346,19 +1390,6 @@ export class OperacionService {
     return { ok: true };
   }
 
-  private async cambiarEstadoPedido(
-    estado: 'rechazado' | 'confirmado',
-    extra: Record<string, unknown> = {},
-  ): Promise<Resultado> {
-    if (!this.cliente) {
-      if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? ''));
-      else this.mock.confirmarPedido();
-      return { ok: true };
-    }
-    if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
-    return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra });
-  }
-
   /**
    * Lee los pedidos en curso de todas las mesas (puntos 16 a 18).
    *
@@ -1372,7 +1403,13 @@ export class OperacionService {
     const pedidos = await this.cliente
       .from('pedidos')
       .select('*')
-      .in('estado', ['confirmado', 'en_preparacion', 'listo', 'entregado'])
+      .in('estado', [
+        'pendiente_confirmacion',
+        'confirmado',
+        'en_preparacion',
+        'listo',
+        'entregado',
+      ])
       .is('recibido_en', null)
       .order('creado_en');
     if (pedidos.error) {
@@ -1469,7 +1506,9 @@ export class OperacionService {
     // pedido que el mozo confirmó, no solo el último.
     const facturables = new Set(
       pedidos
-        .filter((p) => ['confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'].includes(p.estado))
+        .filter((p) =>
+          ['confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'].includes(p.estado),
+        )
         .map((p) => p.id),
     );
     this.itemsDeLaEstadia.set(
@@ -1612,20 +1651,14 @@ export class OperacionService {
         { event: '*', schema: 'public', table: 'mesas' },
         () => void this.cargar(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pedidos' },
-        () => this.programarCarga(),
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () =>
+        this.programarCarga(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pedido_items' },
-        () => this.programarCarga(),
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items' }, () =>
+        this.programarCarga(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'cuentas' },
-        () => this.programarCarga(),
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cuentas' }, () =>
+        this.programarCarga(),
       )
       .on(
         'postgres_changes',
@@ -1637,6 +1670,15 @@ export class OperacionService {
         { event: '*', schema: 'public', table: 'mensajes' },
         () => void this.cargar(),
       )
+      // La primera carga se hace ANTES de que lleguen los cambios: entre
+      // una cosa y otra pasa un segundo o más, y un pedido que entra en ese
+      // intervalo no generaría ningún evento (el mozo no lo vería hasta la
+      // próxima recarga). Ni siquiera alcanza con el «SUBSCRIBED» del
+      // canal: los cambios de la base arrancan recién con este aviso del
+      // sistema. Al recibirlo, y en cada reconexión, se relee todo una vez.
+      .on('system', {}, (aviso: { extension?: string; status?: string }) => {
+        if (aviso.extension === 'postgres_changes' && aviso.status === 'ok') this.programarCarga();
+      })
       .subscribe();
   }
   /**

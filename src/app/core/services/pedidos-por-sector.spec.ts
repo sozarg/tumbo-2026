@@ -120,8 +120,8 @@ describe('Listado agrupado por mesa (puntos 16 y 17)', () => {
     });
   });
 
-  it('el mozo sigue los pedidos confirmados, en preparación y listos', () => {
-    expect(pedidosEnSeguimiento(pedidos).map((p) => p.id)).toEqual(['e', 'a', 'b', 'c']);
+  it('el mozo sigue los pedidos por confirmar, confirmados, en preparación y listos', () => {
+    expect(pedidosEnSeguimiento(pedidos).map((p) => p.id)).toEqual(['e', 'd', 'a', 'b', 'c']);
   });
 });
 

@@ -37,11 +37,16 @@ export interface MesaDeSector {
 const EN_CURSO: readonly PedidoDemo['estado'][] = ['confirmado', 'en_preparacion', 'listo'];
 
 /**
- * Lo que sigue el mozo: lo que está en cocina y bar, y lo que ya entregó
- * pero el cliente todavía no confirmó (punto 19). Un pedido recibido
- * sale de la lista: ya no le queda nada por hacer.
+ * Lo que sigue el mozo: lo que espera su confirmación (puntos 13 y 14),
+ * lo que está en cocina y bar, y lo que ya entregó pero el cliente
+ * todavía no confirmó (punto 19). Un pedido recibido sale de la lista:
+ * ya no le queda nada por hacer.
  */
-const EN_SEGUIMIENTO: readonly PedidoDemo['estado'][] = [...EN_CURSO, 'entregado'];
+const EN_SEGUIMIENTO: readonly PedidoDemo['estado'][] = [
+  'pendiente_confirmacion',
+  ...EN_CURSO,
+  'entregado',
+];
 
 /**
  * El estado de un sector a partir de sus ítems.
@@ -164,7 +169,7 @@ export function itemsPorTipo(
 
 /** Punto 14: los juegos se abren cuando el mozo confirma el pedido. */
 export function juegosHabilitados(estado: PedidoDemo['estado']): boolean {
-  return [...EN_SEGUIMIENTO, 'recibido'].includes(estado);
+  return [...EN_CURSO, 'entregado', 'recibido'].includes(estado);
 }
 
 /** Punto 19: encuesta y cuenta, recién cuando el cliente confirmó la recepción. */

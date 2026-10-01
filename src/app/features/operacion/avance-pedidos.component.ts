@@ -15,7 +15,11 @@ import { Paginador } from '../../shared/components/paginador/paginador.component
 import { AccionDeSector } from './sector-pedidos.component';
 
 /**
- * Lo que el mozo ve de cada parte del pedido (puntos 18 y 19).
+ * Los pedidos de todas las mesas, para el mozo (puntos 13, 14, 18 y 19).
+ *
+ * Un pedido nuevo aparece acá con su detalle, y el mozo lo confirma o lo
+ * rechaza: ESE pedido, no «el pedido activo» de una sola estadía, que
+ * con varias mesas era cualquiera.
  *
  * El enunciado pide que «cada parte del pedido» se vea en el listado del
  * mozo: no alcanza con un «listo» final, el mozo tiene que saber que la
@@ -33,24 +37,72 @@ import { AccionDeSector } from './sector-pedidos.component';
   imports: [BotonConfirmacion, Paginador],
   template: `
     <section class="avance" aria-labelledby="avance-titulo">
-      <h2 id="avance-titulo">Avance en cocina y bar</h2>
+      <h2 id="avance-titulo">Pedidos de las mesas</h2>
       @if (actual(); as pedido) {
         <article class="avance__pedido" [class.completo]="completo(pedido)">
           <div class="avance__encabezado">
             <h3>Mesa {{ pedido.mesa }}</h3>
             <span>{{ pedido.creadoEn }}</span>
           </div>
-          <ul>
-            @for (sector of sectores; track sector.id) {
-              @if (pedido.sectores[sector.id] !== 'sin_items') {
-                <li [class.listo]="pedido.sectores[sector.id] === 'listo'">
-                  <span>{{ sector.nombre }}</span>
-                  <strong>{{ etiqueta[pedido.sectores[sector.id]] }}</strong>
-                </li>
+          @if (pedido.estado !== 'pendiente_confirmacion') {
+            <ul>
+              @for (sector of sectores; track sector.id) {
+                @if (pedido.sectores[sector.id] !== 'sin_items') {
+                  <li [class.listo]="pedido.sectores[sector.id] === 'listo'">
+                    <span>{{ sector.nombre }}</span>
+                    <strong>{{ etiqueta[pedido.sectores[sector.id]] }}</strong>
+                  </li>
+                }
               }
-            }
-          </ul>
-          @if (pedido.estado === 'listo') {
+            </ul>
+          }
+          @if (pedido.estado === 'pendiente_confirmacion') {
+            <p class="avance__nuevo" role="status">Pedido nuevo: espera tu confirmación.</p>
+            <div class="avance__entrega">
+              @for (grupo of grupos(pedido); track grupo.tipo) {
+                <h4>{{ etiquetaTipo[grupo.tipo] }}</h4>
+                <ul>
+                  @for (item of grupo.items; track item.productoId) {
+                    <li>
+                      <span>{{ item.nombre }}</span>
+                      <strong>{{ item.cantidad }} ×</strong>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <div class="avance__decision">
+              <tumbo-boton-confirmacion
+                buttonClass="reject-button"
+                fill="outline"
+                expand="block"
+                [disabled]="procesando() === pedido.id"
+                title="Rechazar pedido"
+                [message]="
+                  'Vas a rechazar el pedido de la mesa ' +
+                  pedido.mesa +
+                  ' para que el cliente lo modifique. ¿Querés continuar?'
+                "
+                (confirmado)="rechazar.emit({ pedidoId: pedido.id, mesa: pedido.mesa })"
+              >
+                Rechazar
+              </tumbo-boton-confirmacion>
+              <tumbo-boton-confirmacion
+                buttonClass="approve-button"
+                expand="block"
+                [disabled]="procesando() === pedido.id"
+                title="Confirmar pedido"
+                [message]="
+                  'Vas a confirmar el pedido de la mesa ' +
+                  pedido.mesa +
+                  ' y mandarlo a cocina y bar. ¿Querés continuar?'
+                "
+                (confirmado)="confirmar.emit({ pedidoId: pedido.id, mesa: pedido.mesa })"
+              >
+                Confirmar pedido
+              </tumbo-boton-confirmacion>
+            </div>
+          } @else if (pedido.estado === 'listo') {
             <p class="avance__aviso" role="status">Pedido completo: listo para entregar.</p>
             <div class="avance__entrega">
               @for (grupo of grupos(pedido); track grupo.tipo) {
@@ -87,7 +139,7 @@ import { AccionDeSector } from './sector-pedidos.component';
         </article>
         <tumbo-paginador [total]="pedidos().length" [(pagina)]="pagina" />
       } @else {
-        <p class="avance__vacio">No hay pedidos en cocina ni en bar.</p>
+        <p class="avance__vacio">No hay pedidos en curso.</p>
       }
     </section>
   `,
@@ -154,6 +206,19 @@ import { AccionDeSector } from './sector-pedidos.component';
       color: var(--tumbo-azul-brillante);
       font-weight: 700;
     }
+    .avance__nuevo {
+      margin: 0;
+      border-radius: 0.6rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--tumbo-amarillo-marca);
+      color: var(--tumbo-azul-sombra);
+      font-weight: 700;
+    }
+    .avance__decision {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+      gap: 0.6rem;
+    }
     .avance__entrega {
       display: grid;
       gap: 0.4rem;
@@ -185,6 +250,8 @@ export class AvancePedidos {
   /** El pedido que se está guardando, para no aceptar un segundo toque. */
   readonly procesando = input<string | null>(null);
   readonly entregar = output<AccionDeSector>();
+  readonly confirmar = output<AccionDeSector>();
+  readonly rechazar = output<AccionDeSector>();
 
   protected readonly etiqueta = ETIQUETA_DE_ESTADO_SECTOR;
   protected readonly etiquetaTipo = ETIQUETA_DE_TIPO_ITEM;

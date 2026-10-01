@@ -1404,52 +1404,11 @@
               </tumbo-boton-confirmacion>
             } @else {
               <section class="section-block">
-                <div class="section-heading">
-                  <div><h2>Pedidos y atención</h2></div>
-                  <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
-                </div>
-                <ion-card class="staff-order-card">
-                  <ion-card-content>
-                    <div class="staff-order-card__header">
-                      <div>
-                        <span>Mesa {{ demo.pedidoActivo().mesa }}</span>
-                        <h2>{{ demo.pedidoActivo().cliente }}</h2>
-                      </div>
-                      <ion-icon aria-hidden="true" name="restaurant-outline" />
-                    </div>
-                    <ul class="compact-list">
-                      @for (item of itemVisible(); track item.productoId) {
-                        <li>
-                          <span>{{ item.cantidad }} × {{ item.nombre }}</span
-                          ><strong>{{ formatearPrecio(item.precio * item.cantidad) }}</strong>
-                        </li>
-                      }
-                    </ul>
-                    <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
-                    <div class="button-row">
-                      <tumbo-boton-confirmacion
-                        buttonClass="reject-button"
-                        fill="outline"
-                        [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'"
-                        title="Confirmar rechazo del pedido"
-                        message="Vas a rechazar el pedido. ¿Querés continuar?"
-                        (confirmado)="rechazarPedido()"
-                        >Rechazar pedido</tumbo-boton-confirmacion
-                      >
-                      <tumbo-boton-confirmacion
-                        buttonClass="approve-button"
-                        [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'"
-                        title="Confirmar pedido"
-                        message="Vas a confirmar el pedido y enviarlo a cocina y bar. ¿Querés continuar?"
-                        (confirmado)="confirmarPedido()"
-                        >Confirmar pedido</tumbo-boton-confirmacion
-                      >
-                    </div>
-                  </ion-card-content>
-                </ion-card>
                 <tumbo-avance-pedidos
                   [pedidosEnCurso]="demo.pedidosEnCurso()"
                   [procesando]="procesandoSector()"
+                  (confirmar)="confirmarPedido($event)"
+                  (rechazar)="rechazarPedido($event)"
                   (entregar)="entregarPedido($event)"
                 />
               </section>

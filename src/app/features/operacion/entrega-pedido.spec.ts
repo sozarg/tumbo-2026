@@ -95,3 +95,34 @@ describe('Lo que se habilita con la recepción (punto 19)', () => {
     ]);
   });
 });
+
+describe('El mozo decide sobre cada pedido (puntos 13 y 14)', () => {
+  it('confirma o rechaza ESE pedido, no el de otra mesa', async () => {
+    const fixture = await abrirComo('mozo', 'pedidos');
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    fixture.detectChanges();
+    const avance = fixture.debugElement.query(By.directive(AvancePedidos))
+      .componentInstance as AvancePedidos;
+    const indice = avance['pedidos']().findIndex((p) => p.mesa === 2);
+    avance['pagina'].set(indice);
+    fixture.detectChanges();
+    expect(texto(fixture, '.avance__nuevo')).toEqual(['Pedido nuevo: espera tu confirmación.']);
+
+    avance.rechazar.emit({ pedidoId: servicio.pedidoActivo().id, mesa: 2 });
+    await fixture.whenStable();
+    expect(servicio.pedidoActivo().estado).toBe('rechazado');
+    expect(fixture.componentInstance['mensaje']()).toBe(
+      'Mesa 2: pedido rechazado y devuelto al cliente con el motivo.',
+    );
+
+    const repetido = await servicio.confirmarPedido(servicio.pedidoActivo().id);
+    expect(repetido).toEqual({ ok: false, error: 'El pedido ya no espera confirmación.' });
+
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    avance.confirmar.emit({ pedidoId: servicio.pedidoActivo().id, mesa: 2 });
+    await fixture.whenStable();
+    expect(servicio.pedidoActivo().estado).toBe('confirmado');
+    expect(servicio.pedidosEnCurso().find((p) => p.mesa === 4)?.estado).not.toBe('confirmado');
+  });
+});
