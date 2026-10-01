@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, Signal, inject, signal, computed, effect } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Tablas } from '../models/base-de-datos';
+import { Json, Tablas } from '../models/base-de-datos';
 import { comprimirFoto } from '../imagenes/comprimir-foto';
 import {
   AltaClienteDemo,
@@ -23,6 +23,13 @@ import {
   TipoProducto,
 } from '../models/demo-restaurante';
 import { PerfilUsuario, Usuario, etiquetaDePerfil } from '../models/usuario';
+import {
+  PreguntaDeEncuesta,
+  RespuestasDeEncuesta,
+  ResultadosDeEncuesta,
+  TipoDeControl,
+} from '../models/encuesta';
+import { lineasDeCuenta } from './cuenta-y-encuesta';
 import { DemoRestauranteService } from './demo-restaurante.service';
 import { RegistroClienteService } from './registro-cliente.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
@@ -201,10 +208,22 @@ export class OperacionService {
     ? signal<Record<string, number>>({})
     : this.mock.intentosJuego;
   readonly encuestaRespondida = this.cliente ? signal(false) : this.mock.encuestaRespondida;
-  readonly porcentajePropina = this.cliente
-    ? signal<number | null>(null)
-    : this.mock.porcentajePropina;
   readonly cuenta = this.cliente ? signal<CuentaDemo | null>(null) : this.mock.cuenta;
+  private readonly cuentasEnCursoReal = signal<CuentaDemo[]>([]);
+  /** Para mozo, dueño y supervisor: las cuentas pedidas o pagadas, por mesa (puntos 21 y 22). */
+  readonly cuentasEnCurso: Signal<readonly CuentaDemo[]> = this.cliente
+    ? this.cuentasEnCursoReal.asReadonly()
+    : this.mock.cuentasEnCurso;
+  /** Todo lo que pidió la estadía, para el detalle de la cuenta (punto 21). */
+  private readonly itemsDeLaEstadia = signal<PedidoItemDemo[]>([]);
+  readonly detalleCuenta = computed(() =>
+    lineasDeCuenta(this.cliente ? this.itemsDeLaEstadia() : this.pedidoActivo().items),
+  );
+  /** Las preguntas reales de la encuesta (punto 20). */
+  readonly preguntas = this.cliente ? signal<PreguntaDeEncuesta[]>([]) : this.mock.preguntas;
+  readonly resultadosEncuesta = this.cliente
+    ? signal<ResultadosDeEncuesta | null>(null)
+    : this.mock.resultadosEncuesta;
   readonly mesaVinculada = this.cliente ? signal<number | null>(null) : this.mock.mesaVinculada;
   readonly clientesPendientes = computed(() =>
     this.clientes().filter((c) => c.estado === 'pendiente'),
@@ -236,6 +255,8 @@ export class OperacionService {
       this.canal = null;
       if (this.cliente) {
         this.pedidosEnCursoReal.set([]);
+        this.cuentasEnCursoReal.set([]);
+        this.itemsDeLaEstadia.set([]);
         this.empleados.set([]);
         this.productos.set([]);
         this.mesas.set([]);
@@ -296,7 +317,12 @@ export class OperacionService {
       this.mesaVinculada.set(
         this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? null,
       );
-      await Promise.all([this.cargarPedidoYCuenta(), this.cargarPedidosEnCurso(usuario)]);
+      await Promise.all([
+        this.cargarPedidoYCuenta(),
+        this.cargarPedidosEnCurso(usuario),
+        this.cargarCuentasEnCurso(usuario),
+        this.cargarEncuesta(usuario),
+      ]);
       if (mensajes.data) this.mensajes.set(mensajes.data.map((m) => this.aMensaje(m, usuario.id)));
       this.suscribirRealtime();
     } catch (error) {
@@ -1231,59 +1257,93 @@ export class OperacionService {
     if (r.ok && descuento) this.descuento.set(descuento);
     return { ok: r.ok, intento, descuento: this.descuento() };
   }
-  seleccionarPropina(p: number): void {
-    this.porcentajePropina.set(p);
-  }
-  async registrarEncuesta(): Promise<Resultado> {
+
+  /**
+   * El cliente responde la encuesta (punto 20). La base valida cada
+   * respuesta según su tipo y que sea una sola por estadía.
+   */
+  async responderEncuesta(respuestas: RespuestasDeEncuesta): Promise<Resultado> {
     if (!this.encuestaYCuentaHabilitadas())
       return { ok: false, error: 'Confirmá que recibiste tu pedido para responder la encuesta.' };
     if (!this.cliente) {
-      return { ok: this.mock.registrarEncuesta() };
+      const error = this.mock.responderEncuesta(respuestas);
+      return error ? { ok: false, error } : { ok: true };
     }
-    if (this.sesion.usuario()?.perfil === 'cliente_anonimo') {
-      return { ok: false, error: 'El cliente anónimo solo puede consultar resultados previos.' };
-    }
-    return this.sesionActiva && this.sesion.usuario()
-      ? this.insertar('encuestas', {
-          sesion_mesa_id: this.sesionActiva.id,
-          cliente_id: this.sesion.usuario()!.id,
-        })
-      : { ok: false, error: 'No hay estadía activa.' };
+    const { error } = await this.cliente.rpc('responder_encuesta', {
+      p_respuestas: respuestas as unknown as Json,
+    });
+    if (error) return this.falloDeLaBase('guardar la encuesta', error);
+    this.encuestaRespondida.set(true);
+    return { ok: true };
   }
-  async generarCuenta(): Promise<Resultado> {
+
+  /** Los resultados agregados para los gráficos (puntos 20 y 22). */
+  async cargarResultadosEncuesta(): Promise<void> {
+    if (!this.cliente) return;
+    const { data, error } = await this.cliente.rpc('resultados_encuesta');
+    if (error) {
+      this.registrarError('cargar los resultados de la encuesta', error);
+      return;
+    }
+    this.resultadosEncuesta.set(data as unknown as ResultadosDeEncuesta);
+  }
+
+  /** El cliente pide la cuenta; el mozo recibe el aviso (punto 21). */
+  async solicitarCuenta(): Promise<Resultado> {
     if (!this.encuestaYCuentaHabilitadas())
       return { ok: false, error: 'Confirmá que recibiste tu pedido para pedir la cuenta.' };
-    if (!this.cliente) return { ok: this.mock.generarCuenta() };
-    const p = this.porcentajePropina();
-    if (!this.sesionActiva || p === null)
-      return { ok: false, error: 'Seleccioná una propina antes de generar la cuenta.' };
-    const calculo = await this.cliente.rpc('calcular_cuenta', {
-      p_sesion_id: this.sesionActiva.id,
-    });
-    if (calculo.error || !calculo.data?.[0]) return this.fallo('calcular la cuenta', calculo.error);
-    const c = calculo.data[0];
-    const propina = Math.round((c.base * p) / 100);
-    const nivel = (
-      { 20: 'excelente', 15: 'muy_bueno', 10: 'bueno', 5: 'regular', 0: 'malo' } as const
-    )[p as 0 | 5 | 10 | 15 | 20];
-    const r = await this.insertar('cuentas', {
-      sesion_mesa_id: this.sesionActiva.id,
-      subtotal: c.subtotal,
-      descuento_pct: c.descuento_pct,
-      descuento_monto: c.descuento_monto,
-      nivel_propina: nivel,
-      propina_pct: p,
-      propina_monto: propina,
-      total: c.base + propina,
-    });
-    if (r.ok) await this.cargarPedidoYCuenta();
-    return r;
+    if (!this.cliente) {
+      return this.mock.solicitarCuenta()
+        ? { ok: true }
+        : { ok: false, error: 'Confirmá que recibiste tu pedido para pedir la cuenta.' };
+    }
+    const { error } = await this.cliente.rpc('solicitar_cuenta');
+    if (error) return this.falloDeLaBase('pedir la cuenta', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
   }
+
+  /**
+   * Con el contenido del QR de propina se arma la cuenta (punto 21). La
+   * base reconoce el QR y calcula los montos; acá no se confía en nada
+   * que venga del teléfono.
+   */
+  async generarCuenta(qr: string, porcentaje: number): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.generarCuenta(porcentaje)
+        ? { ok: true }
+        : { ok: false, error: 'Primero pedí la cuenta.' };
+    }
+    const { error } = await this.cliente.rpc('generar_cuenta', { p_qr: qr });
+    if (error) return this.falloDeLaBase('generar la cuenta', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
+  }
+
+  /** El pago simulado; avisa al mozo, al dueño y al supervisor (punto 21). */
   async pagarCuenta(): Promise<Resultado> {
-    return this.actualizarCuenta('pagada');
+    if (!this.cliente) {
+      return this.mock.pagarCuenta()
+        ? { ok: true }
+        : { ok: false, error: 'Escaneá un QR de propina antes de pagar.' };
+    }
+    const { error } = await this.cliente.rpc('pagar_cuenta');
+    if (error) return this.falloDeLaBase('pagar la cuenta', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
   }
-  async confirmarPago(): Promise<Resultado> {
-    return this.actualizarCuenta('confirmada');
+
+  /** El mozo confirma el pago de UNA cuenta y la mesa queda libre (punto 22). */
+  async confirmarPago(cuentaId: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.confirmarPago(cuentaId)
+        ? { ok: true }
+        : { ok: false, error: 'Esa cuenta todavía no fue pagada.' };
+    }
+    const { error } = await this.cliente.rpc('confirmar_pago', { p_cuenta: cuentaId });
+    if (error) return this.falloDeLaBase('confirmar el pago', error);
+    await this.cargarCuentasEnCurso(this.sesion.usuario());
+    return { ok: true };
   }
 
   private async cambiarEstadoPedido(
@@ -1298,22 +1358,7 @@ export class OperacionService {
     if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
     return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra });
   }
-  private async actualizarCuenta(estado: 'pagada' | 'confirmada'): Promise<Resultado> {
-    if (!this.cliente) {
-      if (estado === 'pagada') this.mock.pagarCuenta();
-      else this.mock.confirmarPago();
-      return { ok: true };
-    }
-    const c = this.cuentaReal;
-    return c
-      ? this.actualizar('cuentas', c.id, {
-          estado,
-          ...(estado === 'pagada'
-            ? { pagada_en: new Date().toISOString() }
-            : { confirmada_en: new Date().toISOString() }),
-        })
-      : { ok: false, error: 'No hay cuenta activa.' };
-  }
+
   /**
    * Lee los pedidos en curso de todas las mesas (puntos 16 a 18).
    *
@@ -1374,43 +1419,161 @@ export class OperacionService {
     );
   }
   private async cargarPedidoYCuenta(): Promise<void> {
-    if (!this.cliente || !this.sesionActiva) return;
+    if (!this.cliente) return;
+    if (!this.sesionActiva) {
+      // La estadía ya se cerró: el mozo confirmó el pago (punto 22). La
+      // cuenta se vuelve a leer por su id para que el cliente vea la
+      // confirmación, aunque ya no tenga una mesa en curso.
+      if (this.cuentaReal) {
+        const c = await this.cliente
+          .from('cuentas')
+          .select('*')
+          .eq('id', this.cuentaReal.id)
+          .maybeSingle();
+        if (c.data) {
+          this.cuentaReal = c.data;
+          this.cuenta.set(this.aCuenta(c.data, this.cuenta()?.mesa ?? 0));
+        }
+      }
+      return;
+    }
     const q = await this.cliente
       .from('pedidos')
       .select('*')
       .eq('sesion_mesa_id', this.sesionActiva.id)
-      .order('creado_en', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('creado_en', { ascending: false });
     if (q.error) {
       this.registrarError('cargar pedido', q.error);
       return;
     }
-    this.pedidoReal = q.data;
-    if (q.data) {
-      const i = await this.cliente.from('pedido_items').select('*').eq('pedido_id', q.data.id);
-      this.pedidoActivo.set(this.aPedido(q.data, i.data ?? []));
+    const pedidos = q.data ?? [];
+    this.pedidoReal = pedidos[0] ?? null;
+    const items = pedidos.length
+      ? await this.cliente
+          .from('pedido_items')
+          .select('*')
+          .in(
+            'pedido_id',
+            pedidos.map((p) => p.id),
+          )
+      : null;
+    if (this.pedidoReal) {
+      this.pedidoActivo.set(
+        this.aPedido(
+          this.pedidoReal,
+          (items?.data ?? []).filter((i) => i.pedido_id === this.pedidoReal!.id),
+        ),
+      );
     }
+    // El detalle de la cuenta lleva todo lo que la mesa consumió: cada
+    // pedido que el mozo confirmó, no solo el último.
+    const facturables = new Set(
+      pedidos
+        .filter((p) => ['confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'].includes(p.estado))
+        .map((p) => p.id),
+    );
+    this.itemsDeLaEstadia.set(
+      (items?.data ?? [])
+        .filter((i) => facturables.has(i.pedido_id))
+        .map((i) => ({
+          productoId: i.producto_id,
+          nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto',
+          cantidad: i.cantidad,
+          precio: Number(i.precio_unitario),
+          sector: i.sector,
+          minutos: 0,
+        })),
+    );
     const c = await this.cliente
       .from('cuentas')
       .select('*')
       .eq('sesion_mesa_id', this.sesionActiva.id)
       .maybeSingle();
     this.cuentaReal = c.data;
-    if (!c.error)
-      this.cuenta.set(
-        c.data
-          ? {
-              subtotal: c.data.subtotal,
-              descuento: c.data.descuento_monto,
-              porcentajePropina: c.data.propina_pct ?? 0,
-              propina: c.data.propina_monto,
-              total: c.data.total,
-              estado: c.data.estado === 'pendiente' ? 'pendiente_pago' : c.data.estado,
-            }
-          : null,
-      );
+    if (!c.error) this.cuenta.set(c.data ? this.aCuenta(c.data, this.mesaVinculada() ?? 0) : null);
   }
+
+  /**
+   * Las cuentas pedidas o pagadas de todas las mesas, para el mozo, el
+   * dueño y el supervisor (puntos 21 y 22).
+   */
+  private async cargarCuentasEnCurso(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario || !['mozo', 'dueno', 'supervisor'].includes(usuario.perfil))
+      return;
+    const cuentas = await this.cliente
+      .from('cuentas')
+      .select('*')
+      .in('estado', ['pendiente', 'pagada'])
+      .order('solicitada_en');
+    if (cuentas.error) {
+      this.registrarError('cargar las cuentas', cuentas.error);
+      return;
+    }
+    const filas = cuentas.data ?? [];
+    const sesiones = filas.length
+      ? await this.cliente
+          .from('sesiones_mesa')
+          .select('*')
+          .in(
+            'id',
+            filas.map((c) => c.sesion_mesa_id),
+          )
+      : null;
+    if (this.sesion.usuario()?.id !== usuario.id) return;
+    const mesaDe = (sesionId: string) =>
+      this.mesas().find((m) => m.id === sesiones?.data?.find((s) => s.id === sesionId)?.mesa_id)
+        ?.numero ?? 0;
+    this.cuentasEnCursoReal.set(filas.map((c) => this.aCuenta(c, mesaDe(c.sesion_mesa_id))));
+  }
+
+  /** Las preguntas activas y si el cliente ya respondió en esta estadía (punto 20). */
+  private async cargarEncuesta(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario) return;
+    const preguntas = await this.cliente
+      .from('preguntas_encuesta')
+      .select('*')
+      .eq('activa', true)
+      .order('orden');
+    if (preguntas.data) {
+      this.preguntas.set(
+        preguntas.data.map((p) => ({
+          id: p.id,
+          texto: p.texto,
+          tipo: p.tipo as TipoDeControl,
+          opciones: Array.isArray(p.opciones)
+            ? (p.opciones as Json[]).filter((o): o is string => typeof o === 'string')
+            : [],
+          minimo: p.minimo === null ? null : Number(p.minimo),
+          maximo: p.maximo === null ? null : Number(p.maximo),
+          requerida: p.requerida,
+        })),
+      );
+    }
+    if (usuario.perfil === 'cliente_registrado') {
+      const { data } = await this.cliente.rpc('encuesta_respondida');
+      this.encuestaRespondida.set(data === true);
+    }
+  }
+
+  private aCuenta(c: Tablas<'cuentas'>, mesa: number): CuentaDemo {
+    return {
+      id: c.id,
+      mesa,
+      subtotal: Number(c.subtotal),
+      descuento: Number(c.descuento_monto),
+      porcentajeDescuento: Number(c.descuento_pct),
+      porcentajePropina: c.propina_pct === null ? null : Number(c.propina_pct),
+      propina: Number(c.propina_monto),
+      total: Number(c.total),
+      estado:
+        c.estado === 'pendiente'
+          ? c.nivel_propina === null
+            ? 'solicitada'
+            : 'pendiente_pago'
+          : c.estado,
+    };
+  }
+
   /**
    * Junta en una sola recarga los cambios que llegan en ráfaga.
    *
@@ -1457,6 +1620,11 @@ export class OperacionService {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pedido_items' },
+        () => this.programarCarga(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cuentas' },
         () => this.programarCarga(),
       )
       .on(
@@ -1707,7 +1875,10 @@ export class OperacionService {
    * sirve mucho más que el genérico «revisá la conexión».
    */
   private falloDeLaBase(accion: string, error: { code?: string; message: string }): Resultado {
-    if (error.code === '42501' && !error.message.toLowerCase().includes('row-level')) {
+    if (
+      (error.code === '42501' || error.code === '22023') &&
+      !error.message.toLowerCase().includes('row-level')
+    ) {
       this.registrarError(accion, error);
       return { ok: false, error: error.message };
     }

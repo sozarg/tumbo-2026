@@ -531,13 +531,12 @@ describe('Entrega y recepción del pedido (punto 19)', () => {
 
   it('encuesta y cuenta se habilitan recién con la recepción', async () => {
     const servicio = TestBed.inject(OperacionService);
-    servicio.seleccionarPropina(10);
     expect(servicio.juegosHabilitados()).toBe(true);
     expect(servicio.encuestaYCuentaHabilitadas()).toBe(false);
-    expect((await servicio.registrarEncuesta()).error).toBe(
+    expect((await servicio.responderEncuesta({})).error).toBe(
       'Confirmá que recibiste tu pedido para responder la encuesta.',
     );
-    expect((await servicio.generarCuenta()).error).toBe(
+    expect((await servicio.solicitarCuenta()).error).toBe(
       'Confirmá que recibiste tu pedido para pedir la cuenta.',
     );
 
@@ -545,13 +544,81 @@ describe('Entrega y recepción del pedido (punto 19)', () => {
     await servicio.marcarEntregado(id);
     await servicio.confirmarRecepcion();
     expect(servicio.encuestaYCuentaHabilitadas()).toBe(true);
-    expect((await servicio.registrarEncuesta()).ok).toBe(true);
-    expect((await servicio.generarCuenta()).ok).toBe(true);
+    expect((await servicio.solicitarCuenta()).ok).toBe(true);
   });
 
   it('los juegos esperan a que el mozo confirme el pedido (punto 14)', () => {
     const servicio = TestBed.inject(OperacionService);
     servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
     expect(servicio.juegosHabilitados()).toBe(false);
+  });
+});
+
+/** Puntos 20 a 22 en modo demostración: cuenta, pago, liberación y encuesta. */
+describe('Cuenta, pago y encuesta (puntos 20 a 22)', () => {
+  async function pedidoRecibido(servicio: OperacionService): Promise<void> {
+    const id = servicio.pedidoActivo().id;
+    await servicio.marcarSectorListo(id, 'cocina');
+    await servicio.marcarSectorListo(id, 'bar');
+    await servicio.marcarEntregado(id);
+    await servicio.confirmarRecepcion();
+  }
+
+  it('pedir, elegir propina, pagar y que el mozo confirme libera la mesa', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mock = TestBed.inject(DemoRestauranteService);
+    await pedidoRecibido(servicio);
+
+    expect((await servicio.pagarCuenta()).ok).toBe(false);
+    expect((await servicio.solicitarCuenta()).ok).toBe(true);
+    expect(servicio.cuenta()?.estado).toBe('solicitada');
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['mozo']);
+    expect(servicio.cuentasEnCurso().map((c) => c.mesa)).toEqual([2]);
+
+    expect((await servicio.pagarCuenta()).ok).toBe(false);
+    expect((await servicio.generarCuenta('TUMBO://propina/10', 10)).ok).toBe(true);
+    const cuenta = servicio.cuenta()!;
+    expect(cuenta).toMatchObject({
+      estado: 'pendiente_pago',
+      subtotal: 20400,
+      porcentajePropina: 10,
+      propina: 2040,
+      total: 22440,
+    });
+    expect(servicio.detalleCuenta().map((l) => [l.nombre, l.cantidad, l.importe])).toEqual([
+      ['Hamburguesa TUMBO', 2, 15600],
+      ['Limonada de la casa', 2, 4800],
+    ]);
+
+    expect((await servicio.pagarCuenta()).ok).toBe(true);
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['mozo', 'dueno', 'supervisor']);
+    expect((await servicio.confirmarPago('otra-cuenta')).ok).toBe(false);
+    expect((await servicio.confirmarPago(cuenta.id)).ok).toBe(true);
+    expect(servicio.cuenta()?.estado).toBe('confirmada');
+    expect(servicio.mesas().find((m) => m.numero === 2)?.disponible).toBe(true);
+    expect(servicio.cuentasEnCurso()).toEqual([]);
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['dueno', 'supervisor']);
+  });
+
+  it('la encuesta se guarda una vez y solo con respuestas válidas', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    await pedidoRecibido(servicio);
+    const respuestas = {
+      'pregunta-1': 5,
+      'pregunta-2': 'Rápido',
+      'pregunta-3': ['La comida'],
+      'pregunta-4': 'Redes sociales',
+      'pregunta-5': 8,
+      'pregunta-6': true,
+      'pregunta-7': '',
+    };
+    const invalida = await servicio.responderEncuesta({ ...respuestas, 'pregunta-1': 9 });
+    expect(invalida.ok).toBe(false);
+    expect(invalida.error).toContain('Elegí un valor entre 1 y 5.');
+    expect((await servicio.responderEncuesta(respuestas)).ok).toBe(true);
+    expect(servicio.encuestaRespondida()).toBe(true);
+    expect((await servicio.responderEncuesta(respuestas)).error).toBe(
+      'Ya respondiste la encuesta de esta estadía.',
+    );
   });
 });

@@ -60,13 +60,15 @@ describe('Lo que se habilita con la recepción (punto 19)', () => {
     expect(texto(encuesta, '.locked-card strong')).toEqual([
       'La encuesta se habilita con tu pedido',
     ]);
-    expect(encuesta.debugElement.query(By.css('.survey-card'))).toBeNull();
+    expect(encuesta.debugElement.query(By.css('tumbo-encuesta-form'))).toBeNull();
   });
 
   it('la cuenta también espera la recepción', async () => {
     const cuenta = await abrirComo('cliente_registrado', 'cuenta');
-    expect(texto(cuenta, '.locked-card strong')).toEqual(['La cuenta se habilita con tu pedido']);
-    expect(cuenta.debugElement.query(By.css('.tip-card'))).toBeNull();
+    expect(texto(cuenta, 'tumbo-cuenta-cliente .aviso strong')).toEqual([
+      'La cuenta se habilita con tu pedido',
+    ]);
+    expect(texto(cuenta, 'tumbo-cuenta-cliente ion-button')).not.toContain('Pedir la cuenta');
   });
 
   it('al confirmar la recepción se abren la encuesta y la cuenta', async () => {
@@ -76,7 +78,7 @@ describe('Lo que se habilita con la recepción (punto 19)', () => {
     await servicio.confirmarRecepcion();
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('.locked-card'))).toBeNull();
-    expect(fixture.debugElement.query(By.css('.survey-card'))).not.toBeNull();
+    expect(fixture.debugElement.query(By.css('tumbo-encuesta-form'))).not.toBeNull();
   });
 
   it('el inicio del cliente marca con candado lo que todavía no puede usar', async () => {

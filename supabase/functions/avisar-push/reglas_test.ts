@@ -1,5 +1,11 @@
 import { strict as assert } from 'node:assert';
-import { avisoDeClientePendiente, avisoDePedidoListo, clasificar } from './reglas.ts';
+import {
+  DESTINATARIOS_DE_CUENTA,
+  avisoDeClientePendiente,
+  avisoDeCuenta,
+  avisoDePedidoListo,
+  clasificar,
+} from './reglas.ts';
 
 Deno.test('un cliente que se registra avisa a gerencia (punto 6)', () => {
   assert.deepEqual(
@@ -61,4 +67,35 @@ Deno.test('el aviso del cliente pendiente conserva su texto', () => {
     'Camila Pérez se registró y espera tu aprobación.',
   );
   assert.match(avisoDeClientePendiente(null, null).cuerpo, /^Un cliente/);
+});
+
+Deno.test('los momentos de la cuenta avisan (puntos 21 y 22)', () => {
+  assert.deepEqual(
+    clasificar({ type: 'INSERT', table: 'cuentas', record: { id: 'c1', estado: 'pendiente' } }),
+    { tipo: 'cuenta', id: 'c1', momento: 'solicitada' },
+  );
+  assert.deepEqual(
+    clasificar({ type: 'UPDATE', table: 'cuentas', record: { id: 'c1', estado: 'pagada' } }),
+    { tipo: 'cuenta', id: 'c1', momento: 'pagada' },
+  );
+  assert.deepEqual(
+    clasificar({ type: 'UPDATE', table: 'cuentas', record: { id: 'c1', estado: 'confirmada' } }),
+    { tipo: 'cuenta', id: 'c1', momento: 'confirmada' },
+  );
+  assert.equal(
+    clasificar({ type: 'UPDATE', table: 'cuentas', record: { id: 'c1', estado: 'pendiente' } }).tipo,
+    'ignorado',
+  );
+});
+
+Deno.test('cada momento de la cuenta le llega a quien corresponde', () => {
+  assert.deepEqual([...DESTINATARIOS_DE_CUENTA.solicitada], ['mozo']);
+  assert.deepEqual([...DESTINATARIOS_DE_CUENTA.pagada].sort(), ['dueno', 'mozo', 'supervisor']);
+  assert.deepEqual([...DESTINATARIOS_DE_CUENTA.confirmada].sort(), ['dueno', 'supervisor']);
+});
+
+Deno.test('los avisos de la cuenta dicen la mesa y el monto', () => {
+  assert.equal(avisoDeCuenta('solicitada', 4, 0).cuerpo, 'La mesa 4 pide la cuenta.');
+  assert.match(avisoDeCuenta('pagada', 4, 44400).cuerpo, /^La mesa 4 pagó \$\s?44\.400\. Confirmá el pago\.$/);
+  assert.match(avisoDeCuenta('confirmada', null, 100).cuerpo, /^Una mesa pagó .* y quedó libre\.$/);
 });

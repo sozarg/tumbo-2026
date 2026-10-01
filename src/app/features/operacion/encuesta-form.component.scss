@@ -1,0 +1,127 @@
+:host {
+  display: block;
+}
+
+.encuesta {
+  display: grid;
+  gap: 1rem;
+  border-radius: 1rem;
+  padding: clamp(0.9rem, 4vw, 1.25rem);
+  background: var(--tumbo-crema-brillante);
+  box-shadow: 0 0.5rem 1.3rem rgb(0 53 146 / 8%);
+}
+
+.encuesta__progreso {
+  margin: 0;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+fieldset {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+legend {
+  margin-bottom: 0.8rem;
+  padding: 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(1.05rem, 4.5vw, 1.2rem);
+  font-weight: 700;
+}
+
+legend small {
+  font-weight: 400;
+}
+
+.estrellas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.estrellas button {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--tumbo-naranja-profundo);
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+.estrellas button:focus-visible {
+  outline: 3px solid var(--tumbo-azul-sombra);
+  outline-offset: 2px;
+}
+
+.estrellas button[aria-checked='true'] {
+  background: rgb(251 177 3 / 25%);
+}
+
+ion-radio-group,
+.opciones {
+  display: grid;
+  gap: 0.4rem;
+}
+
+ion-radio,
+ion-checkbox,
+ion-toggle {
+  min-height: 44px;
+  color: var(--tumbo-azul-sombra);
+  --border-color: var(--tumbo-azul-sombra);
+  --border-color-checked: var(--tumbo-azul-accion);
+  --checkbox-background-checked: var(--tumbo-azul-accion);
+  --color-checked: var(--tumbo-azul-accion);
+}
+
+ion-range {
+  --bar-background-active: var(--tumbo-azul-accion);
+  --knob-background: var(--tumbo-azul-accion);
+  --pin-background: var(--tumbo-azul-sombra);
+  color: var(--tumbo-azul-sombra);
+}
+
+.encuesta__valor {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  font-weight: 700;
+}
+
+.encuesta__error {
+  margin: 0;
+  color: var(--tumbo-naranja-profundo);
+  font-weight: 700;
+}
+
+.encuesta__acciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.6rem;
+}
+
+ion-button {
+  min-height: 52px;
+  margin: 0;
+  --border-radius: 0.7rem;
+}
+
+ion-button.siguiente {
+  --background: var(--tumbo-amarillo-marca);
+  --background-hover: var(--tumbo-ambar-hover);
+  --color: var(--tumbo-azul-sombra);
+}
+
+ion-button.anterior {
+  --color: var(--tumbo-azul-sombra);
+  --border-color: var(--tumbo-azul-sombra);
+}

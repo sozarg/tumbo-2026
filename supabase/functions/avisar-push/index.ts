@@ -6,9 +6,12 @@ import {
   type Aviso,
 } from '../_shared/push.ts';
 import {
+  DESTINATARIOS_DE_CUENTA,
+  ESTADO_DE_CUENTA,
   GERENCIA,
   MOZOS,
   avisoDeClientePendiente,
+  avisoDeCuenta,
   avisoDePedidoListo,
   clasificar,
   type CuerpoDelWebhook,
@@ -23,6 +26,8 @@ import {
  *   el teléfono.
  * - Punto 18: cuando cocina y bar terminaron su parte, el mozo recibe
  *   el aviso de que el pedido está completo para entregarlo.
+ * - Puntos 21 y 22: la cuenta pedida (al mozo), pagada (al mozo, al
+ *   dueño y al supervisor) y confirmada (al dueño y al supervisor).
  *
  * ───────────────────────────────────────────────────────────────────
  * QUIÉN LA LLAMA
@@ -89,6 +94,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
+  if (evento.tipo === 'cuenta') {
+    const cuenta = await admin
+      .from('cuentas')
+      .select('estado,total,sesion_mesa_id')
+      .eq('id', evento.id)
+      .single();
+    if (cuenta.error || !cuenta.data) return json({ error: 'No se encontró la cuenta.' }, 404);
+    if (cuenta.data.estado !== ESTADO_DE_CUENTA[evento.momento]) {
+      return json({ ignorado: 'la cuenta ya cambió de estado' });
+    }
+    const mesa = await numeroDeMesa(admin, cuenta.data.sesion_mesa_id);
+    return avisarAPerfiles(
+      admin,
+      DESTINATARIOS_DE_CUENTA[evento.momento],
+      avisoDeCuenta(evento.momento, mesa, Number(cuenta.data.total)),
+    );
+  }
+
   /*
    * Punto 18. El estado se vuelve a leer: si entre el trigger y esta
    * llamada el mozo ya lo entregó, el aviso no tiene sentido.
@@ -101,17 +124,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (pedido.error || !pedido.data) return json({ error: 'No se encontró el pedido.' }, 404);
   if (pedido.data.estado !== 'listo') return json({ ignorado: 'el pedido ya no está listo' });
 
-  const sesion = await admin
-    .from('sesiones_mesa')
-    .select('mesa_id')
-    .eq('id', pedido.data.sesion_mesa_id)
-    .single();
-  const mesa = sesion.data
-    ? await admin.from('mesas').select('numero').eq('id', sesion.data.mesa_id).single()
-    : null;
-
-  return avisarAPerfiles(admin, MOZOS, avisoDePedidoListo(mesa?.data?.numero ?? null));
+  const mesa = await numeroDeMesa(admin, pedido.data.sesion_mesa_id);
+  return avisarAPerfiles(admin, MOZOS, avisoDePedidoListo(mesa));
 });
+
+/** El número de la mesa de una estadía, para que el aviso diga adónde ir. */
+async function numeroDeMesa(admin: SupabaseClient, sesionId: string): Promise<number | null> {
+  const sesion = await admin.from('sesiones_mesa').select('mesa_id').eq('id', sesionId).single();
+  if (!sesion.data) return null;
+  const mesa = await admin.from('mesas').select('numero').eq('id', sesion.data.mesa_id).single();
+  return mesa.data?.numero ?? null;
+}
 
 /**
  * Manda un aviso a todos los teléfonos de las personas con esos perfiles.

@@ -338,8 +338,31 @@ cd supabase/functions && npx -y deno@2 test avisar-push/reglas_test.ts
 Para el recorrido completo con cuatro teléfonos simulados, ver el
 encabezado de `tests/ui-puntos-16-18.mjs`: se niega a correr si
 `environment.local.ts` no apunta a `127.0.0.1:54321`. La entrega y la
-recepción del punto 19 tienen el suyo, `tests/ui-punto-19.mjs`, con la
-misma guarda.
+recepción del punto 19 tienen el suyo, `tests/ui-punto-19.mjs`, y la
+encuesta, la cuenta y la mesa libre de los puntos 20 a 22 el suyo,
+`tests/ui-puntos-20-22.mjs`, todos con la misma guarda.
+
+Los avisos de la cuenta (pedida, pagada y confirmada) usan los mismos
+dos secretos de Vault: no hace falta configurar nada más.
+
+---
+
+## 12. Las cuatro semanas de historial (punto 20)
+
+El enunciado pide «una base externa con interacciones simuladas de al
+menos cuatro semanas», y los gráficos de la encuesta salen de ahí.
+`seed_data/historico.sql` genera 28 días de estadías cerradas, con su
+pedido pagado, su cuenta confirmada y su encuesta respondida.
+
+```bash
+psql "<cadena de conexión>" -f supabase/seed_data/historico.sql
+```
+
+- Todo cuelga de ocho clientes ficticios, `historico1..8@tumbo.demo`,
+  con clave aleatoria: nadie puede ingresar con ellos.
+- Se puede correr más de una vez: si ya hay historial, no genera otro.
+- No dispara avisos push: apaga `encolar_aviso` para su transacción.
+- `seed_data/historico-borrar.sql` borra todo lo que generó, y nada más.
 
 ---
 

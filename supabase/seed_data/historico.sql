@@ -1,168 +1,198 @@
+-- ═══════════════════════════════════════════════════════════════════
 -- supabase/seed_data/historico.sql
 --
--- Genera ~28 días de estadías cerradas y pagadas, con pedidos, ítems,
--- cuentas confirmadas y encuestas respondidas, para que los gráficos
--- estadísticos del punto 20 tengan datos reales para mostrar
--- (ver riesgo R6 en CONTEXTO-PROYECTO.md).
+-- Cuatro semanas de actividad simulada, como pide el enunciado («una
+-- base externa con interacciones simuladas de al menos cuatro
+-- semanas»). Alimenta los gráficos del punto 20.
 --
--- Se apoya en un pool chico de "clientes históricos" sintéticos:
--- las restricciones de unicidad de sesiones activas (idx_sesion_activa_*)
--- solo aplican a estados activos, así que reutilizar clientes en
--- sesiones ya 'cerrada' no viola ningún constraint.
+-- Genera, para cada uno de los últimos 28 días, entre 3 y 6 estadías ya
+-- cerradas, con su pedido pagado, sus ítems, su cuenta confirmada y su
+-- encuesta respondida.
+--
+-- CÓMO SE RECONOCE
+-- Todo cuelga de ocho clientes ficticios, `historico1..8@tumbo.demo`.
+-- No pueden ingresar: su clave es aleatoria y nadie la conoce.
+-- `historico-borrar.sql` borra todo lo que generó este script.
+--
+-- SE PUEDE CORRER MÁS DE UNA VEZ
+-- Si ya hay historial, no genera otro.
+--
+-- NO AVISA A NADIE
+-- Las cuentas disparan avisos push al mozo. Este script los apaga para
+-- su transacción (`tumbo.sin_avisos`): son cuentas viejas.
+--
+-- Se puede correr con psql o pegar solo el bloque anónimo (por ejemplo
+-- en el SQL Editor): todo lo que necesita está adentro.
+-- ═══════════════════════════════════════════════════════════════════
+begin;
 
--- ─────────────────────────────────────────────────────────────
--- Clientes históricos (auth.users + public.usuarios)
--- ─────────────────────────────────────────────────────────────
 do $$
 declare
-  v_clave text := crypt('Tumbo2026', gen_salt('bf'));
-  v_instance uuid := '00000000-0000-0000-0000-000000000000';
   v_nombres text[] := array['Sofía','Lucas','Valentina','Tomás','Julieta','Bruno','Martina','Agustín'];
   v_apellidos text[] := array['Rossi','Fernández','López','García','Díaz','Molina','Suárez','Acosta'];
-  v_id uuid;
-  i int;
-begin
-  for i in 1..8 loop
-    v_id := ('66666666-6666-6666-6666-66666666600' || i)::uuid;
-
-    insert into auth.users (
-      instance_id, id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-      created_at, updated_at, confirmation_token, recovery_token,
-      email_change_token_new, email_change
-    ) values (
-      v_instance, v_id, 'authenticated', 'authenticated',
-      'historico' || i || '@tumbo.demo', v_clave, now(),
-      '{"provider":"email","providers":["email"]}',
-      jsonb_build_object('perfil', case when i % 4 = 0 then 'cliente_anonimo' else 'cliente_registrado' end,
-                          'nombres', v_nombres[i], 'apellidos', v_apellidos[i]),
-      now(), now(), '', '', '', ''
-    ) on conflict (id) do nothing;
-
-    insert into public.usuarios (id, apellidos, nombres, dni, correo, perfil, estado)
-    values (
-      v_id, v_apellidos[i], v_nombres[i], (20000000 + i)::text,
-      'historico' || i || '@tumbo.demo',
-      case when i % 4 = 0 then 'cliente_anonimo' else 'cliente_registrado' end,
-      'aprobado'
-    ) on conflict (id) do nothing;
-  end loop;
-end $$;
-
--- ─────────────────────────────────────────────────────────────
--- 28 días de estadías, pedidos, cuentas y encuestas
--- ─────────────────────────────────────────────────────────────
-do $$
-declare
+  v_comentarios text[] := array[
+    'Muy rica la comida, volvemos seguro.',
+    'La atención fue excelente.',
+    'Tardaron un poco, pero valió la pena.',
+    'Lindo lugar para venir con amigos.',
+    'Me encantó el postre.'
+  ];
+  v_clientes uuid[] := array[]::uuid[];
   v_mesas uuid[];
-  v_clientes uuid[];
   v_productos uuid[];
-  v_preguntas uuid[];
-  v_dia date;
-  v_sesiones_por_dia int;
-  v_sesion_id uuid;
-  v_pedido_id uuid;
-  v_encuesta_id uuid;
-  v_cuenta_calculo record;
-  v_mesa uuid;
+  v_mozo uuid;
+  v_niveles public.niveles_propina[];
+  v_nivel public.niveles_propina;
+  v_pregunta public.preguntas_encuesta;
+  v_id uuid;
+  v_sesion uuid;
+  v_pedido uuid;
+  v_encuesta uuid;
   v_cliente uuid;
-  v_items_por_pedido int;
-  v_producto uuid;
-  v_cantidad int;
-  v_hora_apertura timestamptz;
-  v_niveles text[] := array['excelente','muy_bueno','bueno','regular','malo'];
-  v_pct numeric[] := array[20,15,10,5,0];
-  v_indice_nivel int;
+  v_apertura timestamptz;
+  v_calculo record;
+  v_valor jsonb;
+  v_propina numeric;
+  v_azar numeric;
   d int;
   s int;
-  it int;
-  p int;
+  i int;
 begin
+  -- Dentro del bloque y no antes: así vale aunque quien lo ejecute corra
+  -- cada sentencia en su propia transacción. Sin esto, cada cuenta
+  -- histórica le mandaría una push al mozo.
+  perform set_config('tumbo.sin_avisos', 'si', true);
+
+  if exists (
+    select 1 from public.sesiones_mesa s
+      join public.usuarios u on u.id = s.cliente_id
+     where u.correo like 'historico%@tumbo.demo'
+  ) then
+    raise notice 'Ya hay historial cargado: no se genera otro.';
+    return;
+  end if;
+
+  -- Clientes históricos. El trigger de auth.users arma su perfil; los
+  -- datos tienen que pasar las mismas validaciones que cualquier alta.
+  for i in 1..8 loop
+    v_id := ('66666666-6666-4666-8666-66666666660' || i)::uuid;
+    if not exists (select 1 from auth.users where id = v_id) then
+      insert into auth.users (
+        instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+        raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+        confirmation_token, recovery_token, email_change_token_new, email_change
+      ) values (
+        '00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated',
+        'historico' || i || '@tumbo.demo',
+        extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')), now(),
+        '{"provider":"email","providers":["email"],"perfil":"cliente_registrado","estado":"aprobado"}',
+        jsonb_build_object('nombres', v_nombres[i], 'apellidos', v_apellidos[i], 'dni', (40000000 + i)::text),
+        now() - interval '40 days', now() - interval '40 days', '', '', '', ''
+      );
+    end if;
+    v_clientes := v_clientes || v_id;
+  end loop;
+
   select array_agg(id) into v_mesas from public.mesas;
-  select array_agg(id) into v_clientes from public.usuarios
-   where perfil in ('cliente_registrado','cliente_anonimo');
-  select array_agg(id) into v_productos from public.productos;
-  select array_agg(id) into v_preguntas from public.preguntas_encuesta;
+  -- Los productos de la carta: activos y con sus tres fotos.
+  select array_agg(p.id) into v_productos
+    from public.productos p
+   where p.activo
+     and (select count(*) from public.producto_fotos f where f.producto_id = p.id) = 3;
+  if v_productos is null then
+    select array_agg(id) into v_productos from public.productos where activo;
+  end if;
+  select id into v_mozo from public.usuarios
+   where perfil = 'mozo' and estado = 'aprobado' order by creado_en limit 1;
+  select array_agg(n order by n.porcentaje desc) into v_niveles from public.niveles_propina n;
+
+  if v_mesas is null or v_productos is null or v_niveles is null then
+    raise exception 'Faltan mesas, productos o niveles de propina para generar el historial.';
+  end if;
 
   for d in 0..27 loop
-    v_dia := (current_date - (27 - d));
-    v_sesiones_por_dia := 3 + floor(random() * 4)::int; -- entre 3 y 6 por día
-
-    for s in 1..v_sesiones_por_dia loop
-      v_mesa := v_mesas[1 + floor(random() * array_length(v_mesas, 1))::int];
+    for s in 1..(3 + floor(random() * 4)::int) loop
       v_cliente := v_clientes[1 + floor(random() * array_length(v_clientes, 1))::int];
-      v_hora_apertura := v_dia + (time '12:00' + (random() * interval '9 hours'));
-      v_sesion_id := gen_random_uuid();
+      v_apertura := (current_date - (28 - d)) + time '12:00' + random() * interval '9 hours';
 
-      insert into public.sesiones_mesa
-        (id, mesa_id, cliente_id, estado, comensales, abierta_en, cerrada_en)
-      values
-        (v_sesion_id, v_mesa, v_cliente, 'cerrada', 1 + floor(random() * 4)::int,
-         v_hora_apertura, v_hora_apertura + interval '50 minutes');
+      insert into public.sesiones_mesa (mesa_id, cliente_id, estado, comensales, abierta_en, cerrada_en)
+      values (
+        v_mesas[1 + floor(random() * array_length(v_mesas, 1))::int], v_cliente, 'cerrada',
+        1 + floor(random() * 4)::int, v_apertura, v_apertura + interval '70 minutes'
+      )
+      returning id into v_sesion;
 
-      -- Pedido pagado con 1 a 4 ítems
-      v_pedido_id := gen_random_uuid();
-      insert into public.pedidos
-        (id, sesion_mesa_id, estado, mozo_id, creado_en, confirmado_en, listo_en, entregado_en)
-      values
-        (v_pedido_id, v_sesion_id, 'pagado', '11111111-1111-1111-1111-111111111104',
-         v_hora_apertura + interval '5 minutes', v_hora_apertura + interval '8 minutes',
-         v_hora_apertura + interval '25 minutes', v_hora_apertura + interval '30 minutes');
+      insert into public.pedidos (
+        sesion_mesa_id, estado, mozo_id, creado_en, enviado_en, confirmado_en,
+        listo_en, entregado_en, recibido_en
+      ) values (
+        v_sesion, 'pagado', v_mozo, v_apertura + interval '5 minutes',
+        v_apertura + interval '6 minutes', v_apertura + interval '8 minutes',
+        v_apertura + interval '28 minutes', v_apertura + interval '32 minutes',
+        v_apertura + interval '33 minutes'
+      )
+      returning id into v_pedido;
 
-      v_items_por_pedido := 1 + floor(random() * 4)::int;
-      for it in 1..v_items_por_pedido loop
-        v_producto := v_productos[1 + floor(random() * array_length(v_productos, 1))::int];
-        v_cantidad := 1 + floor(random() * 3)::int;
-
-        insert into public.pedido_items (pedido_id, producto_id, cantidad, sector, estado, listo_en)
-        select v_pedido_id, v_producto, v_cantidad, p.sector, 'listo', v_hora_apertura + interval '25 minutes'
-        from public.productos p where p.id = v_producto
+      for i in 1..(1 + floor(random() * 4)::int) loop
+        insert into public.pedido_items (pedido_id, producto_id, cantidad, estado, listo_en)
+        values (
+          v_pedido, v_productos[1 + floor(random() * array_length(v_productos, 1))::int],
+          1 + floor(random() * 3)::int, 'listo', v_apertura + interval '28 minutes'
+        )
         on conflict (pedido_id, producto_id) do nothing;
       end loop;
 
-      -- Encuesta con respuesta a cada pregunta (controles variados)
-      v_encuesta_id := gen_random_uuid();
-      insert into public.encuestas (id, sesion_mesa_id, cliente_id, creado_en)
-      values (v_encuesta_id, v_sesion_id, v_cliente, v_hora_apertura + interval '55 minutes');
-
-      for p in 1..array_length(v_preguntas, 1) loop
-        insert into public.respuestas_encuesta (encuesta_id, pregunta_id, valor)
-        select v_encuesta_id, v_preguntas[p],
-          case pe.tipo
-            when 'estrellas' then to_jsonb(1 + floor(random() * 5)::int)
-            when 'rango' then to_jsonb(1 + floor(random() * 10)::int)
-            when 'radio' then to_jsonb((pe.opciones->>(floor(random() * jsonb_array_length(pe.opciones))::int)))
-            when 'select' then to_jsonb((pe.opciones->>(floor(random() * jsonb_array_length(pe.opciones))::int)))
-            when 'checkbox' then (
-              select jsonb_agg(op) from (
-                select op from jsonb_array_elements_text(pe.opciones) op
-                order by random() limit 1 + floor(random() * 3)::int
-              ) sub
-            )
-            when 'interruptor' then to_jsonb(random() > 0.3)
-            else to_jsonb('Muy buena experiencia, repetiría sin dudas.'::text)
-          end
-        from public.preguntas_encuesta pe where pe.id = v_preguntas[p]
-        on conflict (encuesta_id, pregunta_id) do nothing;
-      end loop;
-
-      -- Cuenta confirmada, con propina obligatoria (punto 21)
-      select * into v_cuenta_calculo from public.calcular_cuenta(v_sesion_id);
-      v_indice_nivel := 1 + floor(random() * 5)::int;
+      -- La propina sigue a la experiencia: casi siempre buena.
+      v_azar := random();
+      v_nivel := v_niveles[case when v_azar < 0.35 then 1 when v_azar < 0.65 then 2
+                                when v_azar < 0.85 then 3 when v_azar < 0.95 then 4 else 5 end];
+      select * into v_calculo from public.calcular_cuenta(v_sesion);
+      v_propina := round(v_calculo.base * v_nivel.porcentaje / 100, 2);
 
       insert into public.cuentas (
-        sesion_mesa_id, subtotal, descuento_pct, descuento_monto,
-        nivel_propina, propina_pct, propina_monto, total, estado,
-        mozo_id, solicitada_en, pagada_en, confirmada_en
+        sesion_mesa_id, subtotal, descuento_pct, descuento_monto, nivel_propina, propina_pct,
+        propina_monto, total, estado, mozo_id, solicitada_en, pagada_en, confirmada_en
       ) values (
-        v_sesion_id, v_cuenta_calculo.subtotal, v_cuenta_calculo.descuento_pct, v_cuenta_calculo.descuento_monto,
-        v_niveles[v_indice_nivel]::nivel_satisfaccion, v_pct[v_indice_nivel],
-        round(v_cuenta_calculo.base * v_pct[v_indice_nivel] / 100, 2),
-        v_cuenta_calculo.base + round(v_cuenta_calculo.base * v_pct[v_indice_nivel] / 100, 2),
-        'confirmada', '11111111-1111-1111-1111-111111111104',
-        v_hora_apertura + interval '45 minutes', v_hora_apertura + interval '48 minutes',
-        v_hora_apertura + interval '50 minutes'
+        v_sesion, v_calculo.subtotal, v_calculo.descuento_pct, v_calculo.descuento_monto,
+        v_nivel.nivel, v_nivel.porcentaje, v_propina, v_calculo.base + v_propina,
+        'confirmada', v_mozo, v_apertura + interval '55 minutes',
+        v_apertura + interval '60 minutes', v_apertura + interval '65 minutes'
       );
+
+      insert into public.encuestas (sesion_mesa_id, cliente_id, creado_en)
+      values (v_sesion, v_cliente, v_apertura + interval '50 minutes')
+      returning id into v_encuesta;
+
+      for v_pregunta in select * from public.preguntas_encuesta where activa order by orden loop
+        v_azar := random();
+        v_valor := case v_pregunta.tipo
+          when 'estrellas' then to_jsonb(case when v_azar < 0.45 then 5 when v_azar < 0.80 then 4
+                                              when v_azar < 0.93 then 3 when v_azar < 0.98 then 2 else 1 end
+                                         -- La atención mejora un poco semana a semana.
+                                         + case when d >= 21 and v_azar >= 0.80 and v_azar < 0.93 then 1 else 0 end)
+          when 'rango' then to_jsonb(6 + floor(random() * 5)::int)
+          when 'radio' then to_jsonb(v_pregunta.opciones ->> (
+                              case when v_azar < 0.15 then 0 when v_azar < 0.50 then 1
+                                   when v_azar < 0.85 then 2 when v_azar < 0.96 then 3 else 4 end))
+          when 'select' then to_jsonb(v_pregunta.opciones ->> floor(random() * jsonb_array_length(v_pregunta.opciones))::int)
+          when 'checkbox' then (
+            select jsonb_agg(o) from (
+              select o from jsonb_array_elements_text(v_pregunta.opciones) o
+               order by random() limit 1 + floor(random() * 3)::int
+            ) elegidas)
+          when 'interruptor' then to_jsonb(v_azar > 0.12)
+          when 'texto_largo' then case when v_azar < 0.4
+                                       then to_jsonb(v_comentarios[1 + floor(random() * 5)::int])
+                                  end
+        end;
+
+        if v_valor is not null then
+          insert into public.respuestas_encuesta (encuesta_id, pregunta_id, valor)
+          values (v_encuesta, v_pregunta.id, v_valor);
+        end if;
+      end loop;
     end loop;
   end loop;
 end $$;
+
+commit;

@@ -1,0 +1,157 @@
+:host {
+  display: block;
+  margin-top: clamp(1rem, 4vw, 2rem);
+}
+
+.cuenta {
+  display: grid;
+  gap: 0.9rem;
+}
+
+h2 {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: clamp(1.15rem, 5vw, 1.4rem);
+}
+
+h3 {
+  margin: 0 0 0.4rem;
+  color: var(--tumbo-azul-sombra);
+  font-size: 1rem;
+}
+
+/* El total, grande y claro como pide el punto 21 (modelo Mercado Pago). */
+.total {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  border-radius: 1rem;
+  padding: 1.25rem 1rem;
+  background: var(--tumbo-azul-accion);
+  color: var(--tumbo-azul-brillante);
+  text-align: center;
+}
+
+.total span {
+  font-size: 0.95rem;
+}
+
+.total strong {
+  font-size: clamp(2.1rem, 11vw, 2.8rem);
+  line-height: 1.1;
+}
+
+.total small {
+  font-size: 0.85rem;
+}
+
+.detalle {
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--tumbo-crema-brillante);
+  box-shadow: 0 0.5rem 1.3rem rgb(0 53 146 / 8%);
+}
+
+.detalle ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detalle li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 0.08rem solid rgb(0 53 146 / 13%);
+  padding: 0.55rem 0;
+  color: var(--tumbo-azul-sombra);
+}
+
+.detalle li:last-child {
+  border-bottom: 0;
+}
+
+.detalle li > span {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.detalle small {
+  font-size: 0.78rem;
+}
+
+.detalle strong {
+  flex-shrink: 0;
+}
+
+.detalle__subtotal {
+  font-weight: 700;
+}
+
+.detalle__descuento strong {
+  color: var(--tumbo-naranja-profundo);
+}
+
+.aviso {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0.1rem solid rgb(0 106 231 / 24%);
+  border-radius: 0.9rem;
+  padding: 0.85rem;
+  background: var(--tumbo-crema-brillante);
+  color: var(--tumbo-azul-sombra);
+}
+
+.aviso > ion-icon {
+  flex-shrink: 0;
+  color: var(--tumbo-azul-accion);
+  font-size: 1.6rem;
+}
+
+.aviso strong {
+  display: block;
+}
+
+.aviso p {
+  margin: 0.25rem 0 0;
+}
+
+.aviso--listo {
+  border-color: var(--tumbo-azul-accion);
+}
+
+.verificacion {
+  margin: 0;
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--tumbo-azul-brillante);
+  color: var(--tumbo-azul-sombra);
+  font-weight: 700;
+}
+
+ion-button {
+  min-height: 52px;
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: normal;
+  --border-radius: 0.7rem;
+}
+
+ion-button::part(native) {
+  white-space: normal;
+}
+
+ion-button.principal {
+  --background: var(--tumbo-amarillo-marca);
+  --background-hover: var(--tumbo-ambar-hover);
+  --color: var(--tumbo-azul-sombra);
+}
+
+ion-button.secundario {
+  --color: var(--tumbo-azul-sombra);
+  --border-color: var(--tumbo-azul-sombra);
+}

@@ -88,13 +88,14 @@ select ok(
 select is(
   (select array_agg(tablename::text order by tablename) from pg_publication_tables
     where pubname = 'supabase_realtime' and schemaname = 'public'),
-  array['lista_espera', 'mensajes', 'mesas', 'pedido_items', 'pedidos', 'producto_fotos',
+  array['cuentas', 'lista_espera', 'mensajes', 'mesas', 'pedido_items', 'pedidos', 'producto_fotos',
         'productos', 'usuarios'],
   'todas las tablas que la aplicación escucha en su canal están publicadas'
 );
 
 -- Secretos de Vault LOCALES. La dirección es un puerto cerrado del
 -- propio contenedor: aunque algo se confirmara, no llegaría a ningún lado.
+delete from vault.secrets where name in ('tumbo_url_funciones', 'tumbo_firma_webhook');
 select vault.create_secret('http://127.0.0.1:9/functions/v1', 'tumbo_url_funciones');
 select vault.create_secret('firma-solo-local', 'tumbo_firma_webhook');
 

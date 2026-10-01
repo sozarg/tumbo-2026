@@ -240,13 +240,13 @@ try {
   await cliente.getByRole('button', { name: 'Encuesta', exact: true }).click();
   await esperar(
     'cliente: la encuesta se puede responder',
-    async () => (await cliente.locator('.survey-card').count()) === 1,
+    async () => (await cliente.locator('tumbo-encuesta-form').count()) === 1,
   );
   await volverAlInicio(cliente);
   await cliente.getByRole('button', { name: 'Cuenta', exact: true }).click();
   await esperar(
-    'cliente: puede elegir la propina para pedir la cuenta',
-    async () => (await cliente.locator('.tip-card').count()) === 1,
+    'cliente: puede pedir la cuenta',
+    async () => (await cliente.getByRole('button', { name: 'Pedir la cuenta' }).count()) === 1,
   );
 } finally {
   await browser.close();

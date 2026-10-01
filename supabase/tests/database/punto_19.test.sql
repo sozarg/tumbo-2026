@@ -155,13 +155,14 @@ select throws_ok(
   '42501', null,
   'no se responde la encuesta de una estadía ajena'
 );
-select lives_ok(
-  $$ insert into public.encuestas (sesion_mesa_id, cliente_id)
-     values ('11000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000014') $$,
+-- Desde los puntos 20 a 22, encuesta y cuenta se crean con funciones
+-- (ver puntos_20_22.test.sql); acá alcanza con que la recepción las habilite.
+select ok(
+  public.estadia_con_pedido_recibido('11000000-0000-4000-8000-00000000000a'),
   'con el pedido recibido se habilita la encuesta'
 );
 select lives_ok(
-  $$ insert into public.cuentas (sesion_mesa_id) values ('11000000-0000-4000-8000-00000000000a') $$,
+  $$ select public.solicitar_cuenta() $$,
   'con el pedido recibido se habilita pedir la cuenta'
 );
 

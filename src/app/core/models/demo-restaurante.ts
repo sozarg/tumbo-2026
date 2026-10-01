@@ -46,7 +46,16 @@ export type EstadoPedido =
   | 'listo'
   | 'entregado'
   | 'recibido';
-export type EstadoCuenta = 'borrador' | 'pendiente_pago' | 'pagada' | 'confirmada';
+/**
+ * Los momentos de la cuenta (puntos 21 y 22).
+ *
+ * - `solicitada`: el cliente la pidió y el mozo está avisado; falta leer
+ *   el QR de propina.
+ * - `pendiente_pago`: ya tiene la propina y el detalle; falta pagar.
+ * - `pagada`: el cliente pagó y espera que el mozo confirme.
+ * - `confirmada`: el mozo confirmó y la mesa quedó libre.
+ */
+export type EstadoCuenta = 'solicitada' | 'pendiente_pago' | 'pagada' | 'confirmada';
 
 export interface ProductoDemo {
   readonly id: string;
@@ -155,9 +164,14 @@ export interface MensajeDemo {
 }
 
 export interface CuentaDemo {
+  readonly id: string;
+  /** El número de mesa; lo usa el mozo para saber a quién cobrar. */
+  readonly mesa: number;
   readonly subtotal: number;
   readonly descuento: number;
-  readonly porcentajePropina: number;
+  readonly porcentajeDescuento: number;
+  /** `null` mientras no se leyó el QR de propina. */
+  readonly porcentajePropina: number | null;
   readonly propina: number;
   readonly total: number;
   readonly estado: EstadoCuenta;

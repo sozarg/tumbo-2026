@@ -1,6 +1,12 @@
 import { MenuOperacion } from './menu-operacion.component';
 import { AccionDeSector, SectorPedidos } from './sector-pedidos.component';
 import { AvancePedidos } from './avance-pedidos.component';
+import { Cobros, ConfirmacionDePago } from './cobros.component';
+import { CuentaCliente } from './cuenta-cliente.component';
+import { EncuestaForm } from './encuesta-form.component';
+import { ResultadosEncuesta } from './resultados-encuesta.component';
+import { RespuestasDeEncuesta } from '../../core/models/encuesta';
+import { mesaDesdeQr, porcentajeDesdeQrDePropina } from '../../core/services/cuenta-y-encuesta';
 import { NgOptimizedImage } from '@angular/common';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -29,15 +35,11 @@ import { IonHeader } from '@ionic/angular/ion-header';
 import { IonContent } from '@ionic/angular/ion-content';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
-import { IonItem } from '@ionic/angular/ion-item';
-import { IonLabel } from '@ionic/angular/ion-label';
 import { IonModal } from '@ionic/angular/ion-modal';
-import { IonRange } from '@ionic/angular/ion-range';
 import { IonSelect } from '@ionic/angular/ion-select';
 import { IonSelectOption } from '@ionic/angular/ion-select-option';
 import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToast } from '@ionic/angular/ion-toast';
-import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
@@ -126,13 +128,16 @@ import {
   Seccion,
   puedeAcceder,
 } from '../../core/navegacion/secciones';
-type GraficoDemo = 'torta' | 'barras' | 'linea';
 
 @Component({
   imports: [
     MenuOperacion,
     SectorPedidos,
     AvancePedidos,
+    Cobros,
+    CuentaCliente,
+    EncuestaForm,
+    ResultadosEncuesta,
     IonBadge,
     IonButton,
     IonCard,
@@ -142,15 +147,11 @@ type GraficoDemo = 'torta' | 'barras' | 'linea';
     IonHeader,
     IonIcon,
     IonInput,
-    IonItem,
-    IonLabel,
     IonModal,
-    IonRange,
     IonSelect,
     IonSelectOption,
     IonTextarea,
     IonToast,
-    IonToggle,
     Espera,
     Paginador,
     BotonConfirmacion,
@@ -323,7 +324,6 @@ export class Operacion implements OnInit {
   protected readonly titulo = computed(
     () => this.accesos().find((acceso) => acceso.id === this.seccion())?.titulo ?? 'Tu restaurante',
   );
-  protected readonly grafico = signal<GraficoDemo>('torta');
   protected readonly mensaje = signal('');
   protected readonly error = signal('');
 
@@ -331,6 +331,10 @@ export class Operacion implements OnInit {
   protected readonly confirmandoRecepcion = signal(false);
   /** El pedido que cocina o bar está guardando; bloquea el doble toque. */
   protected readonly procesandoSector = signal<string | null>(null);
+  protected readonly enviandoEncuesta = signal(false);
+  protected readonly procesandoCuenta = signal(false);
+  /** Lo que dio leer el QR de la mesa después de pagar (punto 22). */
+  protected readonly verificacionMesa = signal<string | null>(null);
   protected readonly etiquetaSector = ETIQUETA_DE_ESTADO_SECTOR;
   protected readonly sectorActual = computed<SectorProducto>(() =>
     this.seccion() === 'barra' ? 'bar' : 'cocina',
@@ -459,7 +463,6 @@ export class Operacion implements OnInit {
   protected readonly nombreAnonimo = signal('');
   protected readonly fotoAnonima = signal<FotoTomada | null>(null);
   protected readonly ingresoEscaneado = signal(false);
-  protected readonly qrSeleccionado = signal<number | null>(null);
 
   /** `false` en el navegador: ahí la cámara y el lector se simulan. */
   protected readonly camaraReal = this.camara.esReal;
@@ -468,7 +471,6 @@ export class Operacion implements OnInit {
     const perfil = this.usuario()?.perfil;
     return perfil === 'cliente_registrado' || perfil === 'cliente_anonimo';
   });
-  protected readonly propinas = [20, 15, 10, 5, 0] as const;
 
   /**
    * Alta de empleado (punto 1), validada igual que la base.
@@ -693,11 +695,6 @@ export class Operacion implements OnInit {
   protected readonly mensajeForm = this.formularioBuilder.nonNullable.group({
     texto: ['', [Validators.required, Validators.maxLength(180)]],
   });
-  protected readonly encuestaForm = this.formularioBuilder.nonNullable.group({
-    satisfaccion: [5, [Validators.required, Validators.min(1)]],
-    comentario: ['', Validators.required],
-    recomendaria: [true, Validators.required],
-  });
 
   constructor() {
     effect(() => {
@@ -802,6 +799,7 @@ export class Operacion implements OnInit {
     this.creando.set(false);
     if (seccion === 'productos')
       this.productoForm.controls.tipo.setValue(this.tipoDeSector() ?? 'plato');
+    if (seccion === 'reportes') void this.demo.cargarResultadosEncuesta();
     this.error.set('');
   }
 
@@ -2117,6 +2115,99 @@ export class Operacion implements OnInit {
     }
   }
 
+  /** Punto 20: guarda la encuesta; la base vuelve a validar cada respuesta. */
+  protected async responderEncuesta(respuestas: RespuestasDeEncuesta): Promise<void> {
+    if (this.enviandoEncuesta()) return;
+    this.enviandoEncuesta.set(true);
+    try {
+      const resultado = await this.demo.responderEncuesta(respuestas);
+      if (resultado.ok) this.avisarExito('Encuesta guardada. ¡Gracias por tu opinión!');
+      else await this.avisarError(resultado.error ?? 'No se pudo guardar la encuesta.');
+    } finally {
+      this.enviandoEncuesta.set(false);
+    }
+  }
+
+  /** Punto 21: el cliente pide la cuenta y el mozo recibe el aviso. */
+  protected async pedirCuenta(): Promise<void> {
+    await this.operarCuenta(
+      () => this.demo.solicitarCuenta(),
+      'Le avisamos al mozo. Escaneá el QR de propina.',
+    );
+  }
+
+  /**
+   * Punto 21: la propina se elige LEYENDO el QR, no tocando una imagen.
+   * El contenido va tal cual a la base, que es la que lo reconoce.
+   */
+  protected async escanearPropina(): Promise<void> {
+    const lectura = await this.lector.leerCodigo();
+    if (lectura.estado === 'cancelado') return;
+    if (lectura.estado !== 'leido') {
+      await this.avisarError(
+        lectura.estado === 'error' ? lectura.mensaje : 'No se pudo leer el código.',
+      );
+      return;
+    }
+    const porcentaje = porcentajeDesdeQrDePropina(lectura.contenido);
+    if (porcentaje === null) {
+      await this.avisarError('Ese código no es un QR de propina.');
+      return;
+    }
+    await this.operarCuenta(
+      () => this.demo.generarCuenta(lectura.contenido, porcentaje),
+      `Propina del ${porcentaje} % aplicada. Revisá el detalle y pagá.`,
+    );
+  }
+
+  /** Punto 21: el pago simulado. */
+  protected async pagarCuenta(): Promise<void> {
+    await this.operarCuenta(
+      () => this.demo.pagarCuenta(),
+      'Pago realizado. El mozo tiene que confirmarlo.',
+    );
+  }
+
+  /** Punto 22: el mozo confirma el pago de UNA mesa y la libera. */
+  protected async confirmarPago(confirmacion: ConfirmacionDePago): Promise<void> {
+    await this.avanzarSector(
+      { pedidoId: confirmacion.cuentaId, mesa: confirmacion.mesa },
+      () => this.demo.confirmarPago(confirmacion.cuentaId),
+      `Pago confirmado: la mesa ${confirmacion.mesa} quedó libre.`,
+    );
+  }
+
+  /** Punto 22: con el pago confirmado, el QR de la mesa la muestra libre. */
+  protected async verificarMesa(): Promise<void> {
+    const lectura = await this.lector.leerCodigo();
+    if (lectura.estado === 'cancelado') return;
+    const mesa =
+      lectura.estado === 'leido' ? mesaDesdeQr(lectura.contenido, this.demo.mesas()) : undefined;
+    if (!mesa) {
+      this.verificacionMesa.set(null);
+      await this.avisarError('Ese código no es el QR de una mesa.');
+      return;
+    }
+    this.verificacionMesa.set(
+      `Mesa ${mesa.numero}: ${mesa.disponible ? 'libre, lista para el próximo cliente' : 'todavía ocupada'}.`,
+    );
+  }
+
+  private async operarCuenta(
+    operar: () => Promise<{ ok: boolean; error?: string }>,
+    exito: string,
+  ): Promise<void> {
+    if (this.procesandoCuenta()) return;
+    this.procesandoCuenta.set(true);
+    try {
+      const resultado = await operar();
+      if (resultado.ok) this.avisarExito(exito);
+      else await this.avisarError(resultado.error ?? 'No se pudo actualizar la cuenta.');
+    } finally {
+      this.procesandoCuenta.set(false);
+    }
+  }
+
   /** Punto 19: el mozo entrega un pedido completo desde «Avance en cocina y bar». */
   protected async entregarPedido(accion: AccionDeSector): Promise<void> {
     await this.avanzarSector(
@@ -2178,47 +2269,6 @@ export class Operacion implements OnInit {
     );
   }
 
-  protected async registrarEncuesta(): Promise<void> {
-    if (!this.validar(this.encuestaForm)) {
-      return;
-    }
-    const registrada = (await this.demo.registrarEncuesta()).ok;
-    this.mensaje.set(
-      registrada
-        ? 'Encuesta guardada: los gráficos ya tienen un nuevo dato.'
-        : 'Ya respondiste la encuesta de esta estadía.',
-    );
-  }
-
-  protected seleccionarPropina(porcentaje: number): void {
-    this.demo.seleccionarPropina(porcentaje);
-    this.mensaje.set('Seleccionaste una propina del ' + porcentaje + '%.');
-  }
-
-  protected async generarCuenta(): Promise<void> {
-    const generada = (await this.demo.generarCuenta()).ok;
-    this.mensaje.set(
-      generada
-        ? 'Cuenta generada con el detalle completo.'
-        : 'Primero seleccioná uno de los cinco QR de propina.',
-    );
-  }
-
-  protected async pagarCuenta(): Promise<void> {
-    await this.demo.pagarCuenta();
-    this.mensaje.set('Pago simulado realizado. El mozo debe confirmarlo.');
-  }
-
-  protected async confirmarPago(): Promise<void> {
-    await this.demo.confirmarPago();
-    this.mensaje.set('Pago confirmado y mesa liberada.');
-  }
-
-  protected seleccionarQr(porcentaje: number): void {
-    this.qrSeleccionado.set(porcentaje);
-    this.seleccionarPropina(porcentaje);
-  }
-
   /**
    * Los QR que son SIEMPRE EL MISMO y viven como archivo.
    *
@@ -2237,11 +2287,6 @@ export class Operacion implements OnInit {
   protected qrImagen(clave: string): string {
     const imagenes: Record<string, string> = {
       entrada: 'imagenes/qr-entrada.png',
-      'propina-20': 'imagenes/qr-propina-20.png',
-      'propina-15': 'imagenes/qr-propina-15.png',
-      'propina-10': 'imagenes/qr-propina-10.png',
-      'propina-5': 'imagenes/qr-propina-5.png',
-      'propina-0': 'imagenes/qr-propina-0.png',
     };
     return imagenes[clave] ?? '';
   }

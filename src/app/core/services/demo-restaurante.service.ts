@@ -19,12 +19,128 @@ import {
   SectorProducto,
   TipoMesa,
 } from '../models/demo-restaurante';
+import { PreguntaDeEncuesta, RespuestasDeEncuesta, ResultadosDeEncuesta } from '../models/encuesta';
+import { errorDeRespuesta } from './cuenta-y-encuesta';
 import {
   formatearFechaHora,
   pedidoCompleto,
   pedidosEnSeguimiento,
   sectoresSinEmpezar,
 } from './pedidos-por-sector';
+
+/** La encuesta de la base, para el modo demostración (punto 20). */
+const PREGUNTAS_DE_DEMOSTRACION: PreguntaDeEncuesta[] = [
+  {
+    id: 'pregunta-1',
+    texto: '¿Cómo calificarías la atención que recibiste?',
+    tipo: 'estrellas',
+    opciones: [],
+    minimo: 1,
+    maximo: 5,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-2',
+    texto: '¿Qué te pareció el tiempo de espera?',
+    tipo: 'radio',
+    opciones: ['Mucho más rápido de lo esperado', 'Rápido', 'Razonable', 'Lento', 'Muy lento'],
+    minimo: null,
+    maximo: null,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-3',
+    texto: '¿Qué aspectos disfrutaste de tu visita?',
+    tipo: 'checkbox',
+    opciones: [
+      'La comida',
+      'La atención',
+      'El ambiente',
+      'La música',
+      'Los precios',
+      'La limpieza',
+    ],
+    minimo: null,
+    maximo: null,
+    requerida: false,
+  },
+  {
+    id: 'pregunta-4',
+    texto: '¿Cómo conociste TUMBO?',
+    tipo: 'select',
+    opciones: [
+      'Un conocido me lo recomendó',
+      'Redes sociales',
+      'Pasaba por la puerta',
+      'Ya soy cliente habitual',
+    ],
+    minimo: null,
+    maximo: null,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-5',
+    texto: '¿Qué tan limpio encontraste el local?',
+    tipo: 'rango',
+    opciones: [],
+    minimo: 1,
+    maximo: 10,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-6',
+    texto: '¿Volverías a comer en TUMBO?',
+    tipo: 'interruptor',
+    opciones: [],
+    minimo: null,
+    maximo: null,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-7',
+    texto: '¿Querés contarnos algo más?',
+    tipo: 'texto_largo',
+    opciones: [],
+    minimo: null,
+    maximo: null,
+    requerida: false,
+  },
+];
+
+/** Resultados de ejemplo para los gráficos en modo demostración. */
+const RESULTADOS_DE_DEMOSTRACION: ResultadosDeEncuesta = {
+  total: 128,
+  torta: {
+    pregunta: '¿Qué te pareció el tiempo de espera?',
+    datos: [
+      { etiqueta: 'Mucho más rápido de lo esperado', cantidad: 18 },
+      { etiqueta: 'Rápido', cantidad: 44 },
+      { etiqueta: 'Razonable', cantidad: 42 },
+      { etiqueta: 'Lento', cantidad: 17 },
+      { etiqueta: 'Muy lento', cantidad: 7 },
+    ],
+  },
+  barras: {
+    pregunta: '¿Qué aspectos disfrutaste de tu visita?',
+    datos: [
+      { etiqueta: 'La comida', cantidad: 61 },
+      { etiqueta: 'La atención', cantidad: 48 },
+      { etiqueta: 'El ambiente', cantidad: 39 },
+      { etiqueta: 'La música', cantidad: 22 },
+      { etiqueta: 'Los precios', cantidad: 30 },
+      { etiqueta: 'La limpieza', cantidad: 35 },
+    ],
+  },
+  linea: {
+    pregunta: '¿Cómo calificarías la atención que recibiste?',
+    datos: [
+      { etiqueta: 'Semana 1', promedio: 4.05 },
+      { etiqueta: 'Semana 2', promedio: 4.18 },
+      { etiqueta: 'Semana 3', promedio: 4.3 },
+      { etiqueta: 'Semana 4', promedio: 4.41 },
+    ],
+  },
+};
 
 /** Los tres lugares de foto del punto 2, en el orden en que se ven. */
 const LUGARES_DE_FOTO = [0, 1, 2] as const;
@@ -74,8 +190,15 @@ export class DemoRestauranteService {
   readonly descuento = signal(0);
   readonly intentosJuego = signal<Record<string, number>>({});
   readonly encuestaRespondida = signal(false);
-  readonly porcentajePropina = signal<number | null>(null);
   readonly cuenta = signal<CuentaDemo | null>(null);
+  /** Para el mozo: las cuentas que todavía no se confirmaron. */
+  readonly cuentasEnCurso = computed(() => {
+    const cuenta = this.cuenta();
+    return cuenta && cuenta.estado !== 'confirmada' ? [cuenta] : [];
+  });
+  /** Las mismas siete preguntas de `preguntas_encuesta`. */
+  readonly preguntas = signal<PreguntaDeEncuesta[]>(PREGUNTAS_DE_DEMOSTRACION);
+  readonly resultadosEncuesta = signal<ResultadosDeEncuesta | null>(RESULTADOS_DE_DEMOSTRACION);
   readonly mesaVinculada = signal<number | null>(2);
 
   readonly clientesPendientes = computed(() =>
@@ -427,25 +550,41 @@ export class DemoRestauranteService {
     return intentoActual;
   }
 
-  registrarEncuesta(): boolean {
-    if (this.encuestaRespondida()) {
-      return false;
+  /** Punto 20: la encuesta se guarda una vez y solo si todas las respuestas son válidas. */
+  responderEncuesta(respuestas: RespuestasDeEncuesta): string | null {
+    if (this.encuestaRespondida()) return 'Ya respondiste la encuesta de esta estadía.';
+    for (const pregunta of this.preguntas()) {
+      const error = errorDeRespuesta(pregunta, respuestas[pregunta.id]);
+      if (error) return `${pregunta.texto} ${error}`;
     }
     this.encuestaRespondida.set(true);
-    this.notificar('Encuesta guardada. Gracias por tu opinión.', [
-      'cliente_registrado',
-      'cliente_anonimo',
-    ]);
+    this.notificar('Encuesta guardada. Gracias por tu opinión.', ['cliente_registrado']);
+    return null;
+  }
+
+  /** Punto 21: el cliente pide la cuenta. Si ya la pidió, no pasa nada. */
+  solicitarCuenta(): boolean {
+    if (this.cuenta()) return true;
+    if (this.pedidoActivo().estado !== 'recibido') return false;
+    this.cuenta.set({
+      id: 'cuenta-demo',
+      mesa: this.pedidoActivo().mesa,
+      subtotal: 0,
+      descuento: 0,
+      porcentajeDescuento: 0,
+      porcentajePropina: null,
+      propina: 0,
+      total: 0,
+      estado: 'solicitada',
+    });
+    this.notificar(`La mesa ${this.pedidoActivo().mesa} pide la cuenta.`, ['mozo']);
     return true;
   }
 
-  seleccionarPropina(porcentaje: number): void {
-    this.porcentajePropina.set(porcentaje);
-  }
-
-  generarCuenta(): boolean {
-    const porcentaje = this.porcentajePropina();
-    if (porcentaje === null) {
+  /** Punto 21: con el QR de propina se arma el detalle. Se puede cambiar antes de pagar. */
+  generarCuenta(porcentaje: number): boolean {
+    const cuenta = this.cuenta();
+    if (!cuenta || (cuenta.estado !== 'solicitada' && cuenta.estado !== 'pendiente_pago')) {
       return false;
     }
     const pedido = this.pedidoActivo();
@@ -454,40 +593,42 @@ export class DemoRestauranteService {
     const base = subtotal - descuento;
     const propina = Math.round(base * (porcentaje / 100));
     this.cuenta.set({
+      ...cuenta,
       subtotal,
       descuento,
+      porcentajeDescuento: pedido.descuentoPorJuego,
       porcentajePropina: porcentaje,
       propina,
       total: base + propina,
       estado: 'pendiente_pago',
     });
-    this.notificar('La cuenta está disponible para pagar.', ['mozo', 'dueno', 'supervisor']);
     return true;
   }
 
-  pagarCuenta(): void {
+  /** Punto 21: el pago simulado; avisa al mozo, al dueño y al supervisor. */
+  pagarCuenta(): boolean {
     const cuenta = this.cuenta();
-    if (cuenta) {
-      this.cuenta.set({ ...cuenta, estado: 'pagada' });
-      this.notificar('Pago simulado realizado. Esperando confirmación del mozo.', [
-        'mozo',
-        'dueno',
-        'supervisor',
-      ]);
-    }
+    if (!cuenta || cuenta.estado !== 'pendiente_pago') return false;
+    this.cuenta.set({ ...cuenta, estado: 'pagada' });
+    this.notificar(`La mesa ${cuenta.mesa} pagó. Confirmá el pago.`, [
+      'mozo',
+      'dueno',
+      'supervisor',
+    ]);
+    return true;
   }
 
-  confirmarPago(): void {
+  /** Punto 22: el mozo confirma esa cuenta y la mesa queda libre. */
+  confirmarPago(cuentaId: string): boolean {
     const cuenta = this.cuenta();
-    if (cuenta) {
-      this.cuenta.set({ ...cuenta, estado: 'confirmada' });
-      const mesa = this.pedidoActivo().mesa;
-      this.mesas.update((mesas) =>
-        mesas.map((item) => (item.numero === mesa ? { ...item, disponible: true } : item)),
-      );
-      this.mesaVinculada.set(null);
-      this.notificar(`Pago confirmado. Mesa ${mesa} liberada.`, ['dueno', 'supervisor']);
-    }
+    if (!cuenta || cuenta.id !== cuentaId || cuenta.estado !== 'pagada') return false;
+    this.cuenta.set({ ...cuenta, estado: 'confirmada' });
+    this.mesas.update((mesas) =>
+      mesas.map((mesa) => (mesa.numero === cuenta.mesa ? { ...mesa, disponible: true } : mesa)),
+    );
+    this.mesaVinculada.set(null);
+    this.notificar(`Pago confirmado. La mesa ${cuenta.mesa} quedó libre.`, ['dueno', 'supervisor']);
+    return true;
   }
 
   private actualizarPedido(cambios: Partial<PedidoDemo>): void {
