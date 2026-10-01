@@ -109,4 +109,19 @@ describe('Splash', () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(navegar).not.toHaveBeenCalled();
   });
+
+  it('muestra el nombre del grupo y los cuatro integrantes (requisito excluyente)', () => {
+    const fixture = TestBed.createComponent(Splash);
+    fixture.detectChanges();
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('.splash-page__grupo')?.textContent?.trim()).toBe('Grupo Tumbito');
+    expect(
+      [...raiz.querySelectorAll('.splash-page__equipo li')].map((li) => li.textContent?.trim()),
+    ).toEqual([
+      'Terrile, Mateo',
+      'Bianucci, Ramiro',
+      'Cruz, Ignacio Agustín',
+      'Ferrari, Matías Gabriel',
+    ]);
+  });
 });

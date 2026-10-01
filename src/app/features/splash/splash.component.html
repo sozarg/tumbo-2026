@@ -16,6 +16,18 @@
         />
       </div>
       <h1 id="splash-title">TUMBITO<span aria-hidden="true">.</span></h1>
+      <!--
+        Requisito excluyente de la primera fecha: la presentación muestra
+        el ícono, el nombre del grupo y los apellidos y nombres de los
+        integrantes. El rediseño del 07/09 los había sacado.
+      -->
+      <p class="splash-page__grupo">Grupo Tumbito</p>
+      <ul class="splash-page__equipo" aria-label="Integrantes del grupo">
+        <li>Terrile, Mateo</li>
+        <li>Bianucci, Ramiro</li>
+        <li>Cruz, Ignacio Agustín</li>
+        <li>Ferrari, Matías Gabriel</li>
+      </ul>
       @if (error()) {
         <div class="splash-page__error">
           <p role="alert">No pudimos abrir la aplicación.</p>
