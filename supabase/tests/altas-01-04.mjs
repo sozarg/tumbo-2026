@@ -8,7 +8,15 @@ create function auth.uid() returns uuid language sql stable as $$select nullif(c
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
 create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
 create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;
-grant usage on schema public,auth,storage to anon,authenticated,service_role;`);
+grant usage on schema public,auth,storage to anon,authenticated,service_role;
+create schema net;
+create function net.http_post(url text,body jsonb default '{}',params jsonb default '{}',headers jsonb default '{}',timeout_milliseconds int default 5000) returns bigint language sql as $$select 1::bigint$$;
+create schema vault;
+create table vault.decrypted_secrets(name text primary key,decrypted_secret text);
+create publication supabase_realtime;`);
+// pg_net y Vault no existen en PGlite: se reemplazan por los de arriba,
+// que alcanzan para que las migraciones de avisos se apliquen (las altas
+// no mandan avisos, y sin secretos en Vault encolar_aviso no hace nada).
 for (const f of readdirSync('supabase/migrations').sort()) {
   if (f.includes('cierre_altas'))
     await db.exec(`grant all on all tables in schema public,storage to authenticated,service_role;grant select on all tables in schema public to anon;
@@ -16,10 +24,10 @@ for (const f of readdirSync('supabase/migrations').sort()) {
  insert into producto_fotos(producto_id,orden,url) values('90000000-0000-4000-8000-000000000001',1,'https://fixture.invalid/historica.jpg');
  insert into mesas(numero,cantidad_comensales,tipo) values(998,4,'vip');`);
   await db.exec(
-    readFileSync('supabase/migrations/' + f, 'utf8').replace(
-      'create extension if not exists pgcrypto;',
-      '',
-    ),
+    readFileSync('supabase/migrations/' + f, 'utf8')
+      .replace('create extension if not exists pgcrypto;', '')
+      .replace('create extension if not exists pg_net;', '')
+      .replace('create extension if not exists supabase_vault;', ''),
   );
 }
 const uid = (n) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;

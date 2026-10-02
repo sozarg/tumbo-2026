@@ -8,19 +8,46 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import qrcode from 'qrcode';
 import jsQR from 'jsqr';
+/*
+ * TUMBO_TEST_LOCAL=yes corre contra el Supabase local de Docker (con
+ * `npx supabase functions serve` levantado): es el modo para probar sin
+ * crear nada en la base que usa la aplicación publicada. Sin esa
+ * variable, el comportamiento de siempre: el proyecto autorizado.
+ */
+const local = process.env.TUMBO_TEST_LOCAL === 'yes';
 const ref = process.env.TUMBO_TEST_PROJECT;
-if (ref !== 'weeemajondwqstaoldtu' || process.env.TUMBO_TEST_DEVELOPMENT !== 'yes')
+if (!local && (ref !== 'weeemajondwqstaoldtu' || process.env.TUMBO_TEST_DEVELOPMENT !== 'yes'))
   throw Error('Se requiere identificar y autorizar explícitamente el proyecto de desarrollo.');
-const llaves = JSON.parse(
-  execFileSync('cmd.exe', ['/c', 'npx', 'supabase', 'projects', 'api-keys', '--project-ref', ref], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }),
-).keys;
+const llavesLocales = () => {
+  const env = Object.fromEntries(
+    execFileSync('npx', ['supabase', 'status', '-o', 'env'], { encoding: 'utf8' })
+      .split('\n')
+      .map((l) => l.match(/^([A-Z_]+)="?(.*?)"?$/))
+      .filter(Boolean)
+      .map((m) => [m[1], m[2]]),
+  );
+  if (env.API_URL !== 'http://127.0.0.1:54321') throw Error('No es el Supabase local.');
+  return [
+    { name: 'service_role', api_key: env.SERVICE_ROLE_KEY },
+    { name: 'anon', api_key: env.ANON_KEY },
+  ];
+};
+const llaves = local
+  ? llavesLocales()
+  : JSON.parse(
+      execFileSync(
+        'cmd.exe',
+        ['/c', 'npx', 'supabase', 'projects', 'api-keys', '--project-ref', ref],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+      ),
+    ).keys;
 const secret = llaves.find((k) => k.name === 'service_role')?.api_key,
   anon = llaves.find((k) => k.name === 'anon')?.api_key;
 if (!secret || !anon) throw Error('No se pudieron obtener las claves del proyecto autorizado.');
-const url = `https://${ref}.supabase.co`;
+const url = local ? 'http://127.0.0.1:54321' : `https://${ref}.supabase.co`;
+// Las funciones locales corren dentro de Docker y arman las URL de las
+// fotos con el nombre interno del gateway: desde afuera es el puerto local.
+const accesible = (u) => (local ? u.replace(/^http:\/\/kong:8000/, url) : u);
 const admin = createClient(url, secret, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -217,7 +244,7 @@ try {
           vista.data.precio === 1500.5,
       );
       for (const f of vista.data.producto_fotos)
-        ok('objeto real ' + tipo + ' ' + f.orden, (await fetch(f.url)).status === 200);
+        ok('objeto real ' + tipo + ' ' + f.orden, (await fetch(accesible(f.url))).status === 200);
       const repetido = await enviar(actor, 'guardar-producto', datos, 3, null, request);
       ok('producto reintento sin duplicar ' + tipo, repetido.body.id === r.body.id);
       for (const pos of [1, 2, 3]) {
@@ -387,14 +414,19 @@ try {
         { event: 'UPDATE', schema: 'public', table: 'mesas', filter: `id=eq.${mesas[1]}` },
         (e) => eventos.push(e.new),
       );
+    // «SUBSCRIBED» llega antes de que los cambios de la base estén
+    // activos: un update hecho en ese hueco no genera evento. Se espera el
+    // aviso de sistema de postgres_changes, igual que en la aplicación.
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(Error('Realtime no suscribió')), 15000);
-      canal.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          clearTimeout(timer);
-          resolve();
-        }
-      });
+      canal
+        .on('system', {}, (aviso) => {
+          if (aviso.extension === 'postgres_changes' && aviso.status === 'ok') {
+            clearTimeout(timer);
+            resolve();
+          }
+        })
+        .subscribe();
     });
     const cambioRemoto = await dueno.client
       .from('mesas')
@@ -442,7 +474,10 @@ try {
           'id',
           carreras.data.map((s) => s.id),
         );
-    const activa = await cliente.client
+    // La estadía se crea con el rol de servicio: desde el 26/09 un cliente
+    // solo puede sentarse en la mesa que le asignó el metre, y lo que se
+    // prueba acá es que gerencia no pueda liberar una mesa ocupada.
+    const activa = await admin
       .from('sesiones_mesa')
       .insert({ mesa_id: mesas[0], cliente_id: cliente.id })
       .select()

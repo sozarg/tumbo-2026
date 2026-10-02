@@ -371,6 +371,22 @@ prepara sus propias estadías en la base local y las borra al terminar.
 
 ---
 
+### Las altas de los puntos 1 a 4, sin tocar producción
+
+```bash
+node supabase/tests/altas-01-04.mjs                 # SQL en memoria (PGlite), migraciones desde cero
+npx supabase functions serve --env-file <archivo>   # en otra terminal, con TUMBO_FIRMA_WEBHOOK
+TUMBO_TEST_LOCAL=yes npx -y node@22 supabase/tests/integracion-altas.mjs
+npx ng build --configuration local
+TUMBO_TEST_LOCAL=yes TUMBO_BROWSER_ONLY=yes TUMBO_BROWSER_TESTS=yes \
+  npx -y node@22 supabase/tests/integracion-altas.mjs
+```
+
+Sin `TUMBO_TEST_LOCAL`, `integracion-altas.mjs` sigue apuntando al
+proyecto remoto y crea usuarios de prueba ahí.
+
+---
+
 ## 12. Las cuatro semanas de historial (punto 20)
 
 El enunciado pide «una base externa con interacciones simuladas de al
