@@ -18,10 +18,7 @@ La aplicación Angular + Ionic está integrada parcialmente. La entrega actual i
 - sonido de apertura y de cierre, y vibración ante los errores;
 - APK de Android empaquetada con Capacitor (ver [guía del APK](docs/apk.md)).
 
-**Actualización de integración (18/09/2026):**
-La capa de Supabase cuenta con una implementación parcial en el entorno de desarrollo (`weeemajondwqstaoldtu`). 
-- **Puntos 01 al 04 (Altas):** Están implementados, integrados y desplegados mediante Edge Functions (`crear-empleado`, `guardar-producto`, `guardar-mesa`) con validaciones estrictas y RLS. Queda pendiente la verificación nativa/física en dispositivos (cámara y lector).
-- **Puntos 05 al 22:** Mantienen un diagnóstico de "No cumple" o "Parcial". Funcionan de manera local/demo o con mocks. Faltan implementaciones críticas de autorización (RLS), atomicidad en transacciones (pedidos), lectura real de códigos QR, notificaciones push reales y envío de correos electrónicos. 
+**Actualización de integración (02/10/2026):** la base y las funciones de Supabase están en producción (`weeemajondwqstaoldtu`). El circuito de una mesa, del pedido a la mesa libre (puntos 11 a 14 y 16 a 22), funciona contra la base real, con realtime y push, y está probado por pantalla en la base local de Docker (`supabase/tests/ui-*.mjs`). El estado de cada punto está en la tabla de abajo.
 
 La aplicación está desplegada en Vercel y disponible en [tumbito.vercel.app](https://tumbito.vercel.app).
 
@@ -190,43 +187,44 @@ El detalle sale del historial del repositorio, no de la asignación previa: es l
 
 ## Estado de los 22 puntos
 
-Ningún punto está 100% cerrado todavía debido a validaciones físicas pendientes o bloqueos de backend detallados en la auditoría técnica.
+Verificado el 02/10/2026 con el código de `main`, la base de producción (solo lecturas) y las pruebas locales. «Completo» quiere decir funcionando en producción y cubierto por pruebas automáticas; lo que solo se puede comprobar con un teléfono en la mano (cámara, push con la aplicación cerrada, sonidos, vibración) queda indicado.
 
-| # | Funcionalidad | Estado | Responsable | Problema actual / Faltante |
+| # | Funcionalidad | Estado | Responsable | Detalle |
 |---|---|---|---|---|
-| 1 | Agregar un empleado | Completo | Ferrari | Desplegado en remoto; validaciones y fotos correctas. Falta validación física en dispositivo Android. |
-| 2 | Agregar un nuevo plato | Completo | Ferrari | Desplegado; exige 3 fotos navegables y valida rangos. Falta captura fotográfica nativa. |
-| 3 | Agregar una nueva bebida | Completo | Ferrari | Desplegado en bar. Falta captura fotográfica nativa. |
-| 4 | Agregar una nueva mesa | Completo | Ferrari | Desplegado con token QR y protección activa. Falta cámara nativa. |
-| 5 | Crear un cliente registrado | En curso | Ferrari | Alta mock/memoria. Falta Auth real, contraseña, cámara de fotos y correo automático. |
-| 6 | Verificar ingreso de cliente | En curso | Cruz | Funciona vista en demo, pero no recarga listado al actualizar ni envía Push. |
-| 7 | Rechazo de cliente | En curso | Cruz | Cambio de estado aislado; no hay envío de correos, ni plantillas personalizadas. |
-| 8 | Aceptación de cliente | Parcial | Cruz | Update en DB, pero falta disparador de correos de resolución. |
-| 9 | Cliente anónimo y espera | En curso | Cruz | Sin Auth real, no lee QR óptico y el cliente puede autoasignarse mesa sin pasar por espera. |
-| 10 | Metre asigna mesa a un cliente | En curso | Cruz | Escrituras parciales no atómicas; RLS permisiva que falla al actualizar la mesa. |
-| 11 | Menú por QR de mesa y consulta | En curso | Cruz | Carta funcional pero el chat falla (autor figura como "Equipo TUMBO", mozos ven sesiones ajenas). No hay Push. |
-| 12 | Cliente realiza el pedido | En curso | Terrile | **Bloqueo RLS (P0)**: intenta insertar pedido `pendiente_confirmacion` vacío, generando error 42501. |
-| 13 | Mozo rechaza el pedido | En curso | Terrile | No se precarga el pedido para editar tras rechazo; el reenvío duplica órdenes en la base. |
-| 14 | Mozo confirma y deriva a sectores | En curso | Terrile | Cocinero puede confirmar indebidamente (falla RLS); los juegos no están implementados. |
-| 15 | Juegos y descuentos (excluyente) | Por hacer | — | Botones mock sin lógica. Los descuentos se pierden al recargar sesión y permiten manipulación desde el cliente. |
-| 16 | Cocina recibe sus productos | En curso | Terrile | UI funciona en demo pero el servicio consulta solo 1 sesión (limit 1); no agrupa pedidos de varias mesas reales. |
-| 17 | Bar recibe sus productos | En curso | Bianucci | Igual que cocina, carece de listado multi-mesa real. |
-| 18 | Sectores avisan pedido completo | En curso | Bianucci | Demo genera avisos duplicados; falta Push real al mozo al terminar todos los sectores. |
-| 19 | Mozo entrega el pedido completo | En curso | Bianucci | **Bloqueo SQL (P0)**: Columna `recibido_en` no existe en la base, impidiendo la confirmación. |
-| 20 | Encuesta y gráficos (excluyente) | En curso | Bianucci | Formulario no guarda las respuestas en la base de datos; los gráficos muestran datos 100% estáticos (mock). |
-| 21 | Cuenta y propina por QR | En curso | Bianucci | Total funciona en demo, pero el backend confía en cálculos alterables del cliente; falta lectura óptica del QR. |
-| 22 | Confirmación de pago y liberación | En curso | Bianucci | Un cliente propietario puede invocar el cierre por su cuenta. Además, hay herencia de carrito al cambiar de usuario (SPA no limpia estado). |
-### Lo que destraba al resto
+| 1 | Agregar un empleado | Completo en código | Ferrari | Función `crear-empleado` con validaciones. Faltan datos: 9 de 11 empleados no tienen foto. |
+| 2 | Agregar un plato | Completo en código | Ferrari | Exige 3 fotos. Hay 5 platos con sus 3 fotos; «Papas fritas» no tiene ninguna. |
+| 3 | Agregar una bebida | **Faltan datos** | Ferrari | El cliente ve solo 3 bebidas y una se llama «prueba»: el enunciado pide 5. Los postres no se ven (tienen 1 foto). |
+| 4 | Agregar una mesa | Completo en código | Ferrari | Genera el QR. Solo 2 de 9 mesas tienen foto y hay números de prueba (6, 8, 19, 26). |
+| 5 | Registro de cliente | Parcial | Ferrari | Funciona, pero la push y los correos dependen de triggers que existen solo en producción, no en `supabase/migrations`. |
+| 6 | Clientes pendientes | Parcial | Cruz | La push a dueño y supervisor sale; solo el dueño tiene un teléfono registrado. |
+| 7-8 | Rechazo y aceptación | Parcial | Cruz | Brevo envía los correos. El logo se descarga del repositorio, que hoy es público. |
+| 9 | Cliente anónimo y espera | **Bloqueado** | Cruz | Los ingresos anónimos están deshabilitados en Auth de producción. La push al metre está en la rama `cruz`, sin mergear. |
+| 10 | Metre asigna mesa | **No cumple en `main`** | Cruz | En `main` el metre crea la estadía y el cliente no escanea el QR. El flujo correcto está en la rama `cruz`. |
+| 11 | Menú y consulta al mozo | Completo | Cruz / Terrile | Consulta por mesa con fecha y hora; el mozo elige a qué mesa responde. Push a los mozos y al cliente. |
+| 12 | Realizar pedido | Completo | Terrile | `enviar_pedido` crea el pedido y sus ítems en una sola operación; push a los mozos. |
+| 13 | Rechazar pedido | Completo | Terrile | El mozo escribe el motivo; el cliente lo ve, recibe push y retoma el pedido en el carrito. |
+| 14 | Confirmar y derivar | Completo | Terrile | Push a cocina con sus platos, al bar con sus bebidas y al cliente. Los juegos se habilitan. |
+| 15 | Juegos y descuento | **No cumple** | — | Son botones simulados («Ganar primer intento»). La rama `bianucci` tiene un juego en beta. |
+| 16-17 | Cocina y bar | Completo | Terrile | Listado por mesa, la más vieja primero, en vivo. |
+| 18 | Pedido completo | Completo | Terrile | Push al mozo cuando cocina y bar terminan. |
+| 19 | Entrega y recepción | Completo | Terrile | El mozo entrega y el cliente confirma; eso habilita encuesta y cuenta. |
+| 20 | Encuesta y gráficos | Completo | Terrile | 7 preguntas con controles distintos; torta, barras y línea con 4 semanas de historial. |
+| 21 | Cuenta y propina | Completo | Terrile | QR de propina, detalle, total calculado por la base, pago simulado y push. |
+| 22 | Confirmación y mesa libre | Completo | Terrile | El mozo confirma por mesa, la mesa se libera y se verifica por QR; push a gerencia. |
 
-Para lograr la funcionalidad integral requerida, se deben resolver las siguientes áreas prioritarias (detalladas en el reporte de auditoría):
+Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en un teléfono con Android: hoy solo el dueño tiene un dispositivo registrado.
 
-| Habilitador (Bloqueos Actuales) | Destraba |
+### Lo que falta
+
+| Pendiente | Puntos |
 |---|---|
-| **Transacciones atómicas y RLS seguras (P0)** | Puntos 10, 12, 14, 19, 21 y 22 (Ej: Envíos de pedidos, recibos de entrega, cálculos de propina/cuentas). |
-| **Limpieza de estado en cliente (P0)** | Herencia de sesiones en la SPA (Puntos 15 y 22). |
-| **Cámara del dispositivo y Lector Óptico QR** | Puntos 1, 2, 3, 4, 5, 9, 10, 11, 21 y 22 (Reemplazar simuladores por plugins físicos). |
-| **Notificaciones Push y Correos (Eventos)** | Puntos 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 21 y 22 |
-| **Unificar sistemas de sonido** | Deuda técnica (`SonidosService` vs `AppAudio`) |
+| Habilitar los ingresos anónimos en Supabase Auth | 9 |
+| Mergear la rama `cruz` (escaneo del QR de mesa y push del metre) | 9 y 10 |
+| Tres juegos funcionales con descuento al primer intento | 15 |
+| Cargar fotos y productos reales; borrar «prueba» y las mesas de prueba | 1 a 4 |
+| Pasar a una migración los triggers de correo y push del registro | 5 a 8 |
+| Registrar un teléfono por perfil | Todas las push |
+| Hacer privado el repositorio y mover el logo de los correos | 7 y 8 |
 
 ## Identidad visual
 
