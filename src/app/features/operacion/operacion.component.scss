@@ -1,21 +1,3 @@
-.chart-tabs button {
-  border: 0.1rem solid rgb(0 106 231 / 22%);
-  border-radius: 999px;
-  padding: 0.6rem 0.85rem;
-  color: #003592;
-  background: #fcedbb;
-  font: inherit;
-  font-size: 0.74rem;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.chart-tabs .chart-tab--active {
-  border-color: #006ae7;
-  color: #f8fbfd;
-  background: #006ae7;
-}
-
 .section-kicker {
   margin: 0 0 0.3rem;
   font-size: 0.67rem;
@@ -52,9 +34,7 @@
   text-align: center;
 }
 
-.order-summary-card,
-.sector-card,
-.staff-order-card {
+.order-summary-card {
   margin: 0;
   border: 0.1rem solid rgb(252 237 187 / 95%);
   border-radius: 1rem;
@@ -62,22 +42,19 @@
   box-shadow: 0 0.5rem 1.3rem rgb(0 53 146 / 8%);
 }
 
-.order-summary-card__top,
-.staff-order-card__header {
+.order-summary-card__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.7rem;
 }
 
-.order-summary-card__caption,
-.staff-order-card__header span {
+.order-summary-card__caption {
   color: var(--tumbo-naranja-profundo);
   font-size: 0.7rem;
 }
 
-.order-summary-card__top ion-icon,
-.staff-order-card__header ion-icon {
+.order-summary-card__top ion-icon {
   color: #006ae7;
   font-size: 1.6rem;
 }
@@ -177,28 +154,18 @@
   background: #fcedbb;
 }
 
-.payment-staff-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border: 0.1rem solid rgb(0 106 231 / 24%);
-}
-
-.locked-card > ion-icon,
-.payment-staff-card > ion-icon {
+.locked-card > ion-icon {
   flex-shrink: 0;
   color: #006ae7;
   font-size: 1.5rem;
 }
 
-.locked-card strong,
-.payment-staff-card strong {
+.locked-card strong {
   color: #003592;
   font-size: 0.8rem;
 }
 
-.locked-card p,
-.payment-staff-card p {
+.locked-card p {
   margin: 0.25rem 0 0;
   color: #003592;
   font-size: 0.72rem;
@@ -405,16 +372,6 @@
   --color: #dc5b02;
 }
 
-.sector-card ion-card-title {
-  color: #003592;
-  font-size: 1.25rem;
-}
-
-.sector-card ion-card-subtitle {
-  color: #003592;
-}
-
-.sector-items,
 .compact-list {
   display: grid;
   gap: 0.55rem;
@@ -423,16 +380,7 @@
   list-style: none;
 }
 
-.bill-lines {
-  display: grid;
-  gap: 0.55rem;
-  padding: 0;
-  list-style: none;
-}
-
-.sector-items li,
-.compact-list li,
-.bill-lines li {
+.compact-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -441,23 +389,6 @@
   padding: 0.45rem 0;
   color: #003592;
   font-size: 0.78rem;
-}
-
-.sector-items li small {
-  font-size: 0.65rem;
-}
-
-.bill-lines small {
-  color: var(--tumbo-naranja-profundo);
-  font-size: 0.65rem;
-}
-
-.staff-order-card__header {
-  margin-bottom: 0.9rem;
-}
-
-.staff-order-card .button-row {
-  margin-top: 0.7rem;
 }
 
 .button-row ion-button {
@@ -671,56 +602,6 @@
   font-size: 0.64rem;
 }
 
-.chart-tabs {
-  display: flex;
-  gap: 0.45rem;
-  margin-bottom: 0.7rem;
-}
-
-.chart-tabs button {
-  flex: 1;
-}
-
-.chart-card {
-  display: flex;
-  min-height: 10rem;
-  gap: 1rem;
-  border-radius: 1rem;
-  padding: 1rem;
-  background: #fcedbb;
-}
-
-.chart-card strong,
-.chart-card p,
-.chart-card span {
-  display: block;
-}
-
-.chart-card strong {
-  color: #003592;
-  font-size: 0.9rem;
-}
-
-.chart-card p {
-  margin: 0.35rem 0;
-  color: #003592;
-  font-size: 0.73rem;
-  line-height: 1.4;
-}
-
-.chart-card span {
-  font-size: 0.62rem;
-}
-
-.pie-chart {
-  width: 7rem;
-  height: 7rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: conic-gradient(#006ae7 0 62%, #fbb103 62% 87%, #dc5b02 87% 100%);
-  box-shadow: inset 0 0 0 1.7rem #fcedbb;
-}
-
 .bar-chart {
   display: flex;
   width: 7rem;
@@ -736,16 +617,6 @@
   );
 }
 
-.line-chart {
-  display: flex;
-  width: 7rem;
-  height: 7rem;
-  flex-shrink: 0;
-  align-items: end;
-  justify-content: space-around;
-  border-bottom: 0.15rem solid #003592;
-}
-
 .bar-chart span {
   width: 0.9rem;
   height: var(--height);
@@ -755,30 +626,6 @@
 
 .bar-chart span:nth-child(2n) {
   background: #fbb103;
-}
-
-.line-chart {
-  position: relative;
-  border: 0;
-  background: linear-gradient(160deg, transparent 47%, #006ae7 48% 51%, transparent 52%);
-}
-
-.line-chart::before {
-  position: absolute;
-  inset: 18% 8% 18% 8%;
-  border-bottom: 0.2rem solid #006ae7;
-  border-left: 0.15rem solid #003592;
-  content: '';
-  transform: skewY(-16deg) rotate(-4deg);
-}
-
-.line-chart i {
-  z-index: 1;
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 0.12rem solid #fcedbb;
-  border-radius: 50%;
-  background: #dc5b02;
 }
 
 .chat-card {
@@ -844,175 +691,6 @@
   margin: 0;
   --background: #006ae7;
   --color: #f8fbfd;
-}
-
-.tip-card,
-.bill-card,
-.survey-card,
-.payment-staff-card {
-  border-radius: 1rem;
-  padding: 1rem;
-  background: #fcedbb;
-}
-
-.tip-card > div:first-child p {
-  margin: 0.3rem 0 1rem;
-  color: #003592;
-  font-size: 0.74rem;
-  line-height: 1.4;
-}
-
-.tip-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin-bottom: 1rem;
-}
-
-.tip-option {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  border: 0.1rem solid rgb(0 106 231 / 28%);
-  border-radius: 0.65rem;
-  color: #003592;
-  background: #fbf1d5;
-  font: inherit;
-  cursor: pointer;
-}
-
-.tip-option--selected {
-  border-color: #006ae7;
-  box-shadow: inset 0 0 0 0.1rem #006ae7;
-}
-
-.tip-option strong {
-  margin-top: 0.25rem;
-  color: var(--tumbo-azul-sombra);
-  font-size: 0.74rem;
-}
-
-.qr-art {
-  display: block;
-  width: 2.2rem;
-  height: 2.2rem;
-  border: 0.15rem solid #003592;
-  background:
-    linear-gradient(
-      90deg,
-      #003592 20%,
-      transparent 20% 40%,
-      #003592 40% 60%,
-      transparent 60% 80%,
-      #003592 80%
-    ),
-    linear-gradient(
-      #003592 20%,
-      transparent 20% 40%,
-      #003592 40% 60%,
-      transparent 60% 80%,
-      #003592 80%
-    );
-  background-blend-mode: multiply;
-}
-
-img.qr-art {
-  border: 0.1rem solid #003592;
-  background: #f8fbfd;
-  object-fit: contain;
-}
-
-.bill-card__header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 0.1rem solid rgb(0 53 146 / 13%);
-  padding-bottom: 0.85rem;
-}
-
-.bill-card__header span {
-  color: var(--tumbo-naranja-profundo);
-  font-size: 0.65rem;
-}
-
-.bill-card__header h2 {
-  margin: 0.2rem 0 0;
-  color: #003592;
-  font-size: 1.25rem;
-}
-
-.bill-card__header > strong {
-  color: #006ae7;
-  font-size: 1.5rem;
-}
-
-.bill-lines {
-  margin: 0.5rem 0;
-}
-
-.bill-lines li > span {
-  display: flex;
-  flex-direction: column;
-}
-
-.bill-line--discount strong,
-.bill-line--discount small {
-  color: var(--tumbo-naranja-profundo);
-}
-
-.bill-total {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 0.15rem solid #006ae7;
-  padding-top: 0.8rem;
-  color: #003592;
-}
-
-.bill-total strong {
-  color: #006ae7;
-  font-size: 1.5rem;
-}
-
-.payment-waiting {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  border-radius: 0.65rem;
-  padding: 0.75rem;
-  color: #003592;
-  background: rgb(0 106 231 / 12%);
-  font-size: 0.75rem;
-}
-
-.payment-success {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  border-radius: 0.65rem;
-  padding: 0.75rem;
-  background: rgb(0 106 231 / 12%);
-  font-size: 0.75rem;
-}
-
-.payment-success {
-  color: #006ae7;
-}
-
-.payment-staff-card {
-  flex-wrap: wrap;
-}
-
-.payment-staff-card > div {
-  flex: 1 1 12rem;
-}
-
-.payment-staff-card ion-button {
-  flex: 1 1 100%;
-  margin: 0;
 }
 
 .section-icon {
@@ -1096,7 +774,6 @@ ion-button::part(native) {
 .section-kicker,
 .status-pill,
 .client-row em,
-.sector-items li small,
 .chat-message span,
 .table-tile strong {
   color: #984000;
@@ -1114,25 +791,6 @@ ion-button::part(native) {
 }
 .chat-message p {
   overflow-wrap: anywhere;
-}
-.chart-card {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.survey-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.tip-grid {
-  gap: 5px;
-}
-.tip-option {
-  padding: 6px 2px;
-}
-.tip-option small {
-  font-size: 10px;
 }
 @media (max-height: 650px) {
   .demo-form {
@@ -1154,8 +812,7 @@ ion-button::part(native) {
 }
 .form-title h2,
 .product-card h2,
-.game-card h2,
-.tip-card h2 {
+.game-card h2 {
   margin: 4px 0;
   font-size: 18px;
 }
@@ -1164,36 +821,18 @@ ion-button::part(native) {
   color: #003592;
 }
 .cart-bar > div > span,
-.staff-order-card__header > div > span,
-.game-card > span,
-.chart-card span {
+.game-card > span {
   color: #984000;
 }
 ion-button[fill='outline'] {
   --color: #003592;
   --border-color: #003592;
 }
-.staff-order-card ion-card-content {
-  padding: 12px;
-}
-.staff-order-card .compact-list {
-  margin-bottom: 8px;
-}
-.staff-order-card .button-row {
-  gap: 8px;
-}
-.staff-order-card .button-row ion-button {
-  flex-basis: 40%;
-}
-.sector-card,
-.staff-order-card,
 .order-summary-card {
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
-.sector-card ion-card-content,
-.staff-order-card ion-card-content,
 .order-summary-card ion-card-content {
   display: flex;
   flex-direction: column;
@@ -1202,11 +841,7 @@ ion-button[fill='outline'] {
 }
 .anonymous-entry,
 .game-card,
-.chat-card,
-.survey-card,
-.chart-card,
-.tip-card,
-.payment-staff-card {
+.chat-card {
   align-content: center;
 }
 .game-card {
@@ -1218,9 +853,6 @@ ion-button[fill='outline'] {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-}
-.survey-card {
-  justify-content: space-evenly;
 }
 .scan-button {
   margin-left: auto;
@@ -1240,12 +872,6 @@ ion-button[fill='outline'] {
 }
 .wait-row tumbo-paginador {
   grid-column: 1 / -1;
-}
-.bill-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  gap: 8px;
 }
 @media (max-height: 650px) {
   .demo-form {
@@ -1461,14 +1087,10 @@ strong {
 .anonymous-entry > div:last-child {
   flex: 1 1 9rem;
 }
-.sector-items li,
-.compact-list li,
-.bill-lines li {
+.compact-list li {
   flex-wrap: wrap;
 }
-.sector-items li > *,
-.compact-list li > *,
-.bill-lines li > * {
+.compact-list li > * {
   min-width: 0;
   max-width: 100%;
 }
@@ -1483,26 +1105,7 @@ strong {
   flex-wrap: wrap;
   gap: 8px;
 }
-.chart-tabs button {
-  min-height: 44px;
-}
-.tip-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4rem), 1fr));
-}
 
 .assign-actions ion-button {
   flex: 0 0 auto;
-}
-.survey-card ion-item {
-  --background: transparent;
-  --padding-start: 0;
-  --inner-padding-end: 0;
-}
-.survey-card ion-toggle {
-  min-width: 52px;
-  flex-shrink: 0;
-}
-.survey-card ion-label {
-  min-width: 0;
-  white-space: normal;
 }
