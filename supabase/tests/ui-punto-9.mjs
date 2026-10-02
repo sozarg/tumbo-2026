@@ -5,8 +5,8 @@
  *
  * SOLO CONTRA EL SUPABASE LOCAL, con la misma guarda que los otros E2E,
  * y con los ingresos anónimos activos (`enable_anonymous_sign_ins` en
- * `supabase/config.toml`). En producción ese interruptor se activa desde
- * el panel de Supabase; mientras esté apagado, este punto no funciona.
+ * `supabase/config.toml`). En producción están activos desde el
+ * 02/10/2026 (`supabase config push` con solo esa propiedad declarada).
  * Borra al cliente anónimo al terminar.
  */
 import { chromium } from 'playwright';

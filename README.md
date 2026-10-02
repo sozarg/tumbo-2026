@@ -198,7 +198,7 @@ Verificado el 02/10/2026 con el código de `main`, la base de producción (solo 
 | 5 | Registro de cliente | Completo en código | Ferrari | El alta crea el cliente pendiente y encola la push; los triggers están en `20261002123318_avisos_registro_y_permisos.sql`. |
 | 6 | Clientes pendientes | Parcial | Cruz | La push a dueño y supervisor sale; solo el dueño tiene un teléfono registrado. |
 | 7-8 | Rechazo y aceptación | Completo en código | Cruz | Brevo envía los correos; el aviso lee dirección y firma de Vault. El logo se descarga de la aplicación publicada en Vercel. |
-| 9 | Cliente anónimo y espera | **Bloqueado por configuración** | Cruz / Terrile | Funciona de punta a punta en local (`tests/ui-punto-9.mjs`): entrada sin cuenta, nombre y foto, lista de espera con push al metre, el metre lo ve y lo quita, y resultados sin cuenta. En producción falta activar *Anonymous sign-ins* en Supabase Auth; hasta entonces la app lo explica. |
+| 9 | Cliente anónimo y espera | Completo | Cruz / Terrile | Entrada sin cuenta con nombre y foto, lista de espera con push al metre, el metre lo ve y lo quita, y resultados sin cuenta (`tests/ui-punto-9.mjs`). Los ingresos anónimos están activos en producción desde el 02/10/2026. |
 | 10 | Metre asigna mesa | Completo | Cruz | El metre asigna con `asignar_mesa_a_cliente` (atómica); el cliente recibe push y la ve en vivo, y se sienta escaneando el QR de ESA mesa: otro QR se rechaza y la mesa no se le ofrece a nadie más (`tests/ui-punto-10.mjs`). |
 | 11 | Menú y consulta al mozo | Completo | Cruz / Terrile | Consulta por mesa con fecha y hora; el mozo elige a qué mesa responde. Push a los mozos y al cliente. |
 | 12 | Realizar pedido | Completo | Terrile | `enviar_pedido` crea el pedido y sus ítems en una sola operación; push a los mozos. |
@@ -218,8 +218,7 @@ Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en
 
 | Pendiente | Puntos |
 |---|---|
-| Habilitar los ingresos anónimos en Supabase Auth (*Authentication › Sign In / Providers › Allow anonymous sign-ins*) | 9 |
-| Activar la protección de claves filtradas (*Authentication › Attack Protection*) | Seguridad |
+| Protección de claves filtradas (*Authentication › Attack Protection*): Supabase la ofrece solo desde el plan Pro | Seguridad |
 | Registrar un teléfono por perfil (el supervisor abre la aplicación en su Android) | 6 y todas las push |
 
 Los datos de prueba de producción se borraron el 02/10/2026: productos, empleados, mesas y fotos de Storage sin dueño. Qué se borró y por qué está en `supabase/mantenimiento/2026-10-02-limpieza.sql`.
