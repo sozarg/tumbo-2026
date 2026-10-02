@@ -146,7 +146,7 @@ const CUENTAS = [
     nombres: 'Ignacio Agustín',
     apellidos: 'Cruz',
     dni: '38333444',
-    cuil: '20-38333444-5',
+    cuil: '20-38333444-7',
   },
   {
     correo: 'matias@tumbo.demo',
@@ -154,7 +154,7 @@ const CUENTAS = [
     nombres: 'Matías Gabriel',
     apellidos: 'Ferrari',
     dni: '38444555',
-    cuil: '20-38444555-6',
+    cuil: '20-38444555-2',
   },
   {
     correo: 'alicia@tumbo.demo',
@@ -162,7 +162,7 @@ const CUENTAS = [
     nombres: 'Alicia',
     apellidos: 'Gómez',
     dni: '38555666',
-    cuil: '27-38555666-7',
+    cuil: '27-38555666-2',
   },
   {
     correo: 'bruno@tumbo.demo',
@@ -170,7 +170,7 @@ const CUENTAS = [
     nombres: 'Bruno',
     apellidos: 'Sosa',
     dni: '38666777',
-    cuil: '20-38666777-8',
+    cuil: '20-38666777-3',
   },
   {
     correo: 'camila@tumbo.demo',

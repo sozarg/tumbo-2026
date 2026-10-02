@@ -218,7 +218,6 @@ Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en
 
 | Pendiente | Puntos |
 |---|---|
-| Protección de claves filtradas (*Authentication › Attack Protection*): Supabase la ofrece solo desde el plan Pro | Seguridad |
 | Registrar un teléfono por perfil (el supervisor abre la aplicación en su Android) | 6 y todas las push |
 
 Los datos de prueba de producción se borraron el 02/10/2026: productos, empleados, mesas y fotos de Storage sin dueño. Qué se borró y por qué está en `supabase/mantenimiento/2026-10-02-limpieza.sql`.

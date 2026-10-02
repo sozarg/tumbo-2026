@@ -65,15 +65,17 @@ describe('cuilTieneDigitoCorrecto', () => {
   });
 
   /**
-   * Los CUIL que trae supabase/crear-usuarios.mjs están inventados.
-   * Esta prueba lo deja documentado: si algún día se corrigen, falla y
-   * hay que actualizarla (que es exactamente lo que queremos que pase).
+   * Los CUIL que trae supabase/crear-usuarios.mjs tienen que pasar la
+   * misma validación que el alta: la base rechaza (`empleado_cuil_coherente`)
+   * a un empleado con el dígito verificador mal. Hasta el 02/10/2026 los
+   * cuatro estaban inventados y esta prueba lo dejaba asentado; se
+   * corrigieron en el script y en producción.
    */
-  it('deja constancia de que los CUIL de la carga inicial son falsos', () => {
-    const deLaCarga = ['20-38333444-5', '20-38444555-6', '27-38555666-7', '20-38666777-8'];
+  it('los CUIL de la carga inicial son válidos', () => {
+    const deLaCarga = ['20-38333444-7', '20-38444555-2', '27-38555666-2', '20-38666777-3'];
 
     for (const cuil of deLaCarga) {
-      expect(cuilTieneDigitoCorrecto(cuil)).toBe(false);
+      expect(cuilTieneDigitoCorrecto(cuil)).toBe(true);
     }
   });
 });
