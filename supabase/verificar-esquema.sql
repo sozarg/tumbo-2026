@@ -10,7 +10,7 @@
 
 with control (orden, que_se_controla, esperado, encontrado) as (
 
-  select 1, 'Tablas creadas', 19, (
+  select 1, 'Tablas creadas', 20, (
     select count(*)::int from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public' and c.relkind = 'r')
@@ -30,8 +30,8 @@ with control (orden, que_se_controla, esperado, encontrado) as (
 
   union all
   -- Si alguna tabla quedara sin RLS, sus datos serían legibles por
-  -- cualquiera con la clave anon. Tienen que estar las 19.
-  select 4, 'Tablas con RLS activo', 19, (
+  -- cualquiera con la clave anon. Tienen que estar las 20.
+  select 4, 'Tablas con RLS activo', 20, (
     select count(*)::int from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity)
@@ -43,7 +43,7 @@ with control (orden, que_se_controla, esperado, encontrado) as (
      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity)
 
   union all
-  select 6, 'Políticas de seguridad', 43, (
+  select 6, 'Políticas de seguridad', 38, (
     select count(*)::int from pg_policies where schemaname = 'public')
 
   union all
@@ -65,14 +65,14 @@ with control (orden, que_se_controla, esperado, encontrado) as (
      where tgname = 'trg_auth_usuario_nuevo' and not tgisinternal)
 
   union all
-  select 9, 'Triggers del dominio', 7, (
+  select 9, 'Triggers del dominio', 22, (
     select count(*)::int from pg_trigger t
       join pg_class c on c.oid = t.tgrelid
       join pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public' and not t.tgisinternal)
 
   union all
-  select 10, 'Políticas de storage', 3, (
+  select 10, 'Políticas de storage', 2, (
     select count(*)::int from pg_policies where schemaname = 'storage')
 
   union all
@@ -81,7 +81,7 @@ with control (orden, que_se_controla, esperado, encontrado) as (
      where id in ('fotos-usuarios','fotos-productos','fotos-mesas'))
 
   union all
-  select 12, 'Migraciones registradas', 9, (
+  select 12, 'Migraciones registradas', 30, (
     select count(*)::int from supabase_migrations.schema_migrations)
 
   union all
