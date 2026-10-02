@@ -12,10 +12,6 @@ export const routes: Routes = [
       import('./features/ingreso/ingreso.component').then(({ Ingreso }) => Ingreso),
   },
   {
-    path: 'juego-recoleccion',
-    loadComponent: () =>
-      import('./features/juegos/juego-recoleccion/juego-recoleccion.component').then(({ JuegoRecoleccionComponent }) => JuegoRecoleccionComponent)
-  },
     /*
      * El registro del cliente (punto 5) vive AFUERA de la sesión.
      *
@@ -24,9 +20,18 @@ export const routes: Routes = [
      * tiene a nadie logueado. Es lo que hace posible usar `signUp` sin
      * robarle la sesión a un empleado. Ver `RegistroClienteService`.
      */
-   { path: 'registro',
+    path: 'registro',
     loadComponent: () =>
       import('./features/registro/registro.component').then(({ Registro }) => Registro),
+  },
+  {
+    // El juego de Phaser ocupa toda la pantalla; solo con sesión.
+    path: 'juego-recoleccion',
+    canActivate: [sesionGuard],
+    loadComponent: () =>
+      import('./features/juegos/juego-recoleccion/juego-recoleccion.component').then(
+        ({ JuegoRecoleccionComponent }) => JuegoRecoleccionComponent,
+      ),
   },
   {
     path: 'operacion',

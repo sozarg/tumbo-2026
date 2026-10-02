@@ -595,7 +595,7 @@ export class DemoRestauranteService {
     const intentoActual = (intentos[idJuego] ?? 0) + 1;
     this.intentosJuego.set({ ...intentos, [idJuego]: intentoActual });
     if (gano && intentoActual === 1 && this.descuento() === 0) {
-      const beneficios: Record<string, number> = { memoria: 10, palabras: 15, rapidez: 20 };
+      const beneficios: Record<string, number> = { memoria: 10, adivinanza: 15, piedra: 20 };
       this.descuento.set(beneficios[idJuego] ?? 10);
     }
     return intentoActual;

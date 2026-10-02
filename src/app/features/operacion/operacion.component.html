@@ -1688,50 +1688,47 @@
                   </div>
                 </div>
               } @else {
+                <p class="games-regla">
+                  Ganá en el primer intento y llevate el descuento: 10, 15 o 20 %. Es uno solo por
+                  visita; después podés seguir jugando.
+                </p>
                 <div class="games-grid">
                   @if (pagina() === 0) {
-                    <article class="game-card">
-                      <span>01</span>
-                      <h2>Recolección tumbito</h2>
+                    <article class="game-card" aria-labelledby="juego-1">
+                      <span>01 · 10 %</span>
+                      <h2 id="juego-1">Recolección tumbito</h2>
                       <p>
-                        Recolecta la mayor cantidad de comida posible, Cuidado! A tumbito no le
-                        gusta el brocoli....
+                        Juntá 50 puntos de comida en 10 segundos. ¡Cuidado! A Tumbito no le gusta el
+                        brócoli.
                       </p>
-                      <div>
-                        <ion-button size="small" (click)="jugar('memoria', true)"
-                          >Ganar primer intento</ion-button
-                        ><ion-button fill="outline" size="small" (click)="ingresoJuego('juegoRecoleccion')"
-                          >Probar</ion-button
-                        >
-                      </div>
+                      <ion-button
+                        size="small"
+                        [disabled]="jugando()"
+                        (click)="ingresoJuego('juegoRecoleccion')"
+                        >Jugar</ion-button
+                      >
                     </article>
                   }
                   @if (pagina() === 1) {
-                    <article class="game-card">
-                      <span>02</span>
-                      <h2>Palabras rápidas</h2>
-                      <p>Completá la palabra antes de que termine.</p>
-                      <div>
-                        <ion-button size="small" (click)="jugar('palabras', true)"
-                          >Ganar primer intento</ion-button
-                        ><ion-button fill="outline" size="small" (click)="jugar('palabras', false)"
-                          >Probar</ion-button
-                        >
-                      </div>
+                    <article class="game-card" aria-labelledby="juego-2">
+                      <span>02 · 15 %</span>
+                      <h2 id="juego-2">Adivinanza del número</h2>
+                      <p>Adiviná el número del 1 al 50 en seis intentos.</p>
+                      <tumbo-juego-adivinanza
+                        [deshabilitado]="jugando()"
+                        (terminado)="jugar('adivinanza', $event)"
+                      />
                     </article>
                   }
                   @if (pagina() === 2) {
-                    <article class="game-card">
-                      <span>03</span>
-                      <h2>Desafío de rapidez</h2>
-                      <p>Elegí la respuesta correcta.</p>
-                      <div>
-                        <ion-button size="small" (click)="jugar('rapidez', true)"
-                          >Ganar primer intento</ion-button
-                        ><ion-button fill="outline" size="small" (click)="jugar('rapidez', false)"
-                          >Probar</ion-button
-                        >
-                      </div>
+                    <article class="game-card" aria-labelledby="juego-3">
+                      <span>03 · 20 %</span>
+                      <h2 id="juego-3">Piedra, papel o tijera</h2>
+                      <p>Una mano contra Tumbito. Si empatan, se elige de nuevo.</p>
+                      <tumbo-juego-piedra-papel-tijera
+                        [deshabilitado]="jugando()"
+                        (terminado)="jugar('piedra', $event)"
+                      />
                     </article>
                   }
                 </div>

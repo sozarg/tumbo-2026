@@ -50,6 +50,8 @@ import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
 import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
+import { JuegoAdivinanza } from '../juegos/adivinanza/juego-adivinanza.component';
+import { JuegoPiedraPapelTijera } from '../juegos/piedra-papel-tijera/juego-piedra-papel-tijera.component';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 import {
   pencilOutline,
@@ -141,6 +143,8 @@ const MENSAJES_POR_PAGINA = 4;
 @Component({
   imports: [
     MenuOperacion,
+    JuegoAdivinanza,
+    JuegoPiedraPapelTijera,
     SectorPedidos,
     AvancePedidos,
     Cobros,
@@ -1881,7 +1885,8 @@ export class Operacion implements OnInit {
     this.quitarFotoAnonima();
     this.mensaje.set('Te anotamos en la lista de espera.');
   }
-  
+
+  /** El recolector ocupa toda la pantalla: tiene su propia ruta. */
   protected async ingresoJuego(idJuego: string): Promise<void> {
     if (idJuego === 'juegoRecoleccion') {
       await this.router.navigate(['/juego-recoleccion']);
@@ -2438,12 +2443,30 @@ export class Operacion implements OnInit {
     );
   }
 
+  /** Mientras se guarda una partida no se puede empezar otra. */
+  protected readonly jugando = signal(false);
+
+  /**
+   * Punto 15. El juego dice si se ganó; la base decide si hay descuento
+   * (primer intento, uno por visita) y eso es lo que se muestra.
+   */
   protected async jugar(idJuego: string, gano: boolean): Promise<void> {
-    const intento = (await this.demo.jugar(idJuego, gano)).intento;
+    const antes = this.demo.descuento();
+    this.jugando.set(true);
+    const r = await this.demo.jugar(idJuego, gano);
+    this.jugando.set(false);
+    if (!r.ok) {
+      await this.avisarError('No pudimos registrar la partida. Revisá la conexión.');
+      return;
+    }
     this.mensaje.set(
-      gano && intento === 1
-        ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
-        : 'Partida registrada. Solo el primer intento ganador otorga beneficio.',
+      !gano
+        ? 'Partida registrada. El descuento es solo si ganás en el primer intento.'
+        : r.descuento > antes
+          ? `¡Ganaste! Tenés ${r.descuento} % de descuento en la cuenta.`
+          : antes > 0
+            ? `¡Ganaste! Ya tenías ${antes} % de descuento: no se acumula.`
+            : 'Ganaste, pero el descuento es solo para el primer intento.',
     );
   }
 

@@ -204,7 +204,7 @@ Verificado el 02/10/2026 con el código de `main`, la base de producción (solo 
 | 12 | Realizar pedido | Completo | Terrile | `enviar_pedido` crea el pedido y sus ítems en una sola operación; push a los mozos. |
 | 13 | Rechazar pedido | Completo | Terrile | El mozo escribe el motivo; el cliente lo ve, recibe push y retoma el pedido en el carrito. |
 | 14 | Confirmar y derivar | Completo | Terrile | Push a cocina con sus platos, al bar con sus bebidas y al cliente. Los juegos se habilitan. |
-| 15 | Juegos y descuento | **No cumple** | Bianucci | Los juegos son botones simulados («Ganar primer intento»). La base ya valida el descuento: lo calcula ella, solo al primer intento y uno por estadía (`partidas.test.sql`). En la base real solo «memoria» encuentra su juego; «palabras» y «rapidez» no coinciden con los nombres de `juegos`. La rama `bianucci` tiene un juego en beta. |
+| 15 | Juegos y descuento | Completo | Bianucci / Terrile | Tres juegos reales: «Recolección tumbito» (10 %, el de Bianucci, se gana con 50 puntos en 10 segundos), «Adivinanza del número» (15 %) y «Piedra, papel o tijera» (20 %). El descuento lo decide la base: solo al primer intento y uno por visita (`tests/ui-punto-15.mjs`, `partidas.test.sql`). |
 | 16-17 | Cocina y bar | Completo | Terrile | Listado por mesa, la más vieja primero, en vivo. |
 | 18 | Pedido completo | Completo | Terrile | Push al mozo cuando cocina y bar terminan. |
 | 19 | Entrega y recepción | Completo | Terrile | El mozo entrega y el cliente confirma; eso habilita encuesta y cuenta. |
@@ -219,7 +219,6 @@ Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en
 | Pendiente | Puntos |
 |---|---|
 | Habilitar los ingresos anónimos en Supabase Auth | 9 |
-| Tres juegos funcionales con descuento al primer intento (la rama `bianucci` tiene uno en beta) | 15 |
 | Cargar fotos y productos reales; borrar «prueba» y las mesas de prueba | 1 a 4 |
 | Registrar un teléfono por perfil | Todas las push |
 | Hacer privado el repositorio y mover el logo de los correos | 7 y 8 |
