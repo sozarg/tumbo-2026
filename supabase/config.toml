@@ -413,3 +413,13 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Las llaman los triggers de la base por pg_net, sin sesión: validan su
+# propia firma (`x-tumbo-firma`). Igual que en producción; sin esto, un
+# `supabase functions deploy` las volvería a pedir JWT y todos los
+# avisos y correos fallarían con 401.
+[functions.avisar-push]
+verify_jwt = false
+
+[functions.avisar-cliente]
+verify_jwt = false
