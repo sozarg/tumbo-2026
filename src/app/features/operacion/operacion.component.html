@@ -1559,6 +1559,13 @@
                         <ion-button
                           class="quantity-button"
                           fill="outline"
+                          [attr.aria-label]="
+                            'Quitar una unidad de ' +
+                            producto.nombre +
+                            ' (en el pedido: ' +
+                            cantidad(producto.id) +
+                            ')'
+                          "
                           [disabled]="cantidad(producto.id) === 0"
                           (click)="quitar(producto)"
                           >−</ion-button
@@ -1567,6 +1574,13 @@
                         <ion-button
                           class="quantity-button"
                           fill="outline"
+                          [attr.aria-label]="
+                            'Agregar una unidad de ' +
+                            producto.nombre +
+                            ' (en el pedido: ' +
+                            cantidad(producto.id) +
+                            ')'
+                          "
                           (click)="agregar(producto)"
                           >+</ion-button
                         >

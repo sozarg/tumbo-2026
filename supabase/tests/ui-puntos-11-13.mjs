@@ -251,6 +251,16 @@ try {
   ok('13 · menú: aparece «Bife de chorizo»', await irAlProducto(cliente, 'Bife de chorizo'));
   for (let i = 0; i < 2; i++)
     await cliente.locator('.product-card ion-button.quantity-button').last().click();
+  await esperar(
+    '12 · los botones de cantidad dicen el producto y cuántos hay',
+    async () =>
+      (await cliente
+        .getByRole('button', {
+          name: 'Agregar una unidad de Bife de chorizo (en el pedido: 2)',
+        })
+        .count()) === 1,
+  );
+  await revisarAxe(cliente, 'menú con cantidades');
   ok('13 · menú: aparece «Café espresso»', await irAlProducto(cliente, 'Café espresso'));
   await cliente.locator('.product-card ion-button.quantity-button').last().click();
   await cliente.getByRole('button', { name: /Enviar\s+pedido/ }).click();
