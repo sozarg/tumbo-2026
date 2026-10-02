@@ -1,4 +1,12 @@
 import { MenuOperacion } from './menu-operacion.component';
+import { AccionDeSector, SectorPedidos } from './sector-pedidos.component';
+import { AvancePedidos } from './avance-pedidos.component';
+import { Cobros, ConfirmacionDePago } from './cobros.component';
+import { CuentaCliente } from './cuenta-cliente.component';
+import { EncuestaForm } from './encuesta-form.component';
+import { ResultadosEncuesta } from './resultados-encuesta.component';
+import { RespuestasDeEncuesta } from '../../core/models/encuesta';
+import { mesaDesdeQr, porcentajeDesdeQrDePropina } from '../../core/services/cuenta-y-encuesta';
 import { NgOptimizedImage } from '@angular/common';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -22,23 +30,16 @@ import { IonBadge } from '@ionic/angular/ion-badge';
 import { IonButton } from '@ionic/angular/ion-button';
 import { IonCard } from '@ionic/angular/ion-card';
 import { IonCardContent } from '@ionic/angular/ion-card-content';
-import { IonCardHeader } from '@ionic/angular/ion-card-header';
-import { IonCardSubtitle } from '@ionic/angular/ion-card-subtitle';
-import { IonCardTitle } from '@ionic/angular/ion-card-title';
 import { IonChip } from '@ionic/angular/ion-chip';
 import { IonHeader } from '@ionic/angular/ion-header';
 import { IonContent } from '@ionic/angular/ion-content';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { IonInput } from '@ionic/angular/ion-input';
-import { IonItem } from '@ionic/angular/ion-item';
-import { IonLabel } from '@ionic/angular/ion-label';
 import { IonModal } from '@ionic/angular/ion-modal';
-import { IonRange } from '@ionic/angular/ion-range';
 import { IonSelect } from '@ionic/angular/ion-select';
 import { IonSelectOption } from '@ionic/angular/ion-select-option';
 import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToast } from '@ionic/angular/ion-toast';
-import { IonToggle } from '@ionic/angular/ion-toggle';
 import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { Espera } from '../../shared/components/espera/espera.component';
@@ -70,6 +71,7 @@ import {
   sendOutline,
   sparklesOutline,
   timeOutline,
+  lockClosedOutline,
   trashOutline,
   walletOutline,
 } from 'ionicons/icons';
@@ -87,6 +89,7 @@ import {
   TipoMesa,
   TipoProducto,
 } from '../../core/models/demo-restaurante';
+import { ETIQUETA_DE_ESTADO_SECTOR, agruparPorMesa } from '../../core/services/pedidos-por-sector';
 import { OperacionService } from '../../core/services/operacion.service';
 import { CodigoQrService } from '../../core/services/codigo-qr.service';
 import { ErroresService } from '../../core/services/errores.service';
@@ -125,32 +128,30 @@ import {
   Seccion,
   puedeAcceder,
 } from '../../core/navegacion/secciones';
-type GraficoDemo = 'torta' | 'barras' | 'linea';
 
 @Component({
   imports: [
     MenuOperacion,
+    SectorPedidos,
+    AvancePedidos,
+    Cobros,
+    CuentaCliente,
+    EncuestaForm,
+    ResultadosEncuesta,
     IonBadge,
     IonButton,
     IonCard,
     IonCardContent,
-    IonCardHeader,
-    IonCardSubtitle,
-    IonCardTitle,
     IonChip,
     IonContent,
     IonHeader,
     IonIcon,
     IonInput,
-    IonItem,
-    IonLabel,
     IonModal,
-    IonRange,
     IonSelect,
     IonSelectOption,
     IonTextarea,
     IonToast,
-    IonToggle,
     Espera,
     Paginador,
     BotonConfirmacion,
@@ -323,12 +324,45 @@ export class Operacion implements OnInit {
   protected readonly titulo = computed(
     () => this.accesos().find((acceso) => acceso.id === this.seccion())?.titulo ?? 'Tu restaurante',
   );
-  protected readonly grafico = signal<GraficoDemo>('torta');
   protected readonly mensaje = signal('');
   protected readonly error = signal('');
 
   protected readonly enviando = signal(false);
   protected readonly confirmandoRecepcion = signal(false);
+  /** El pedido que cocina o bar está guardando; bloquea el doble toque. */
+  protected readonly procesandoSector = signal<string | null>(null);
+  protected readonly enviandoEncuesta = signal(false);
+  protected readonly procesandoCuenta = signal(false);
+  /** Lo que dio leer el QR de la mesa después de pagar (punto 22). */
+  protected readonly verificacionMesa = signal<string | null>(null);
+  protected readonly etiquetaSector = ETIQUETA_DE_ESTADO_SECTOR;
+  protected readonly sectorActual = computed<SectorProducto>(() =>
+    this.seccion() === 'barra' ? 'bar' : 'cocina',
+  );
+  /** Puntos 16 y 17: lo pendiente del sector, agrupado por mesa. */
+  protected readonly mesasDelSector = computed(() =>
+    agruparPorMesa(this.demo.pedidosEnCurso(), this.sectorActual()),
+  );
+  /** Puntos 14 y 19: lo que el cliente todavía no puede usar según su pedido. */
+  protected readonly seccionesBloqueadas = computed<readonly Seccion[]>(() => {
+    if (!this.perfilEsCliente()) return [];
+    return [
+      ...(this.demo.juegosHabilitados() ? [] : (['juegos'] as const)),
+      ...(this.demo.encuestaYCuentaHabilitadas() ? [] : (['encuesta', 'cuenta'] as const)),
+    ];
+  });
+  /** Lo que el cliente ve de cada sector que interviene en su pedido. */
+  protected readonly sectoresDelCliente = computed(() => {
+    const pedido = this.demo.pedidoActivo();
+    if (!['confirmado', 'en_preparacion', 'listo'].includes(pedido.estado)) return [];
+    return (['cocina', 'bar'] as const)
+      .filter((sector) => pedido.sectores[sector] !== 'sin_items')
+      .map((sector) => ({
+        sector,
+        nombre: sector === 'cocina' ? 'Cocina' : 'Bar',
+        estado: pedido.sectores[sector],
+      }));
+  });
 
   /**
    * El id del empleado que se está dando de baja, o `null`.
@@ -429,7 +463,6 @@ export class Operacion implements OnInit {
   protected readonly nombreAnonimo = signal('');
   protected readonly fotoAnonima = signal<FotoTomada | null>(null);
   protected readonly ingresoEscaneado = signal(false);
-  protected readonly qrSeleccionado = signal<number | null>(null);
 
   /** `false` en el navegador: ahí la cámara y el lector se simulan. */
   protected readonly camaraReal = this.camara.esReal;
@@ -438,7 +471,6 @@ export class Operacion implements OnInit {
     const perfil = this.usuario()?.perfil;
     return perfil === 'cliente_registrado' || perfil === 'cliente_anonimo';
   });
-  protected readonly propinas = [20, 15, 10, 5, 0] as const;
 
   /**
    * Alta de empleado (punto 1), validada igual que la base.
@@ -663,11 +695,6 @@ export class Operacion implements OnInit {
   protected readonly mensajeForm = this.formularioBuilder.nonNullable.group({
     texto: ['', [Validators.required, Validators.maxLength(180)]],
   });
-  protected readonly encuestaForm = this.formularioBuilder.nonNullable.group({
-    satisfaccion: [5, [Validators.required, Validators.min(1)]],
-    comentario: ['', Validators.required],
-    recomendaria: [true, Validators.required],
-  });
 
   constructor() {
     effect(() => {
@@ -746,6 +773,7 @@ export class Operacion implements OnInit {
       sendOutline,
       sparklesOutline,
       timeOutline,
+      lockClosedOutline,
       trashOutline,
       walletOutline,
     });
@@ -771,6 +799,7 @@ export class Operacion implements OnInit {
     this.creando.set(false);
     if (seccion === 'productos')
       this.productoForm.controls.tipo.setValue(this.tipoDeSector() ?? 'plato');
+    if (seccion === 'reportes') void this.demo.cargarResultadosEncuesta();
     this.error.set('');
   }
 
@@ -2032,36 +2061,167 @@ export class Operacion implements OnInit {
     return this.demo.carrito().find((item) => item.productoId === productoId)?.cantidad ?? 0;
   }
 
+  /** Punto 12: el pedido va al mozo; si la base lo rechaza, se dice por qué. */
   protected async enviarPedido(): Promise<void> {
-    const usuario = this.usuario();
-    const nombre = usuario ? usuario.nombres + ' ' + usuario.apellidos : 'Cliente';
-    const mesa = this.demo.mesaVinculada() ?? 2;
-    const enviado = (await this.demo.enviarPedido()).ok;
-    this.mensaje.set(
-      enviado ? 'Pedido enviado al mozo.' : 'Agregá productos antes de enviar el pedido.',
+    const resultado = await this.demo.enviarPedido();
+    if (resultado.ok) this.avisarExito('Pedido enviado al mozo. Esperá su confirmación.');
+    else await this.avisarError(resultado.error ?? 'No se pudo enviar el pedido.');
+  }
+
+  /** Punto 13: el mozo rechaza ESE pedido para que el cliente lo modifique. */
+  protected async rechazarPedido(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () =>
+        this.demo.rechazarPedido(
+          accion.pedidoId,
+          'Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.',
+        ),
+      `Mesa ${accion.mesa}: pedido rechazado y devuelto al cliente con el motivo.`,
     );
   }
 
-  protected async rechazarPedido(): Promise<void> {
-    this.demo.rechazarPedido(
-      'Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.',
+  /** Punto 14: el mozo confirma ESE pedido y lo deriva a cocina y bar. */
+  protected async confirmarPedido(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.confirmarPedido(accion.pedidoId),
+      `Mesa ${accion.mesa}: pedido confirmado. Cocina y bar ya lo tienen.`,
     );
-    this.mensaje.set('Pedido rechazado y devuelto al cliente con el motivo.');
   }
 
-  protected async confirmarPedido(): Promise<void> {
-    await this.demo.confirmarPedido();
-    this.mensaje.set('Pedido confirmado: cocina y bar recibieron sus ítems.');
+  protected async empezarSector(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.empezarSector(accion.pedidoId, this.sectorActual()),
+      `Mesa ${accion.mesa}: en preparación.`,
+    );
   }
 
-  protected async marcarSectorListo(sector: SectorProducto): Promise<void> {
-    await this.demo.marcarSectorListo(sector);
-    this.mensaje.set('Sector ' + sector + ' actualizado.');
+  protected async marcarSectorListo(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.marcarSectorListo(accion.pedidoId, this.sectorActual()),
+      `Mesa ${accion.mesa}: ${this.sectorActual() === 'cocina' ? 'cocina' : 'bar'} listo.`,
+    );
   }
 
-  protected async entregarPedido(): Promise<void> {
-    await this.demo.marcarEntregado();
-    this.mensaje.set('Pedido marcado como entregado; el cliente debe confirmar la recepción.');
+  private async avanzarSector(
+    accion: AccionDeSector,
+    guardar: () => Promise<{ ok: boolean; error?: string }>,
+    exito: string,
+  ): Promise<void> {
+    if (this.procesandoSector()) return;
+    this.procesandoSector.set(accion.pedidoId);
+    try {
+      const resultado = await guardar();
+      if (resultado.ok) this.avisarExito(exito);
+      else await this.avisarError(resultado.error ?? 'No se pudo actualizar el pedido.');
+    } finally {
+      this.procesandoSector.set(null);
+    }
+  }
+
+  /** Punto 20: guarda la encuesta; la base vuelve a validar cada respuesta. */
+  protected async responderEncuesta(respuestas: RespuestasDeEncuesta): Promise<void> {
+    if (this.enviandoEncuesta()) return;
+    this.enviandoEncuesta.set(true);
+    try {
+      const resultado = await this.demo.responderEncuesta(respuestas);
+      if (resultado.ok) this.avisarExito('Encuesta guardada. ¡Gracias por tu opinión!');
+      else await this.avisarError(resultado.error ?? 'No se pudo guardar la encuesta.');
+    } finally {
+      this.enviandoEncuesta.set(false);
+    }
+  }
+
+  /** Punto 21: el cliente pide la cuenta y el mozo recibe el aviso. */
+  protected async pedirCuenta(): Promise<void> {
+    await this.operarCuenta(
+      () => this.demo.solicitarCuenta(),
+      'Le avisamos al mozo. Escaneá el QR de propina.',
+    );
+  }
+
+  /**
+   * Punto 21: la propina se elige LEYENDO el QR, no tocando una imagen.
+   * El contenido va tal cual a la base, que es la que lo reconoce.
+   */
+  protected async escanearPropina(): Promise<void> {
+    const lectura = await this.lector.leerCodigo();
+    if (lectura.estado === 'cancelado') return;
+    if (lectura.estado !== 'leido') {
+      await this.avisarError(
+        lectura.estado === 'error' ? lectura.mensaje : 'No se pudo leer el código.',
+      );
+      return;
+    }
+    const porcentaje = porcentajeDesdeQrDePropina(lectura.contenido);
+    if (porcentaje === null) {
+      await this.avisarError('Ese código no es un QR de propina.');
+      return;
+    }
+    await this.operarCuenta(
+      () => this.demo.generarCuenta(lectura.contenido, porcentaje),
+      `Propina del ${porcentaje} % aplicada. Revisá el detalle y pagá.`,
+    );
+  }
+
+  /** Punto 21: el pago simulado. */
+  protected async pagarCuenta(): Promise<void> {
+    await this.operarCuenta(
+      () => this.demo.pagarCuenta(),
+      'Pago realizado. El mozo tiene que confirmarlo.',
+    );
+  }
+
+  /** Punto 22: el mozo confirma el pago de UNA mesa y la libera. */
+  protected async confirmarPago(confirmacion: ConfirmacionDePago): Promise<void> {
+    await this.avanzarSector(
+      { pedidoId: confirmacion.cuentaId, mesa: confirmacion.mesa },
+      () => this.demo.confirmarPago(confirmacion.cuentaId),
+      `Pago confirmado: la mesa ${confirmacion.mesa} quedó libre.`,
+    );
+  }
+
+  /** Punto 22: con el pago confirmado, el QR de la mesa la muestra libre. */
+  protected async verificarMesa(): Promise<void> {
+    const lectura = await this.lector.leerCodigo();
+    if (lectura.estado === 'cancelado') return;
+    const mesa =
+      lectura.estado === 'leido' ? mesaDesdeQr(lectura.contenido, this.demo.mesas()) : undefined;
+    if (!mesa) {
+      this.verificacionMesa.set(null);
+      await this.avisarError('Ese código no es el QR de una mesa.');
+      return;
+    }
+    this.verificacionMesa.set(
+      `Mesa ${mesa.numero}: ${mesa.disponible ? 'libre, lista para el próximo cliente' : 'todavía ocupada'}.`,
+    );
+  }
+
+  private async operarCuenta(
+    operar: () => Promise<{ ok: boolean; error?: string }>,
+    exito: string,
+  ): Promise<void> {
+    if (this.procesandoCuenta()) return;
+    this.procesandoCuenta.set(true);
+    try {
+      const resultado = await operar();
+      if (resultado.ok) this.avisarExito(exito);
+      else await this.avisarError(resultado.error ?? 'No se pudo actualizar la cuenta.');
+    } finally {
+      this.procesandoCuenta.set(false);
+    }
+  }
+
+  /** Punto 19: el mozo entrega un pedido completo desde «Avance en cocina y bar». */
+  protected async entregarPedido(accion: AccionDeSector): Promise<void> {
+    await this.avanzarSector(
+      accion,
+      () => this.demo.marcarEntregado(accion.pedidoId),
+      `Mesa ${accion.mesa}: pedido entregado. El cliente tiene que confirmar la recepción.`,
+    );
   }
 
   protected async recibirPedido(): Promise<void> {
@@ -2107,6 +2267,14 @@ export class Operacion implements OnInit {
     this.mensaje.set('Consulta enviada a todos los mozos.');
   }
 
+  protected async jugar(idJuego: string, gano: boolean): Promise<void> {
+    const intento = (await this.demo.jugar(idJuego, gano)).intento;
+    this.mensaje.set(
+      gano && intento === 1
+        ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
+        : 'Partida registrada. Solo el primer intento ganador otorga beneficio.',
+    );
+  }
     protected async jugar(idJuego: string, gano: boolean): Promise<void> {
       const intento = (await this.demo.jugar(idJuego, gano)).intento;
       this.mensaje.set(
@@ -2179,11 +2347,6 @@ export class Operacion implements OnInit {
   protected qrImagen(clave: string): string {
     const imagenes: Record<string, string> = {
       entrada: 'imagenes/qr-entrada.png',
-      'propina-20': 'imagenes/qr-propina-20.png',
-      'propina-15': 'imagenes/qr-propina-15.png',
-      'propina-10': 'imagenes/qr-propina-10.png',
-      'propina-5': 'imagenes/qr-propina-5.png',
-      'propina-0': 'imagenes/qr-propina-0.png',
     };
     return imagenes[clave] ?? '';
   }

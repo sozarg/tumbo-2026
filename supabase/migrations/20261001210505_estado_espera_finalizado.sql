@@ -1,0 +1,13 @@
+-- ═══════════════════════════════════════════════════════════════════
+-- Punto 22: la entrada de la lista de espera también termina.
+--
+-- Cuando el mozo confirma el pago, la estadía se cierra y la mesa queda
+-- libre, pero la entrada de espera de ese cliente seguía «asignado».
+-- Eso traía dos problemas: el índice `idx_espera_mesa_asignada_unica`
+-- no dejaba volver a asignar la mesa, y el cliente que ya pagó podía
+-- volver a vincularse escaneando el QR.
+--
+-- Va en una migración aparte porque Postgres no permite usar un valor
+-- de enum en la misma transacción en la que se agrega.
+-- ═══════════════════════════════════════════════════════════════════
+alter type public.estado_espera add value if not exists 'finalizado';

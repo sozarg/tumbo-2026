@@ -416,3 +416,209 @@ describe('Gestión de mesas · modificar y sacar (punto 4)', () => {
     expect((await servicio.eliminarMesa('mesa-inexistente')).ok).toBe(false);
   });
 });
+
+/**
+ * Puntos 16 a 18 en modo demostración: el mock tiene tres mesas con
+ * pedidos en curso (2, 4 y 5) y sigue las mismas reglas que la base.
+ */
+describe('Cocina, bar y pedido completo (puntos 16 a 18)', () => {
+  it('cada sector avanza su parte y el pedido queda completo una sola vez', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mock = TestBed.inject(DemoRestauranteService);
+    const id = servicio.pedidoActivo().id;
+
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('en_preparacion');
+    expect(servicio.pedidoActivo().sectores).toEqual({
+      cocina: 'en_preparacion',
+      bar: 'pendiente',
+    });
+
+    expect((await servicio.marcarSectorListo(id, 'cocina')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('en_preparacion');
+    const avisosAntes = mock.notificaciones().length;
+
+    expect((await servicio.marcarSectorListo(id, 'bar')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('listo');
+    expect(mock.notificaciones().length).toBe(avisosAntes + 1);
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['mozo']);
+    expect(mock.notificaciones()[0].mensaje).toContain('mesa 2');
+
+    // Repetir no vuelve a avisar ni rompe nada.
+    const repetido = await servicio.marcarSectorListo(id, 'bar');
+    expect(repetido.ok).toBe(false);
+    expect(repetido.error).toBe('El pedido ya no está pendiente en este sector.');
+    expect(mock.notificaciones().length).toBe(avisosAntes + 1);
+  });
+
+  it('no deja volver atrás ni empezar dos veces', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const id = servicio.pedidoActivo().id;
+    await servicio.empezarSector(id, 'cocina');
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(false);
+    await servicio.marcarSectorListo(id, 'cocina');
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(false);
+  });
+
+  it('no toca un pedido que el mozo todavía no confirmó', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    expect((await servicio.marcarSectorListo(servicio.pedidoActivo().id, 'cocina')).ok).toBe(false);
+  });
+
+  it('un pedido de solo bebidas se completa cuando termina el bar', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({
+      ...p,
+      items: p.items.filter((i) => i.sector === 'bar'),
+      sectores: { cocina: 'sin_items', bar: 'pendiente' },
+    }));
+    const id = servicio.pedidoActivo().id;
+    expect((await servicio.empezarSector(id, 'cocina')).ok).toBe(false);
+    expect((await servicio.marcarSectorListo(id, 'bar')).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('listo');
+  });
+
+  it('los pedidos de otras mesas también se pueden avanzar', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mesa4 = servicio.pedidosEnCurso().find((p) => p.mesa === 4)!;
+    expect(mesa4.sectores).toEqual({ cocina: 'en_preparacion', bar: 'listo' });
+    expect((await servicio.marcarSectorListo(mesa4.id, 'cocina')).ok).toBe(true);
+    expect(servicio.pedidosEnCurso().find((p) => p.mesa === 4)!.estado).toBe('listo');
+  });
+});
+
+/** Punto 19 en modo demostración: entrega del mozo y recepción del cliente. */
+describe('Entrega y recepción del pedido (punto 19)', () => {
+  async function pedidoListo(servicio: OperacionService): Promise<string> {
+    const id = servicio.pedidoActivo().id;
+    await servicio.marcarSectorListo(id, 'cocina');
+    await servicio.marcarSectorListo(id, 'bar');
+    return id;
+  }
+
+  it('el mozo solo entrega un pedido listo', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const id = servicio.pedidoActivo().id;
+    const antes = await servicio.marcarEntregado(id);
+    expect(antes.ok).toBe(false);
+    expect(antes.error).toBe('El pedido ya no está listo para entregar.');
+
+    await pedidoListo(servicio);
+    expect((await servicio.marcarEntregado(id)).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('entregado');
+    expect((await servicio.marcarEntregado(id)).ok).toBe(false);
+  });
+
+  it('el entregado sigue a la vista del mozo hasta que el cliente confirma', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const id = await pedidoListo(servicio);
+    await servicio.marcarEntregado(id);
+    expect(servicio.pedidosEnCurso().some((p) => p.id === id)).toBe(true);
+    await servicio.confirmarRecepcion();
+    expect(servicio.pedidosEnCurso().some((p) => p.id === id)).toBe(false);
+  });
+
+  it('el cliente confirma la recepción solo después de la entrega, y una vez', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    expect((await servicio.confirmarRecepcion()).ok).toBe(false);
+    const id = await pedidoListo(servicio);
+    await servicio.marcarEntregado(id);
+    expect((await servicio.confirmarRecepcion()).ok).toBe(true);
+    expect(servicio.pedidoActivo().estado).toBe('recibido');
+    expect((await servicio.confirmarRecepcion()).ok).toBe(false);
+  });
+
+  it('encuesta y cuenta se habilitan recién con la recepción', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    expect(servicio.juegosHabilitados()).toBe(true);
+    expect(servicio.encuestaYCuentaHabilitadas()).toBe(false);
+    expect((await servicio.responderEncuesta({})).error).toBe(
+      'Confirmá que recibiste tu pedido para responder la encuesta.',
+    );
+    expect((await servicio.solicitarCuenta()).error).toBe(
+      'Confirmá que recibiste tu pedido para pedir la cuenta.',
+    );
+
+    const id = await pedidoListo(servicio);
+    await servicio.marcarEntregado(id);
+    await servicio.confirmarRecepcion();
+    expect(servicio.encuestaYCuentaHabilitadas()).toBe(true);
+    expect((await servicio.solicitarCuenta()).ok).toBe(true);
+  });
+
+  it('los juegos esperan a que el mozo confirme el pedido (punto 14)', () => {
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    expect(servicio.juegosHabilitados()).toBe(false);
+  });
+});
+
+/** Puntos 20 a 22 en modo demostración: cuenta, pago, liberación y encuesta. */
+describe('Cuenta, pago y encuesta (puntos 20 a 22)', () => {
+  async function pedidoRecibido(servicio: OperacionService): Promise<void> {
+    const id = servicio.pedidoActivo().id;
+    await servicio.marcarSectorListo(id, 'cocina');
+    await servicio.marcarSectorListo(id, 'bar');
+    await servicio.marcarEntregado(id);
+    await servicio.confirmarRecepcion();
+  }
+
+  it('pedir, elegir propina, pagar y que el mozo confirme libera la mesa', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    const mock = TestBed.inject(DemoRestauranteService);
+    await pedidoRecibido(servicio);
+
+    expect((await servicio.pagarCuenta()).ok).toBe(false);
+    expect((await servicio.solicitarCuenta()).ok).toBe(true);
+    expect(servicio.cuenta()?.estado).toBe('solicitada');
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['mozo']);
+    expect(servicio.cuentasEnCurso().map((c) => c.mesa)).toEqual([2]);
+
+    expect((await servicio.pagarCuenta()).ok).toBe(false);
+    expect((await servicio.generarCuenta('TUMBO://propina/10', 10)).ok).toBe(true);
+    const cuenta = servicio.cuenta()!;
+    expect(cuenta).toMatchObject({
+      estado: 'pendiente_pago',
+      subtotal: 20400,
+      porcentajePropina: 10,
+      propina: 2040,
+      total: 22440,
+    });
+    expect(servicio.detalleCuenta().map((l) => [l.nombre, l.cantidad, l.importe])).toEqual([
+      ['Hamburguesa TUMBO', 2, 15600],
+      ['Limonada de la casa', 2, 4800],
+    ]);
+
+    expect((await servicio.pagarCuenta()).ok).toBe(true);
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['mozo', 'dueno', 'supervisor']);
+    expect((await servicio.confirmarPago('otra-cuenta')).ok).toBe(false);
+    expect((await servicio.confirmarPago(cuenta.id)).ok).toBe(true);
+    expect(servicio.cuenta()?.estado).toBe('confirmada');
+    expect(servicio.mesas().find((m) => m.numero === 2)?.disponible).toBe(true);
+    expect(servicio.cuentasEnCurso()).toEqual([]);
+    expect(mock.notificaciones()[0].destinatarios).toEqual(['dueno', 'supervisor']);
+  });
+
+  it('la encuesta se guarda una vez y solo con respuestas válidas', async () => {
+    const servicio = TestBed.inject(OperacionService);
+    await pedidoRecibido(servicio);
+    const respuestas = {
+      'pregunta-1': 5,
+      'pregunta-2': 'Rápido',
+      'pregunta-3': ['La comida'],
+      'pregunta-4': 'Redes sociales',
+      'pregunta-5': 8,
+      'pregunta-6': true,
+      'pregunta-7': '',
+    };
+    const invalida = await servicio.responderEncuesta({ ...respuestas, 'pregunta-1': 9 });
+    expect(invalida.ok).toBe(false);
+    expect(invalida.error).toContain('Elegí un valor entre 1 y 5.');
+    expect((await servicio.responderEncuesta(respuestas)).ok).toBe(true);
+    expect(servicio.encuestaRespondida()).toBe(true);
+    expect((await servicio.responderEncuesta(respuestas)).error).toBe(
+      'Ya respondiste la encuesta de esta estadía.',
+    );
+  });
+});

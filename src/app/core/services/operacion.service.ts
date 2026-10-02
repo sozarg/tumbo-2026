@@ -1,6 +1,6 @@
-import { DestroyRef, Injectable, inject, signal, computed, effect } from '@angular/core';
+import { DestroyRef, Injectable, Signal, inject, signal, computed, effect } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Tablas } from '../models/base-de-datos';
+import { Json, Tablas } from '../models/base-de-datos';
 import { comprimirFoto } from '../imagenes/comprimir-foto';
 import {
   AltaClienteDemo,
@@ -23,16 +23,39 @@ import {
   TipoProducto,
 } from '../models/demo-restaurante';
 import { PerfilUsuario, Usuario, etiquetaDePerfil } from '../models/usuario';
+import {
+  PreguntaDeEncuesta,
+  RespuestasDeEncuesta,
+  ResultadosDeEncuesta,
+  TipoDeControl,
+} from '../models/encuesta';
+import { lineasDeCuenta } from './cuenta-y-encuesta';
 import { DemoRestauranteService } from './demo-restaurante.service';
 import { RegistroClienteService } from './registro-cliente.service';
 import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
 import { FotoTomada } from '../dispositivo/camara.service';
+import {
+  encuestaYCuentaHabilitadas,
+  estadoDeSector,
+  formatearFechaHora,
+  juegosHabilitados,
+} from './pedidos-por-sector';
 
 type Sesion = Tablas<'sesiones_mesa'>;
 type Pedido = Tablas<'pedidos'>;
 type Item = Tablas<'pedido_items'>;
 type Producto = Tablas<'productos'>;
+
+/** Quiénes ven los pedidos de todas las mesas: el personal (`es_staff()` en la base). */
+const PERSONAL: readonly PerfilUsuario[] = [
+  'dueno',
+  'supervisor',
+  'metre',
+  'mozo',
+  'cocinero',
+  'cantinero',
+];
 /** Resultado confirmado; aviso agrega contexto sin sustituir un error de alta. */
 type Resultado = { ok: boolean; error?: string; aviso?: string };
 
@@ -152,6 +175,7 @@ export class OperacionService {
   private readonly enviandoAltas = new Set<string>();
   private canal: ReturnType<NonNullable<typeof this.cliente>['channel']> | null = null;
   private sesionActiva: Sesion | null = null;
+  private cargaProgramada: ReturnType<typeof setTimeout> | null = null;
   private pedidoReal: Pedido | null = null;
   private cuentaReal: Tablas<'cuentas'> | null = null;
   private readonly clientePorEspera = new Map<string, string>();
@@ -165,6 +189,15 @@ export class OperacionService {
   readonly pedidoActivo = this.cliente
     ? signal<PedidoDemo>(this.pedidoVacio())
     : this.mock.pedidoActivo;
+  private readonly pedidosEnCursoReal = signal<PedidoDemo[]>([]);
+  /**
+   * Todos los pedidos que el mozo ya confirmó y todavía no se entregaron,
+   * de todas las mesas (puntos 16 a 18). Solo se carga para el personal:
+   * es la fuente de las pantallas de cocina, bar y del avance del mozo.
+   */
+  readonly pedidosEnCurso: Signal<readonly PedidoDemo[]> = this.cliente
+    ? this.pedidosEnCursoReal.asReadonly()
+    : this.mock.pedidosEnCurso;
   readonly carrito = this.cliente ? signal<PedidoItemDemo[]>([]) : this.mock.carrito;
   readonly mensajes = this.cliente ? signal<MensajeDemo[]>([]) : this.mock.mensajes;
   readonly notificaciones = this.cliente
@@ -175,10 +208,22 @@ export class OperacionService {
     ? signal<Record<string, number>>({})
     : this.mock.intentosJuego;
   readonly encuestaRespondida = this.cliente ? signal(false) : this.mock.encuestaRespondida;
-  readonly porcentajePropina = this.cliente
-    ? signal<number | null>(null)
-    : this.mock.porcentajePropina;
   readonly cuenta = this.cliente ? signal<CuentaDemo | null>(null) : this.mock.cuenta;
+  private readonly cuentasEnCursoReal = signal<CuentaDemo[]>([]);
+  /** Para mozo, dueño y supervisor: las cuentas pedidas o pagadas, por mesa (puntos 21 y 22). */
+  readonly cuentasEnCurso: Signal<readonly CuentaDemo[]> = this.cliente
+    ? this.cuentasEnCursoReal.asReadonly()
+    : this.mock.cuentasEnCurso;
+  /** Todo lo que pidió la estadía, para el detalle de la cuenta (punto 21). */
+  private readonly itemsDeLaEstadia = signal<PedidoItemDemo[]>([]);
+  readonly detalleCuenta = computed(() =>
+    lineasDeCuenta(this.cliente ? this.itemsDeLaEstadia() : this.pedidoActivo().items),
+  );
+  /** Las preguntas reales de la encuesta (punto 20). */
+  readonly preguntas = this.cliente ? signal<PreguntaDeEncuesta[]>([]) : this.mock.preguntas;
+  readonly resultadosEncuesta = this.cliente
+    ? signal<ResultadosDeEncuesta | null>(null)
+    : this.mock.resultadosEncuesta;
   readonly mesaVinculada = this.cliente ? signal<number | null>(null) : this.mock.mesaVinculada;
   readonly clientesPendientes = computed(() =>
     this.clientes().filter((c) => c.estado === 'pendiente'),
@@ -189,11 +234,28 @@ export class OperacionService {
   readonly tiempoCarrito = computed(() =>
     this.carrito().reduce((t, i) => Math.max(t, i.minutos), 0),
   );
+  /** Punto 14: los juegos se abren cuando el mozo confirma el pedido. */
+  readonly juegosHabilitados = computed(() => juegosHabilitados(this.pedidoActivo().estado));
+  /** Punto 19: encuesta y cuenta, recién con la recepción confirmada. */
+  readonly encuestaYCuentaHabilitadas = computed(() =>
+    encuestaYCuentaHabilitadas(this.pedidoActivo().estado),
+  );
   readonly productosCocina = computed(() => this.productos().filter((p) => p.sector === 'cocina'));
   readonly productosBar = computed(() => this.productos().filter((p) => p.sector === 'bar'));
 
   constructor() {
+    // Un teléfono que vuelve de estar bloqueado puede haber perdido
+    // eventos con la conexión dormida: al volver a la aplicación se
+    // relee todo, así nadie ve un pedido o una cuenta viejos.
+    const alVolver = () => {
+      if (document.visibilityState === 'visible' && this.cliente && this.sesion.usuario()) {
+        this.programarCarga();
+      }
+    };
+    document.addEventListener('visibilitychange', alVolver);
     this.destroyRef.onDestroy(() => {
+      document.removeEventListener('visibilitychange', alVolver);
+      if (this.cargaProgramada) clearTimeout(this.cargaProgramada);
       if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
     });
     effect(() => {
@@ -202,6 +264,9 @@ export class OperacionService {
       if (this.canal && this.cliente) void this.cliente.removeChannel(this.canal);
       this.canal = null;
       if (this.cliente) {
+        this.pedidosEnCursoReal.set([]);
+        this.cuentasEnCursoReal.set([]);
+        this.itemsDeLaEstadia.set([]);
         this.empleados.set([]);
         this.productos.set([]);
         this.mesas.set([]);
@@ -262,7 +327,12 @@ export class OperacionService {
       this.mesaVinculada.set(
         this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? null,
       );
-      await this.cargarPedidoYCuenta();
+      await Promise.all([
+        this.cargarPedidoYCuenta(),
+        this.cargarPedidosEnCurso(usuario),
+        this.cargarCuentasEnCurso(usuario),
+        this.cargarEncuesta(usuario),
+      ]);
       if (mensajes.data) this.mensajes.set(mensajes.data.map((m) => this.aMensaje(m, usuario.id)));
       this.suscribirRealtime();
     } catch (error) {
@@ -914,7 +984,10 @@ export class OperacionService {
         .eq('id', id)
         .single();
       if (errorPerfil || !perfil) {
-        return { ok: false, error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.' };
+        return {
+          ok: false,
+          error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.',
+        };
       }
       this.sesion.iniciar(this.aUsuario(perfil));
     }
@@ -935,7 +1008,8 @@ export class OperacionService {
         .from('usuarios')
         .update({ foto_url: publica.publicUrl })
         .eq('id', id);
-      if (errorPerfil) return { ok: false, error: 'La foto subió, pero no se pudo guardar el perfil.' };
+      if (errorPerfil)
+        return { ok: false, error: 'La foto subió, pero no se pudo guardar el perfil.' };
     }
 
     return this.insertar('lista_espera', { cliente_id: id });
@@ -1010,54 +1084,175 @@ export class OperacionService {
         ),
       };
     }
-    if (!this.sesionActiva || !this.carrito().length)
-      return { ok: false, error: 'No hay mesa o productos seleccionados.' };
-    const p = await this.insertarConFila('pedidos', {
-      sesion_mesa_id: this.sesionActiva.id,
-      estado: 'pendiente_confirmacion',
+    if (!this.carrito().length)
+      return { ok: false, error: 'Agregá productos antes de enviar el pedido.' };
+    // Una sola llamada crea el pedido y sus ítems (punto 12). El precio lo
+    // pone la base desde la carta: acá solo viaja qué producto y cuántos.
+    const { error } = await this.cliente.rpc('enviar_pedido', {
+      p_items: this.carrito().map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad })),
     });
-    const pedidoCreado = p.fila;
-    if (!p.ok || !pedidoCreado) return p;
-    const items = this.carrito().map((i) => ({
-      pedido_id: pedidoCreado.id,
-      producto_id: i.productoId,
-      cantidad: i.cantidad,
-      precio_unitario: i.precio,
-      sector: i.sector,
-    }));
-    const { error } = await this.cliente.from('pedido_items').insert(items);
-    if (error) return this.fallo('crear ítems del pedido', error);
+    if (error) return this.falloDeLaBase('enviar el pedido', error);
     this.carrito.set([]);
     await this.cargarPedidoYCuenta();
     return { ok: true };
   }
-  async rechazarPedido(motivo: string): Promise<Resultado> {
-    return this.cambiarEstadoPedido('rechazado', { motivo_rechazo: motivo });
-  }
-  async confirmarPedido(): Promise<Resultado> {
-    return this.cambiarEstadoPedido('confirmado', { motivo_rechazo: null });
-  }
-  async marcarSectorListo(sector: SectorProducto): Promise<Resultado> {
+  /** Punto 13: el mozo rechaza UN pedido concreto, con el motivo. */
+  async rechazarPedido(pedidoId: string, motivo: string): Promise<Resultado> {
     if (!this.cliente) {
-      this.mock.marcarSectorListo(sector);
-      return { ok: true };
+      return this.mock.rechazarPedido(pedidoId, motivo)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no espera confirmación.' };
+    }
+    return this.decidirPedido(pedidoId, { estado: 'rechazado', motivo_rechazo: motivo });
+  }
+  /** Punto 14: el mozo confirma UN pedido y lo deriva a cocina y bar. */
+  async confirmarPedido(pedidoId: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.confirmarPedido(pedidoId)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no espera confirmación.' };
+    }
+    return this.decidirPedido(pedidoId, {
+      estado: 'confirmado',
+      motivo_rechazo: null,
+      confirmado_en: new Date().toISOString(),
+      mozo_id: this.sesion.usuario()?.id ?? null,
+    });
+  }
+  private async decidirPedido(
+    pedidoId: string,
+    cambios: Partial<Pick<Pedido, 'estado' | 'motivo_rechazo' | 'confirmado_en' | 'mozo_id'>>,
+  ): Promise<Resultado> {
+    if (!this.cliente) return { ok: false, error: 'No hay conexión con la base.' };
+    const { data, error } = await this.cliente
+      .from('pedidos')
+      .update(cambios)
+      .eq('id', pedidoId)
+      .eq('estado', 'pendiente_confirmacion')
+      .select('id');
+    if (error) return this.falloDeLaBase('actualizar el pedido', error);
+    if (!data?.length) {
+      await this.cargarPedidosEnCurso(this.sesion.usuario());
+      return { ok: false, error: 'El pedido ya no espera confirmación.' };
+    }
+    await Promise.all([
+      this.cargarPedidosEnCurso(this.sesion.usuario()),
+      this.cargarPedidoYCuenta(),
+    ]);
+    return { ok: true };
+  }
+  /**
+   * El sector empieza su parte de un pedido (punto 18).
+   *
+   * Recibe el pedido explícito y no usa «el pedido activo»: cocina y bar
+   * atienden varias mesas a la vez, y el activo es el de UNA estadía.
+   */
+  async empezarSector(pedidoId: string, sector: SectorProducto): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.empezarSector(pedidoId, sector)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no está pendiente en este sector.' };
+    }
+    return this.avanzarSector(pedidoId, sector, ['pendiente'], 'en_preparacion');
+  }
+
+  /**
+   * El sector terminó su parte. Cuando termina el último, la base pasa el
+   * pedido a «listo» y dispara el aviso al mozo (trigger
+   * `evaluar_pedido_listo` y `avisar_pedido_listo`): eso no depende de
+   * que este teléfono siga abierto.
+   */
+  async marcarSectorListo(pedidoId: string, sector: SectorProducto): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.marcarSectorListo(pedidoId, sector)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no está pendiente en este sector.' };
+    }
+    // La hora de «listo» la pone la base (`proteger_item_de_sector`), no
+    // el reloj del teléfono.
+    return this.avanzarSector(pedidoId, sector, ['pendiente', 'en_preparacion'], 'listo');
+  }
+
+  private async avanzarSector(
+    pedidoId: string,
+    sector: SectorProducto,
+    desde: Item['estado'][],
+    estado: Item['estado'],
+  ): Promise<Resultado> {
+    if (!this.cliente) return { ok: false, error: 'No hay conexión con la base.' };
+    const { data, error } = await this.cliente
+      .from('pedido_items')
+      .update({ estado })
+      .eq('pedido_id', pedidoId)
+      .eq('sector', sector)
+      .in('estado', desde)
+      .select('id');
+    if (error) return this.falloDeLaBase('actualizar el sector', error);
+    // Cero filas no es un error de la base: otro teléfono del mismo
+    // sector ya lo hizo, o el pedido cambió. Decir «listo» ahí mentiría.
+    if (!data?.length) {
+      await this.cargarPedidosEnCurso(this.sesion.usuario());
+      return { ok: false, error: 'El pedido ya no está pendiente en este sector.' };
+    }
+    await Promise.all([
+      this.cargarPedidosEnCurso(this.sesion.usuario()),
+      this.cargarPedidoYCuenta(),
+    ]);
+    return { ok: true };
+  }
+  /**
+   * El mozo entrega un pedido completo (punto 19).
+   *
+   * Recibe el pedido explícito por lo mismo que cocina y bar: el mozo
+   * atiende varias mesas, y «el pedido activo» es el de una sola. La
+   * base exige que esté listo y pone la hora de entrega.
+   */
+  async marcarEntregado(pedidoId: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.marcarEntregado(pedidoId)
+        ? { ok: true }
+        : { ok: false, error: 'El pedido ya no está listo para entregar.' };
+    }
+    const { data, error } = await this.cliente
+      .from('pedidos')
+      .update({ estado: 'entregado' })
+      .eq('id', pedidoId)
+      .eq('estado', 'listo')
+      .select('id');
+    if (error) return this.falloDeLaBase('entregar el pedido', error);
+    if (!data?.length) {
+      await this.cargarPedidosEnCurso(this.sesion.usuario());
+      return { ok: false, error: 'El pedido ya no está listo para entregar.' };
+    }
+    await Promise.all([
+      this.cargarPedidosEnCurso(this.sesion.usuario()),
+      this.cargarPedidoYCuenta(),
+    ]);
+    return { ok: true };
+  }
+
+  /**
+   * El cliente confirma que recibió su pedido (punto 19).
+   *
+   * Va por `confirmar_recepcion` y no por un UPDATE: RLS no deja al
+   * cliente tocar un pedido ya entregado, y la función revisa que el
+   * pedido sea suyo y que el mozo lo haya entregado.
+   */
+  async confirmarRecepcion(): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.confirmarRecepcion()
+        ? { ok: true }
+        : { ok: false, error: 'El mozo todavía no entregó este pedido.' };
     }
     if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
-    const { error } = await this.cliente
-      .from('pedido_items')
-      .update({ estado: 'listo', listo_en: new Date().toISOString() })
-      .eq('pedido_id', this.pedidoReal.id)
-      .eq('sector', sector);
-    if (error) return this.fallo('marcar sector listo', error);
+    const { error } = await this.cliente.rpc('confirmar_recepcion', {
+      p_pedido_id: this.pedidoReal.id,
+    });
+    if (error) return this.falloDeLaBase('confirmar la recepción', error);
     await this.cargarPedidoYCuenta();
     return { ok: true };
   }
-  async marcarEntregado(): Promise<Resultado> {
-    return this.cambiarEstadoPedido('entregado');
-  }
-  async confirmarRecepcion(): Promise<Resultado> {
-    return this.cambiarEstadoPedido('recibido');
-  }
+
   async agregarMensaje(autor: string, texto: string, propio: boolean): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.agregarMensaje(autor, texto, propio);
@@ -1106,128 +1301,331 @@ export class OperacionService {
     if (r.ok && descuento) this.descuento.set(descuento);
     return { ok: r.ok, intento, descuento: this.descuento() };
   }
-  seleccionarPropina(p: number): void {
-    this.porcentajePropina.set(p);
-  }
-  async registrarEncuesta(): Promise<Resultado> {
+
+  /**
+   * El cliente responde la encuesta (punto 20). La base valida cada
+   * respuesta según su tipo y que sea una sola por estadía.
+   */
+  async responderEncuesta(respuestas: RespuestasDeEncuesta): Promise<Resultado> {
+    if (!this.encuestaYCuentaHabilitadas())
+      return { ok: false, error: 'Confirmá que recibiste tu pedido para responder la encuesta.' };
     if (!this.cliente) {
-      return { ok: this.mock.registrarEncuesta() };
+      const error = this.mock.responderEncuesta(respuestas);
+      return error ? { ok: false, error } : { ok: true };
     }
-    if (this.sesion.usuario()?.perfil === 'cliente_anonimo') {
-      return { ok: false, error: 'El cliente anónimo solo puede consultar resultados previos.' };
-    }
-    return this.sesionActiva && this.sesion.usuario()
-      ? this.insertar('encuestas', {
-          sesion_mesa_id: this.sesionActiva.id,
-          cliente_id: this.sesion.usuario()!.id,
-        })
-      : { ok: false, error: 'No hay estadía activa.' };
-  }
-  async generarCuenta(): Promise<Resultado> {
-    if (!this.cliente) return { ok: this.mock.generarCuenta() };
-    const p = this.porcentajePropina();
-    if (!this.sesionActiva || p === null)
-      return { ok: false, error: 'Seleccioná una propina antes de generar la cuenta.' };
-    const calculo = await this.cliente.rpc('calcular_cuenta', {
-      p_sesion_id: this.sesionActiva.id,
+    const { error } = await this.cliente.rpc('responder_encuesta', {
+      p_respuestas: respuestas as unknown as Json,
     });
-    if (calculo.error || !calculo.data?.[0]) return this.fallo('calcular la cuenta', calculo.error);
-    const c = calculo.data[0];
-    const propina = Math.round((c.base * p) / 100);
-    const nivel = (
-      { 20: 'excelente', 15: 'muy_bueno', 10: 'bueno', 5: 'regular', 0: 'malo' } as const
-    )[p as 0 | 5 | 10 | 15 | 20];
-    const r = await this.insertar('cuentas', {
-      sesion_mesa_id: this.sesionActiva.id,
-      subtotal: c.subtotal,
-      descuento_pct: c.descuento_pct,
-      descuento_monto: c.descuento_monto,
-      nivel_propina: nivel,
-      propina_pct: p,
-      propina_monto: propina,
-      total: c.base + propina,
-    });
-    if (r.ok) await this.cargarPedidoYCuenta();
-    return r;
-  }
-  async pagarCuenta(): Promise<Resultado> {
-    return this.actualizarCuenta('pagada');
-  }
-  async confirmarPago(): Promise<Resultado> {
-    return this.actualizarCuenta('confirmada');
+    if (error) return this.falloDeLaBase('guardar la encuesta', error);
+    this.encuestaRespondida.set(true);
+    return { ok: true };
   }
 
-  private async cambiarEstadoPedido(
-    estado: 'rechazado' | 'confirmado' | 'entregado' | 'recibido',
-    extra: Record<string, unknown> = {},
-  ): Promise<Resultado> {
-    if (!this.cliente) {
-      if (estado === 'rechazado') this.mock.rechazarPedido(String(extra['motivo_rechazo'] ?? ''));
-      else if (estado === 'confirmado') this.mock.confirmarPedido();
-      else if (estado === 'entregado') this.mock.marcarEntregado();
-      else this.mock.confirmarRecepcion();
-      return { ok: true };
+  /** Los resultados agregados para los gráficos (puntos 20 y 22). */
+  async cargarResultadosEncuesta(): Promise<void> {
+    if (!this.cliente) return;
+    const { data, error } = await this.cliente.rpc('resultados_encuesta');
+    if (error) {
+      this.registrarError('cargar los resultados de la encuesta', error);
+      return;
     }
-    if (!this.pedidoReal) return { ok: false, error: 'No hay pedido activo.' };
-    if (estado === 'recibido')
-      return this.actualizar('pedidos', this.pedidoReal.id, {
-        recibido_en: new Date().toISOString(),
-      });
-    return this.actualizar('pedidos', this.pedidoReal.id, { estado, ...extra });
+    this.resultadosEncuesta.set(data as unknown as ResultadosDeEncuesta);
   }
-  private async actualizarCuenta(estado: 'pagada' | 'confirmada'): Promise<Resultado> {
+
+  /** El cliente pide la cuenta; el mozo recibe el aviso (punto 21). */
+  async solicitarCuenta(): Promise<Resultado> {
+    if (!this.encuestaYCuentaHabilitadas())
+      return { ok: false, error: 'Confirmá que recibiste tu pedido para pedir la cuenta.' };
     if (!this.cliente) {
-      if (estado === 'pagada') this.mock.pagarCuenta();
-      else this.mock.confirmarPago();
-      return { ok: true };
+      return this.mock.solicitarCuenta()
+        ? { ok: true }
+        : { ok: false, error: 'Confirmá que recibiste tu pedido para pedir la cuenta.' };
     }
-    const c = this.cuentaReal;
-    return c
-      ? this.actualizar('cuentas', c.id, {
-          estado,
-          ...(estado === 'pagada'
-            ? { pagada_en: new Date().toISOString() }
-            : { confirmada_en: new Date().toISOString() }),
-        })
-      : { ok: false, error: 'No hay cuenta activa.' };
+    const { error } = await this.cliente.rpc('solicitar_cuenta');
+    if (error) return this.falloDeLaBase('pedir la cuenta', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
+  }
+
+  /**
+   * Con el contenido del QR de propina se arma la cuenta (punto 21). La
+   * base reconoce el QR y calcula los montos; acá no se confía en nada
+   * que venga del teléfono.
+   */
+  async generarCuenta(qr: string, porcentaje: number): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.generarCuenta(porcentaje)
+        ? { ok: true }
+        : { ok: false, error: 'Primero pedí la cuenta.' };
+    }
+    const { error } = await this.cliente.rpc('generar_cuenta', { p_qr: qr });
+    if (error) return this.falloDeLaBase('generar la cuenta', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
+  }
+
+  /** El pago simulado; avisa al mozo, al dueño y al supervisor (punto 21). */
+  async pagarCuenta(): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.pagarCuenta()
+        ? { ok: true }
+        : { ok: false, error: 'Escaneá un QR de propina antes de pagar.' };
+    }
+    const { error } = await this.cliente.rpc('pagar_cuenta');
+    if (error) return this.falloDeLaBase('pagar la cuenta', error);
+    await this.cargarPedidoYCuenta();
+    return { ok: true };
+  }
+
+  /** El mozo confirma el pago de UNA cuenta y la mesa queda libre (punto 22). */
+  async confirmarPago(cuentaId: string): Promise<Resultado> {
+    if (!this.cliente) {
+      return this.mock.confirmarPago(cuentaId)
+        ? { ok: true }
+        : { ok: false, error: 'Esa cuenta todavía no fue pagada.' };
+    }
+    const { error } = await this.cliente.rpc('confirmar_pago', { p_cuenta: cuentaId });
+    if (error) return this.falloDeLaBase('confirmar el pago', error);
+    await this.cargarCuentasEnCurso(this.sesion.usuario());
+    return { ok: true };
+  }
+
+  /**
+   * Lee los pedidos en curso de todas las mesas (puntos 16 a 18).
+   *
+   * Son dos idas al servidor y no una consulta anidada: los tipos de la
+   * base no declaran las relaciones de `pedidos`, y una consulta anidada
+   * sin tipos obligaría a usar `any`. Los ítems y las estadías se piden
+   * juntas, en paralelo.
+   */
+  private async cargarPedidosEnCurso(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario || !PERSONAL.includes(usuario.perfil)) return;
+    const pedidos = await this.cliente
+      .from('pedidos')
+      .select('*')
+      .in('estado', [
+        'pendiente_confirmacion',
+        'confirmado',
+        'en_preparacion',
+        'listo',
+        'entregado',
+      ])
+      .is('recibido_en', null)
+      .order('creado_en');
+    if (pedidos.error) {
+      this.registrarError('cargar pedidos en curso', pedidos.error);
+      return;
+    }
+    const filas = pedidos.data ?? [];
+    if (!filas.length) {
+      this.pedidosEnCursoReal.set([]);
+      return;
+    }
+    const [items, sesiones] = await Promise.all([
+      this.cliente
+        .from('pedido_items')
+        .select('*')
+        .in(
+          'pedido_id',
+          filas.map((p) => p.id),
+        ),
+      this.cliente
+        .from('sesiones_mesa')
+        .select('*')
+        .in('id', [...new Set(filas.map((p) => p.sesion_mesa_id))]),
+    ]);
+    if (items.error || sesiones.error) {
+      this.registrarError('cargar pedidos en curso', items.error ?? sesiones.error);
+      return;
+    }
+    if (this.sesion.usuario()?.id !== usuario.id) return;
+    const mesaDeSesion = new Map(
+      (sesiones.data ?? []).map((s) => [
+        s.id,
+        this.mesas().find((m) => m.id === s.mesa_id)?.numero ?? 0,
+      ]),
+    );
+    this.pedidosEnCursoReal.set(
+      filas.map((p) =>
+        this.aPedido(
+          p,
+          (items.data ?? []).filter((i) => i.pedido_id === p.id),
+          mesaDeSesion.get(p.sesion_mesa_id) ?? 0,
+        ),
+      ),
+    );
   }
   private async cargarPedidoYCuenta(): Promise<void> {
-    if (!this.cliente || !this.sesionActiva) return;
+    if (!this.cliente) return;
+    if (!this.sesionActiva) {
+      // La estadía ya se cerró: el mozo confirmó el pago (punto 22). La
+      // cuenta se vuelve a leer por su id para que el cliente vea la
+      // confirmación, aunque ya no tenga una mesa en curso.
+      if (this.cuentaReal) {
+        const c = await this.cliente
+          .from('cuentas')
+          .select('*')
+          .eq('id', this.cuentaReal.id)
+          .maybeSingle();
+        if (c.data) {
+          this.cuentaReal = c.data;
+          this.cuenta.set(this.aCuenta(c.data, this.cuenta()?.mesa ?? 0));
+        }
+      }
+      return;
+    }
     const q = await this.cliente
       .from('pedidos')
       .select('*')
       .eq('sesion_mesa_id', this.sesionActiva.id)
-      .order('creado_en', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('creado_en', { ascending: false });
     if (q.error) {
       this.registrarError('cargar pedido', q.error);
       return;
     }
-    this.pedidoReal = q.data;
-    if (q.data) {
-      const i = await this.cliente.from('pedido_items').select('*').eq('pedido_id', q.data.id);
-      this.pedidoActivo.set(this.aPedido(q.data, i.data ?? []));
+    const pedidos = q.data ?? [];
+    this.pedidoReal = pedidos[0] ?? null;
+    const items = pedidos.length
+      ? await this.cliente
+          .from('pedido_items')
+          .select('*')
+          .in(
+            'pedido_id',
+            pedidos.map((p) => p.id),
+          )
+      : null;
+    if (this.pedidoReal) {
+      this.pedidoActivo.set(
+        this.aPedido(
+          this.pedidoReal,
+          (items?.data ?? []).filter((i) => i.pedido_id === this.pedidoReal!.id),
+        ),
+      );
     }
+    // El detalle de la cuenta lleva todo lo que la mesa consumió: cada
+    // pedido que el mozo confirmó, no solo el último.
+    const facturables = new Set(
+      pedidos
+        .filter((p) =>
+          ['confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'].includes(p.estado),
+        )
+        .map((p) => p.id),
+    );
+    this.itemsDeLaEstadia.set(
+      (items?.data ?? [])
+        .filter((i) => facturables.has(i.pedido_id))
+        .map((i) => ({
+          productoId: i.producto_id,
+          nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto',
+          cantidad: i.cantidad,
+          precio: Number(i.precio_unitario),
+          sector: i.sector,
+          minutos: 0,
+        })),
+    );
     const c = await this.cliente
       .from('cuentas')
       .select('*')
       .eq('sesion_mesa_id', this.sesionActiva.id)
       .maybeSingle();
     this.cuentaReal = c.data;
-    if (!c.error)
-      this.cuenta.set(
-        c.data
-          ? {
-              subtotal: c.data.subtotal,
-              descuento: c.data.descuento_monto,
-              porcentajePropina: c.data.propina_pct ?? 0,
-              propina: c.data.propina_monto,
-              total: c.data.total,
-              estado: c.data.estado === 'pendiente' ? 'pendiente_pago' : c.data.estado,
-            }
-          : null,
+    if (!c.error) this.cuenta.set(c.data ? this.aCuenta(c.data, this.mesaVinculada() ?? 0) : null);
+  }
+
+  /**
+   * Las cuentas pedidas o pagadas de todas las mesas, para el mozo, el
+   * dueño y el supervisor (puntos 21 y 22).
+   */
+  private async cargarCuentasEnCurso(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario || !['mozo', 'dueno', 'supervisor'].includes(usuario.perfil))
+      return;
+    const cuentas = await this.cliente
+      .from('cuentas')
+      .select('*')
+      .in('estado', ['pendiente', 'pagada'])
+      .order('solicitada_en');
+    if (cuentas.error) {
+      this.registrarError('cargar las cuentas', cuentas.error);
+      return;
+    }
+    const filas = cuentas.data ?? [];
+    const sesiones = filas.length
+      ? await this.cliente
+          .from('sesiones_mesa')
+          .select('*')
+          .in(
+            'id',
+            filas.map((c) => c.sesion_mesa_id),
+          )
+      : null;
+    if (this.sesion.usuario()?.id !== usuario.id) return;
+    const mesaDe = (sesionId: string) =>
+      this.mesas().find((m) => m.id === sesiones?.data?.find((s) => s.id === sesionId)?.mesa_id)
+        ?.numero ?? 0;
+    this.cuentasEnCursoReal.set(filas.map((c) => this.aCuenta(c, mesaDe(c.sesion_mesa_id))));
+  }
+
+  /** Las preguntas activas y si el cliente ya respondió en esta estadía (punto 20). */
+  private async cargarEncuesta(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario) return;
+    const preguntas = await this.cliente
+      .from('preguntas_encuesta')
+      .select('*')
+      .eq('activa', true)
+      .order('orden');
+    if (preguntas.data) {
+      this.preguntas.set(
+        preguntas.data.map((p) => ({
+          id: p.id,
+          texto: p.texto,
+          tipo: p.tipo as TipoDeControl,
+          opciones: Array.isArray(p.opciones)
+            ? (p.opciones as Json[]).filter((o): o is string => typeof o === 'string')
+            : [],
+          minimo: p.minimo === null ? null : Number(p.minimo),
+          maximo: p.maximo === null ? null : Number(p.maximo),
+          requerida: p.requerida,
+        })),
       );
+    }
+    if (usuario.perfil === 'cliente_registrado') {
+      const { data } = await this.cliente.rpc('encuesta_respondida');
+      this.encuestaRespondida.set(data === true);
+    }
+  }
+
+  private aCuenta(c: Tablas<'cuentas'>, mesa: number): CuentaDemo {
+    return {
+      id: c.id,
+      mesa,
+      subtotal: Number(c.subtotal),
+      descuento: Number(c.descuento_monto),
+      porcentajeDescuento: Number(c.descuento_pct),
+      porcentajePropina: c.propina_pct === null ? null : Number(c.propina_pct),
+      propina: Number(c.propina_monto),
+      total: Number(c.total),
+      estado:
+        c.estado === 'pendiente'
+          ? c.nivel_propina === null
+            ? 'solicitada'
+            : 'pendiente_pago'
+          : c.estado,
+    };
+  }
+
+  /**
+   * Junta en una sola recarga los cambios que llegan en ráfaga.
+   *
+   * Marcar un sector listo actualiza cada ítem y, al final, el pedido:
+   * con tres ítems son cuatro eventos casi simultáneos. Sin esto serían
+   * cuatro recargas completas en paralelo, en cada teléfono conectado.
+   */
+  private programarCarga(): void {
+    if (this.cargaProgramada) clearTimeout(this.cargaProgramada);
+    this.cargaProgramada = setTimeout(() => {
+      this.cargaProgramada = null;
+      void this.cargar();
+    }, 250);
   }
   private suscribirRealtime(): void {
     if (!this.cliente || this.canal) return;
@@ -1253,15 +1651,14 @@ export class OperacionService {
         { event: '*', schema: 'public', table: 'mesas' },
         () => void this.cargar(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pedidos' },
-        () => void this.cargar(),
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () =>
+        this.programarCarga(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pedido_items' },
-        () => void this.cargar(),
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items' }, () =>
+        this.programarCarga(),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cuentas' }, () =>
+        this.programarCarga(),
       )
       .on(
         'postgres_changes',
@@ -1273,6 +1670,15 @@ export class OperacionService {
         { event: '*', schema: 'public', table: 'mensajes' },
         () => void this.cargar(),
       )
+      // La primera carga se hace ANTES de que lleguen los cambios: entre
+      // una cosa y otra pasa un segundo o más, y un pedido que entra en ese
+      // intervalo no generaría ningún evento (el mozo no lo vería hasta la
+      // próxima recarga). Ni siquiera alcanza con el «SUBSCRIBED» del
+      // canal: los cambios de la base arrancan recién con este aviso del
+      // sistema. Al recibirlo, y en cada reconexión, se relee todo una vez.
+      .on('system', {}, (aviso: { extension?: string; status?: string }) => {
+        if (aviso.extension === 'postgres_changes' && aviso.status === 'ok') this.programarCarga();
+      })
       .subscribe();
   }
   /**
@@ -1378,7 +1784,13 @@ export class OperacionService {
       fotoUrl: f.foto_url,
     };
   }
-  private aPedido(p: Pedido, items: Item[]): PedidoDemo {
+  private aPedido(
+    p: Pedido,
+    items: Item[],
+    mesa = this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0,
+  ): PedidoDemo {
+    const estadoDe = (sector: SectorProducto) =>
+      estadoDeSector(items.filter((i) => i.sector === sector).map((i) => i.estado));
     const estado =
       p.estado === 'entregado' && p.recibido_en !== null
         ? 'recibido'
@@ -1387,12 +1799,14 @@ export class OperacionService {
           : (p.estado as EstadoPedido);
     return {
       id: p.id,
-      mesa: this.mesas().find((m) => m.id === this.sesionActiva?.mesa_id)?.numero ?? 0,
+      mesa,
       cliente: 'Cliente de la mesa',
-      creadoEn: new Date(p.creado_en).toLocaleString('es-AR'),
+      creadoEn: formatearFechaHora(new Date(p.creado_en)),
+      momento: new Date(p.creado_en).getTime(),
       items: items.map((i) => ({
         productoId: i.producto_id,
         nombre: this.productosPorId.get(i.producto_id)?.nombre ?? 'Producto',
+        tipo: this.productosPorId.get(i.producto_id)?.tipo,
         cantidad: i.cantidad,
         precio: Number(i.precio_unitario),
         sector: i.sector,
@@ -1401,10 +1815,7 @@ export class OperacionService {
       estado,
       motivoRechazo: p.motivo_rechazo ?? '',
       descuentoPorJuego: this.descuento(),
-      sectoresListos: {
-        cocina: items.filter((i) => i.sector === 'cocina').every((i) => i.estado === 'listo'),
-        bar: items.filter((i) => i.sector === 'bar').every((i) => i.estado === 'listo'),
-      },
+      sectores: { cocina: estadoDe('cocina'), bar: estadoDe('bar') },
     };
   }
   private aMensaje(m: Tablas<'mensajes'>, id: string): MensajeDemo {
@@ -1437,11 +1848,12 @@ export class OperacionService {
       mesa: 0,
       cliente: 'Sin pedido activo',
       creadoEn: '',
+      momento: 0,
       items: [],
       estado: 'pendiente_confirmacion',
       motivoRechazo: '',
       descuentoPorJuego: 0,
-      sectoresListos: { cocina: false, bar: false },
+      sectores: { cocina: 'sin_items', bar: 'sin_items' },
     };
   }
   private validar(error: unknown, recurso: string): void {
@@ -1497,6 +1909,22 @@ export class OperacionService {
       return { ok: false, error: 'No tenés permisos para realizar esta operación.' };
     }
     return { ok: true };
+  }
+  /**
+   * Como `fallo`, pero muestra tal cual los rechazos de las reglas de la
+   * base. Los triggers y funciones de los puntos 16 a 19 los escriben en
+   * español y dicen qué pasó («El pedido no está en preparación.»), que
+   * sirve mucho más que el genérico «revisá la conexión».
+   */
+  private falloDeLaBase(accion: string, error: { code?: string; message: string }): Resultado {
+    if (
+      (error.code === '42501' || error.code === '22023') &&
+      !error.message.toLowerCase().includes('row-level')
+    ) {
+      this.registrarError(accion, error);
+      return { ok: false, error: error.message };
+    }
+    return this.fallo(accion, error);
   }
   private fallo(accion: string, error: unknown): Resultado {
     this.registrarError(accion, error);

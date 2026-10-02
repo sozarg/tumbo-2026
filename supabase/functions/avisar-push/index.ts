@@ -1,25 +1,41 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.112.4';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.112.4';
 import {
   leerCuentaDeServicio,
   mandarAviso,
   permisoDeGoogle,
   type Aviso,
 } from '../_shared/push.ts';
+import {
+  DESTINATARIOS_DE_CUENTA,
+  ESTADO_DE_CUENTA,
+  GERENCIA,
+  MOZOS,
+  avisoDeClientePendiente,
+  avisoDeCuenta,
+  avisoDePedidoListo,
+  clasificar,
+  type CuerpoDelWebhook,
+} from './reglas.ts';
 
 /**
  * Las notificaciones automáticas que pide el enunciado.
  *
- * La primera es la del punto 6: «Verificar que el registro se visualice
- * en el listado de clientes pendientes de aprobación. (push
- * notification)». Cuando alguien se registra, al dueño y al supervisor
- * les tiene que sonar el teléfono.
+ * - Punto 6: «Verificar que el registro se visualice en el listado de
+ *   clientes pendientes de aprobación. (push notification)». Cuando
+ *   alguien se registra, al dueño y al supervisor les tiene que sonar
+ *   el teléfono.
+ * - Punto 18: cuando cocina y bar terminaron su parte, el mozo recibe
+ *   el aviso de que el pedido está completo para entregarlo.
+ * - Puntos 21 y 22: la cuenta pedida (al mozo), pagada (al mozo, al
+ *   dueño y al supervisor) y confirmada (al dueño y al supervisor).
  *
  * ───────────────────────────────────────────────────────────────────
  * QUIÉN LA LLAMA
  *
- * La base, igual que la del correo: un trigger sobre `usuarios`, esta
- * vez en el INSERT. Y por el mismo motivo — que el aviso sea
- * consecuencia del hecho y no una segunda acción que puede no ocurrir.
+ * La base, igual que la del correo: un trigger sobre `usuarios` en el
+ * INSERT y otro sobre `pedidos` cuando pasa a «listo». Y por el mismo
+ * motivo: que el aviso sea consecuencia del hecho y no una segunda
+ * acción que puede no ocurrir.
  *
  * ───────────────────────────────────────────────────────────────────
  * POR QUÉ NO LE CREE AL PAYLOAD
@@ -30,21 +46,6 @@ import {
  */
 
 const FIRMA = 'x-tumbo-firma';
-
-/** Los que deciden sobre los clientes, según el punto 5. */
-const GERENCIA = ['dueno', 'supervisor'];
-
-interface FilaUsuario {
-  id?: string;
-  perfil?: string;
-  estado?: string;
-}
-
-interface CuerpoDelWebhook {
-  type?: string;
-  table?: string;
-  record?: FilaUsuario;
-}
 
 const json = (datos: unknown, status = 200) =>
   new Response(JSON.stringify(datos), {
@@ -66,13 +67,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: 'Cuerpo ilegible.' }, 400);
   }
 
-  const fila = cuerpo.record;
-  if (cuerpo.type !== 'INSERT' || cuerpo.table !== 'usuarios' || !fila?.id) {
-    return json({ ignorado: 'no es un alta de usuarios' });
-  }
-  if (fila.perfil !== 'cliente_registrado' || fila.estado !== 'pendiente') {
-    return json({ ignorado: 'no es un cliente pendiente' });
-  }
+  const evento = clasificar(cuerpo);
+  if (evento.tipo === 'ignorado') return json({ ignorado: evento.motivo });
 
   const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -80,26 +76,86 @@ Deno.serve(async (req: Request): Promise<Response> => {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const nuevo = await admin
-    .from('usuarios')
-    .select('nombres,apellidos,perfil,estado')
-    .eq('id', fila.id)
-    .single();
+  if (evento.tipo === 'cliente_pendiente') {
+    const nuevo = await admin
+      .from('usuarios')
+      .select('nombres,apellidos,perfil,estado')
+      .eq('id', evento.id)
+      .single();
 
-  if (nuevo.error || !nuevo.data) return json({ error: 'No se encontró al cliente.' }, 404);
-  if (nuevo.data.estado !== 'pendiente') {
-    return json({ ignorado: 'el cliente ya fue resuelto' });
+    if (nuevo.error || !nuevo.data) return json({ error: 'No se encontró al cliente.' }, 404);
+    if (nuevo.data.estado !== 'pendiente') {
+      return json({ ignorado: 'el cliente ya fue resuelto' });
+    }
+    return avisarAPerfiles(
+      admin,
+      GERENCIA,
+      avisoDeClientePendiente(nuevo.data.nombres, nuevo.data.apellidos),
+    );
+  }
+
+  if (evento.tipo === 'cuenta') {
+    const cuenta = await admin
+      .from('cuentas')
+      .select('estado,total,sesion_mesa_id')
+      .eq('id', evento.id)
+      .single();
+    if (cuenta.error || !cuenta.data) return json({ error: 'No se encontró la cuenta.' }, 404);
+    if (cuenta.data.estado !== ESTADO_DE_CUENTA[evento.momento]) {
+      return json({ ignorado: 'la cuenta ya cambió de estado' });
+    }
+    const mesa = await numeroDeMesa(admin, cuenta.data.sesion_mesa_id);
+    return avisarAPerfiles(
+      admin,
+      DESTINATARIOS_DE_CUENTA[evento.momento],
+      avisoDeCuenta(evento.momento, mesa, Number(cuenta.data.total)),
+    );
   }
 
   /*
-   * Los destinatarios salen de cruzar dos tablas: quiénes son gerencia
-   * y qué teléfonos tienen registrados. Una persona puede tener varios
-   * —el enunciado se demuestra con cuatro dispositivos— y hay que
-   * avisarle a todos.
+   * Punto 18. El estado se vuelve a leer: si entre el trigger y esta
+   * llamada el mozo ya lo entregó, el aviso no tiene sentido.
    */
-  const gerencia = await admin.from('usuarios').select('id').in('perfil', GERENCIA).eq('estado', 'aprobado');
-  if (gerencia.error || !gerencia.data?.length) {
-    return json({ ignorado: 'no hay gerencia aprobada a quien avisar' });
+  const pedido = await admin
+    .from('pedidos')
+    .select('estado,sesion_mesa_id')
+    .eq('id', evento.id)
+    .single();
+  if (pedido.error || !pedido.data) return json({ error: 'No se encontró el pedido.' }, 404);
+  if (pedido.data.estado !== 'listo') return json({ ignorado: 'el pedido ya no está listo' });
+
+  const mesa = await numeroDeMesa(admin, pedido.data.sesion_mesa_id);
+  return avisarAPerfiles(admin, MOZOS, avisoDePedidoListo(mesa));
+});
+
+/** El número de la mesa de una estadía, para que el aviso diga adónde ir. */
+async function numeroDeMesa(admin: SupabaseClient, sesionId: string): Promise<number | null> {
+  const sesion = await admin.from('sesiones_mesa').select('mesa_id').eq('id', sesionId).single();
+  if (!sesion.data) return null;
+  const mesa = await admin.from('mesas').select('numero').eq('id', sesion.data.mesa_id).single();
+  return mesa.data?.numero ?? null;
+}
+
+/**
+ * Manda un aviso a todos los teléfonos de las personas con esos perfiles.
+ *
+ * Los destinatarios salen de cruzar dos tablas: quiénes tienen el perfil
+ * y qué teléfonos tienen registrados. Una persona puede tener varios
+ * —el enunciado se demuestra con cuatro dispositivos— y hay que avisarle
+ * a todos.
+ */
+async function avisarAPerfiles(
+  admin: SupabaseClient,
+  perfiles: readonly string[],
+  aviso: Aviso,
+): Promise<Response> {
+  const personas = await admin
+    .from('usuarios')
+    .select('id')
+    .in('perfil', [...perfiles])
+    .eq('estado', 'aprobado');
+  if (personas.error || !personas.data?.length) {
+    return json({ ignorado: 'no hay personas aprobadas a quien avisar' });
   }
 
   const dispositivos = await admin
@@ -107,22 +163,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .select('token')
     .in(
       'usuario_id',
-      gerencia.data.map((u) => u.id),
+      personas.data.map((u) => u.id),
     );
 
   if (dispositivos.error) return json({ error: 'No se pudieron leer los dispositivos.' }, 500);
   if (!dispositivos.data?.length) {
-    // No es una falla: simplemente todavía nadie de gerencia abrió la
+    // No es una falla: simplemente todavía nadie con ese perfil abrió la
     // aplicación en un teléfono. Decir que falló llenaría los registros.
-    return json({ ignorado: 'gerencia no tiene dispositivos registrados' });
+    return json({ ignorado: 'los destinatarios no tienen dispositivos registrados' });
   }
-
-  const nombre = `${nuevo.data.nombres ?? ''} ${nuevo.data.apellidos ?? ''}`.trim() || 'Un cliente';
-  const aviso: Aviso = {
-    titulo: 'Nuevo cliente para aprobar',
-    cuerpo: `${nombre} se registró y espera tu aprobación.`,
-    seccion: 'clientes',
-  };
 
   let permiso: string;
   let proyecto: string;
@@ -143,7 +192,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
    * Los tokens muertos se borran acá y no en otro lado: este es el
    * único momento en que la base se entera de que un teléfono dejó de
    * existir. Sin esto, la tabla crece con filas que fallan para
-   * siempre y cada alta se vuelve más lenta.
+   * siempre y cada aviso se vuelve más lento.
    */
   const caducos = envios.filter((e) => !e.ok && e.caduco).map((e) => e.token);
   if (caducos.length) {
@@ -160,4 +209,4 @@ Deno.serve(async (req: Request): Promise<Response> => {
     fallados: fallados.length,
     caducosBorrados: caducos.length,
   });
-});
+}

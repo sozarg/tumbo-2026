@@ -46,7 +46,16 @@ export type EstadoPedido =
   | 'listo'
   | 'entregado'
   | 'recibido';
-export type EstadoCuenta = 'borrador' | 'pendiente_pago' | 'pagada' | 'confirmada';
+/**
+ * Los momentos de la cuenta (puntos 21 y 22).
+ *
+ * - `solicitada`: el cliente la pidió y el mozo está avisado; falta leer
+ *   el QR de propina.
+ * - `pendiente_pago`: ya tiene la propina y el detalle; falta pagar.
+ * - `pagada`: el cliente pagó y espera que el mozo confirme.
+ * - `confirmada`: el mozo confirmó y la mesa quedó libre.
+ */
+export type EstadoCuenta = 'solicitada' | 'pendiente_pago' | 'pagada' | 'confirmada';
 
 export interface ProductoDemo {
   readonly id: string;
@@ -94,6 +103,19 @@ export interface PersonaEsperaDemo {
   readonly mesaAsignada?: number;
 }
 
+/**
+ * El tipo de un ítem ya pedido. A diferencia de `TipoProducto` incluye
+ * el postre: la base lo tiene y el punto 19 pide que el mozo entregue
+ * «comidas, bebidas y postres», así que hay que poder separarlos.
+ */
+export type TipoDeItem = 'plato' | 'bebida' | 'postre';
+
+export const ETIQUETA_DE_TIPO_ITEM: Readonly<Record<TipoDeItem, string>> = {
+  plato: 'Comidas',
+  bebida: 'Bebidas',
+  postre: 'Postres',
+};
+
 export interface PedidoItemDemo {
   readonly productoId: string;
   readonly nombre: string;
@@ -101,18 +123,36 @@ export interface PedidoItemDemo {
   readonly precio: number;
   readonly sector: SectorProducto;
   readonly minutos: number;
+  /** Opcional porque el carrito no lo necesita; los pedidos cargados lo traen. */
+  readonly tipo?: TipoDeItem;
 }
+
+/**
+ * En qué anda cada sector con su parte de un pedido (puntos 16 a 18).
+ *
+ * `sin_items` existe porque no todo pedido pasa por los dos sectores:
+ * uno de solo bebidas no espera a la cocina, y la pantalla tiene que
+ * poder decirlo en vez de mostrar «cocina pendiente» para siempre.
+ */
+export type EstadoSector = 'sin_items' | 'pendiente' | 'en_preparacion' | 'listo';
 
 export interface PedidoDemo {
   readonly id: string;
   readonly mesa: number;
   readonly cliente: string;
+  /** Fecha con hora y minutos, ya lista para mostrar: «26/08/2026 20:18». */
   readonly creadoEn: string;
+  /**
+   * El mismo momento en milisegundos, para ordenar. Cocina y bar
+   * atienden primero al pedido más viejo, y ordenar por el texto de
+   * arriba pondría el 02/09 antes que el 26/08.
+   */
+  readonly momento: number;
   readonly items: readonly PedidoItemDemo[];
   readonly estado: EstadoPedido;
   readonly motivoRechazo: string;
   readonly descuentoPorJuego: number;
-  readonly sectoresListos: Readonly<Record<SectorProducto, boolean>>;
+  readonly sectores: Readonly<Record<SectorProducto, EstadoSector>>;
 }
 
 export interface MensajeDemo {
@@ -124,9 +164,14 @@ export interface MensajeDemo {
 }
 
 export interface CuentaDemo {
+  readonly id: string;
+  /** El número de mesa; lo usa el mozo para saber a quién cobrar. */
+  readonly mesa: number;
   readonly subtotal: number;
   readonly descuento: number;
-  readonly porcentajePropina: number;
+  readonly porcentajeDescuento: number;
+  /** `null` mientras no se leyó el QR de propina. */
+  readonly porcentajePropina: number | null;
   readonly propina: number;
   readonly total: number;
   readonly estado: EstadoCuenta;

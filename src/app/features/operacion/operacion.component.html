@@ -85,7 +85,8 @@
         <tumbo-menu-operacion
           [accesos]="accesos()"
           [actividad]="actividad()"
-          [pedido]="demo.pedidoActivo()"
+          [pedidos]="demo.pedidosEnCurso()"
+          [bloqueadas]="seccionesBloqueadas()"
           [perfil]="usuarioActual.perfil"
           (seleccionar)="abrir($event)"
         />
@@ -1324,53 +1325,13 @@
             </section>
           }
           @if (seccion() === 'cocina' || seccion() === 'barra') {
-            <section class="section-block">
-              <div class="section-heading">
-                <div>
-                  <h2>Sector {{ seccion() === 'cocina' ? 'cocina' : 'bar' }}</h2>
-                </div>
-                <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
-              </div>
-              <ion-card class="sector-card">
-                <ion-card-header
-                  ><ion-card-title>Mesa {{ demo.pedidoActivo().mesa }}</ion-card-title
-                  ><ion-card-subtitle
-                    >{{ demo.pedidoActivo().creadoEn }} ·
-                    {{ demo.pedidoActivo().cliente }}</ion-card-subtitle
-                  ></ion-card-header
-                >
-                <ion-card-content>
-                  <ul class="sector-items">
-                    @for (item of itemVisible(); track item.productoId) {
-                      @if (
-                        (seccion() === 'cocina' && item.sector === 'cocina') ||
-                        (seccion() === 'barra' && item.sector === 'bar')
-                      ) {
-                        <li>
-                          <strong>{{ item.cantidad }} ×</strong><span>{{ item.nombre }}</span
-                          ><small>{{ item.minutos }} min</small>
-                        </li>
-                      }
-                    }
-                  </ul>
-                  <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
-                  <tumbo-boton-confirmacion
-                    buttonClass="primary-action"
-                    expand="block"
-                    [disabled]="
-                      demo.pedidoActivo().estado !== 'confirmado' &&
-                      demo.pedidoActivo().estado !== 'en_preparacion'
-                    "
-                    title="Confirmar sector listo"
-                    message="Vas a marcar este sector como listo y avisar que sus productos están preparados. ¿Querés continuar?"
-                    (confirmado)="marcarSectorListo(seccion() === 'cocina' ? 'cocina' : 'bar')"
-                  >
-                    <ion-icon aria-hidden="true" slot="start" name="checkmark-done-outline" />Marcar
-                    sector listo
-                  </tumbo-boton-confirmacion>
-                </ion-card-content>
-              </ion-card>
-            </section>
+            <tumbo-sector-pedidos
+              [sector]="sectorActual()"
+              [mesas]="mesasDelSector()"
+              [procesando]="procesandoSector()"
+              (empezar)="empezarSector($event)"
+              (listo)="marcarSectorListo($event)"
+            />
           }
           @if (seccion() === 'pedidos') {
             @if (perfilEsCliente()) {
@@ -1411,6 +1372,16 @@
                       <span>Cocina y bar</span>
                       <span>Entrega</span>
                     </div>
+                    @if (sectoresDelCliente().length) {
+                      <ul class="sector-progress" aria-label="Avance por sector">
+                        @for (parte of sectoresDelCliente(); track parte.sector) {
+                          <li [class.sector-progress--listo]="parte.estado === 'listo'">
+                            <span>{{ parte.nombre }}</span>
+                            <strong>{{ etiquetaSector[parte.estado] }}</strong>
+                          </li>
+                        }
+                      </ul>
+                    }
                     <p class="order-summary-card__date">
                       <ion-icon aria-hidden="true" name="time-outline" />
                       {{ demo.pedidoActivo().creadoEn }}
@@ -1433,66 +1404,13 @@
               </tumbo-boton-confirmacion>
             } @else {
               <section class="section-block">
-                <div class="section-heading">
-                  <div><h2>Pedidos y atención</h2></div>
-                  <span class="status-pill">{{ estadoPedido(demo.pedidoActivo().estado) }}</span>
-                </div>
-                <ion-card class="staff-order-card">
-                  <ion-card-content>
-                    <div class="staff-order-card__header">
-                      <div>
-                        <span>Mesa {{ demo.pedidoActivo().mesa }}</span>
-                        <h2>{{ demo.pedidoActivo().cliente }}</h2>
-                      </div>
-                      <ion-icon aria-hidden="true" name="restaurant-outline" />
-                    </div>
-                    <ul class="compact-list">
-                      @for (item of itemVisible(); track item.productoId) {
-                        <li>
-                          <span>{{ item.cantidad }} × {{ item.nombre }}</span
-                          ><strong>{{ formatearPrecio(item.precio * item.cantidad) }}</strong>
-                        </li>
-                      }
-                    </ul>
-                    <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
-                    <div class="button-row">
-                      <tumbo-boton-confirmacion
-                        buttonClass="reject-button"
-                        fill="outline"
-                        [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'"
-                        title="Confirmar rechazo del pedido"
-                        message="Vas a rechazar el pedido. ¿Querés continuar?"
-                        (confirmado)="rechazarPedido()"
-                        >Rechazar pedido</tumbo-boton-confirmacion
-                      >
-                      <tumbo-boton-confirmacion
-                        buttonClass="approve-button"
-                        [disabled]="demo.pedidoActivo().estado !== 'pendiente_confirmacion'"
-                        title="Confirmar pedido"
-                        message="Vas a confirmar el pedido y enviarlo a cocina y bar. ¿Querés continuar?"
-                        (confirmado)="confirmarPedido()"
-                        >Confirmar pedido</tumbo-boton-confirmacion
-                      >
-                    </div>
-                    <div class="button-row">
-                      <tumbo-boton-confirmacion
-                        fill="outline"
-                        [disabled]="demo.pedidoActivo().estado !== 'listo'"
-                        title="Confirmar entrega"
-                        message="Vas a marcar el pedido como entregado. ¿Querés continuar?"
-                        (confirmado)="entregarPedido()"
-                        >Marcar entregado</tumbo-boton-confirmacion
-                      >
-                      <tumbo-boton-confirmacion
-                        [disabled]="demo.cuenta()?.estado !== 'pagada'"
-                        title="Confirmar pago"
-                        message="Vas a confirmar el pago y liberar la mesa. ¿Querés continuar?"
-                        (confirmado)="confirmarPago()"
-                        >Confirmar pago</tumbo-boton-confirmacion
-                      >
-                    </div>
-                  </ion-card-content>
-                </ion-card>
+                <tumbo-avance-pedidos
+                  [pedidosEnCurso]="demo.pedidosEnCurso()"
+                  [procesando]="procesandoSector()"
+                  (confirmar)="confirmarPedido($event)"
+                  (rechazar)="rechazarPedido($event)"
+                  (entregar)="entregarPedido($event)"
+                />
               </section>
             }
           }
@@ -1525,6 +1443,10 @@
               <div class="anonymous-form">
                 @if (ingresoEscaneado()) {
                   <p class="form-hint">QR validado. Completá tus datos para anotarte.</p>
+                  <ion-button fill="outline" (click)="abrir('reportes')">
+                    <ion-icon name="bar-chart-outline" slot="start" aria-hidden="true" />
+                    Ver resultados de encuestas
+                  </ion-button>
                 }
                 <ion-input
                   label="Nombre para la lista de espera"
@@ -1678,6 +1600,14 @@
                     </p>
                   </div>
                 </div>
+              } @else if (perfilEsCliente() && !demo.juegosHabilitados()) {
+                <div class="locked-card" role="status">
+                  <ion-icon aria-hidden="true" name="time-outline" />
+                  <div>
+                    <strong>Los juegos se habilitan con tu pedido</strong>
+                    <p>Vas a poder jugar apenas el mozo confirme tu pedido.</p>
+                  </div>
+                </div>
               } @else {
                 <div class="games-grid">
                   @if (pagina() === 0) {
@@ -1738,102 +1668,39 @@
                   demo.encuestaRespondida() ? 'Respondida' : 'Pendiente'
                 }}</span>
               </div>
-              <form class="survey-card" [formGroup]="encuestaForm" (ngSubmit)="registrarEncuesta()">
-                <div class="survey-question">
-                  <strong>¿Cómo fue tu experiencia?</strong
-                  ><ion-range formControlName="satisfaccion" min="1" max="5" pin="true"
-                    ><ion-label slot="start">1</ion-label
-                    ><ion-label slot="end">5</ion-label></ion-range
-                  >
+              @if (perfilEsCliente() && !demo.encuestaYCuentaHabilitadas()) {
+                <div class="locked-card" role="status">
+                  <ion-icon aria-hidden="true" name="time-outline" />
+                  <div>
+                    <strong>La encuesta se habilita con tu pedido</strong>
+                    <p>Confirmá que recibiste tu pedido y vas a poder contarnos cómo te fue.</p>
+                  </div>
                 </div>
-                <ion-textarea
-                  label="Contanos un poco más"
-                  label-placement="stacked"
-                  formControlName="comentario"
-                  fill="outline"
-                  auto-grow="true"
-                  placeholder="Tu opinión nos ayuda a mejorar."
-                />
-                <ion-item lines="none"
-                  ><ion-label>¿Recomendarías Tumbito?</ion-label
-                  ><ion-toggle
-                    aria-label="¿Recomendarías Tumbito?"
-                    slot="end"
-                    formControlName="recomendaria"
-                /></ion-item>
-                <tumbo-boton-confirmacion
-                  buttonClass="primary-action"
-                  [disabled]="demo.encuestaRespondida()"
-                  title="Confirmar envío de encuesta"
-                  message="Vas a guardar tus respuestas de satisfacción. ¿Querés continuar?"
-                  (confirmado)="registrarEncuesta()"
-                  ><ion-icon aria-hidden="true" slot="start" name="document-text-outline" />Guardar
-                  encuesta</tumbo-boton-confirmacion
-                >
-              </form>
+              } @else {
+                @if (demo.encuestaRespondida()) {
+                  <div class="locked-card" role="status">
+                    <ion-icon aria-hidden="true" name="checkmark-circle-outline" />
+                    <div>
+                      <strong>¡Gracias por responder!</strong>
+                      <p>
+                        Ya respondiste la encuesta de esta estadía. Los resultados están en
+                        Reportes.
+                      </p>
+                    </div>
+                  </div>
+                } @else {
+                  <tumbo-encuesta-form
+                    [preguntas]="demo.preguntas()"
+                    [enviando]="enviandoEncuesta()"
+                    (enviar)="responderEncuesta($event)"
+                  />
+                }
+              }
             </section>
           }
 
           @if (seccion() === 'reportes') {
-            <section class="section-block">
-              <div class="section-heading">
-                <div>
-                  <p class="section-kicker">Resultados de cuatro semanas</p>
-                  <h2>Gráficos, una pantalla por vez</h2>
-                </div>
-              </div>
-              <div class="chart-tabs">
-                <button
-                  [class.chart-tab--active]="grafico() === 'torta'"
-                  (click)="grafico.set('torta')"
-                >
-                  Torta
-                </button>
-                <button
-                  [class.chart-tab--active]="grafico() === 'barras'"
-                  (click)="grafico.set('barras')"
-                >
-                  Barras
-                </button>
-                <button
-                  [class.chart-tab--active]="grafico() === 'linea'"
-                  (click)="grafico.set('linea')"
-                >
-                  Línea
-                </button>
-              </div>
-              @if (grafico() === 'torta') {
-                <div class="chart-card chart-card--pie">
-                  <div class="pie-chart"></div>
-                  <div>
-                    <strong>Satisfacción general</strong>
-                    <p>Excelente 62% · Muy buena 25% · Buena 13%</p>
-                    <span>Datos simulados de semanas 1 a 4</span>
-                  </div>
-                </div>
-              } @else if (grafico() === 'barras') {
-                <div class="chart-card">
-                  <div class="bar-chart">
-                    <span style="--height: 72%"></span><span style="--height: 54%"></span
-                    ><span style="--height: 86%"></span><span style="--height: 64%"></span>
-                  </div>
-                  <div>
-                    <strong>Platos más pedidos</strong>
-                    <p>Hamburguesa · Ravioles · Ensalada · Tacos</p>
-                    <span>Datos simulados de semanas 1 a 4</span>
-                  </div>
-                </div>
-              } @else {
-                <div class="chart-card">
-                  <div class="line-chart"><i></i><i></i><i></i><i></i><i></i></div>
-                  <div>
-                    <strong>Consumo por semana</strong>
-                    <p>La tendencia se mantiene en crecimiento.</p>
-                    <span>Datos simulados de semanas 1 a 4</span>
-                  </div>
-                </div>
-              }
-            </section>
+            <tumbo-resultados-encuesta [resultados]="demo.resultadosEncuesta()" />
           }
 
           @if (seccion() === 'consulta') {
@@ -1866,139 +1733,23 @@
 
           @if (seccion() === 'cuenta') {
             @if (perfilEsCliente()) {
-              @if (!demo.cuenta()) {
-                <section class="section-block">
-                  <div class="section-heading">
-                    <div><h2>Cuenta y propina</h2></div>
-                    <ion-icon aria-hidden="true" class="section-icon" name="wallet-outline" />
-                  </div>
-                  <div class="tip-card">
-                    <div>
-                      <h2>Elegí el QR de propina</h2>
-                      <p>La cuenta se habilita después de seleccionar uno de los cinco niveles.</p>
-                    </div>
-                    <div class="tip-grid">
-                      @for (propina of propinas; track propina) {
-                        <button
-                          class="tip-option"
-                          [class.tip-option--selected]="qrSeleccionado() === propina"
-                          (click)="seleccionarQr(propina)"
-                        >
-                          @if (qrImagen('propina-' + propina); as qr) {
-                            <img class="qr-art" [src]="qr" alt="" />
-                          } @else {
-                            <span class="qr-art" aria-hidden="true"></span>
-                          }
-                          <strong>{{ propina }}%</strong
-                          ><small>{{ propina === 0 ? 'Sin propina' : 'Gracias' }}</small>
-                        </button>
-                      }
-                    </div>
-                    <tumbo-boton-confirmacion
-                      buttonClass="primary-action"
-                      expand="block"
-                      [disabled]="demo.porcentajePropina() === null"
-                      title="Confirmar generación de cuenta"
-                      message="Vas a generar la cuenta con el consumo y la propina seleccionada. ¿Querés continuar?"
-                      (confirmado)="generarCuenta()"
-                      >Generar cuenta</tumbo-boton-confirmacion
-                    >
-                  </div>
-                </section>
-              }
-
-              @if (demo.cuenta(); as cuenta) {
-                <section class="section-block">
-                  <div class="bill-card">
-                    <div class="bill-card__header">
-                      <div>
-                        <span>Detalle de consumo</span>
-                        <h2>Total Tumbito</h2>
-                      </div>
-                      <strong>{{ formatearPrecio(cuenta.total) }}</strong>
-                    </div>
-                    <ul class="bill-lines">
-                      @for (item of itemVisible(); track item.productoId) {
-                        <li>
-                          <span
-                            >{{ item.cantidad }} × {{ item.nombre
-                            }}<small>{{ formatearPrecio(item.precio) }} unidad</small></span
-                          ><strong>{{ formatearPrecio(item.precio * item.cantidad) }}</strong>
-                        </li>
-                      }
-                      @if (cuenta.descuento > 0) {
-                        <li class="bill-line--discount">
-                          <span
-                            >Descuento de juego<small
-                              >{{ demo.pedidoActivo().descuentoPorJuego }}% · primer intento</small
-                            ></span
-                          ><strong>-{{ formatearPrecio(cuenta.descuento) }}</strong>
-                        </li>
-                      }
-                      <li>
-                        <span
-                          >Propina<small
-                            >{{ cuenta.porcentajePropina }}% de satisfacción</small
-                          ></span
-                        ><strong>{{ formatearPrecio(cuenta.propina) }}</strong>
-                      </li>
-                    </ul>
-                    <tumbo-paginador [total]="itemsPedido().length" [(pagina)]="paginaItems" />
-                    <div class="bill-total">
-                      <span>Total a abonar</span
-                      ><strong>{{ formatearPrecio(cuenta.total) }}</strong>
-                    </div>
-                    @if (cuenta.estado === 'pendiente_pago') {
-                      <tumbo-boton-confirmacion
-                        buttonClass="primary-action"
-                        expand="block"
-                        title="Confirmar pago"
-                        message="Vas a registrar el pago simulado de esta cuenta. ¿Querés continuar?"
-                        (confirmado)="pagarCuenta()"
-                        ><ion-icon aria-hidden="true" slot="start" name="wallet-outline" />Pagar de
-                        forma simulada</tumbo-boton-confirmacion
-                      >
-                    } @else if (cuenta.estado === 'pagada') {
-                      <div class="payment-waiting">
-                        <tumbo-espera etiqueta="Esperando la confirmación del mozo" /><span
-                          >Pago realizado. Esperando confirmación del mozo.</span
-                        >
-                      </div>
-                    } @else {
-                      <div class="payment-success">
-                        <ion-icon aria-hidden="true" name="checkmark-done-outline" /><span
-                          >Pago confirmado. La mesa quedó libre.</span
-                        >
-                      </div>
-                    }
-                  </div>
-                </section>
-              }
+              <tumbo-cuenta-cliente
+                [cuenta]="demo.cuenta()"
+                [lineas]="demo.detalleCuenta()"
+                [habilitada]="demo.encuestaYCuentaHabilitadas()"
+                [procesando]="procesandoCuenta()"
+                [verificacion]="verificacionMesa()"
+                (pedir)="pedirCuenta()"
+                (escanearPropina)="escanearPropina()"
+                (pagar)="pagarCuenta()"
+                (verificarMesa)="verificarMesa()"
+              />
             } @else {
-              <section class="section-block">
-                <div class="section-heading">
-                  <div><h2>Confirmación del pago</h2></div>
-                </div>
-                <div class="payment-staff-card">
-                  <ion-icon aria-hidden="true" name="wallet-outline" />
-                  <div>
-                    <strong>{{
-                      demo.cuenta()?.estado === 'pagada'
-                        ? 'Pago recibido'
-                        : 'Esperando el pago del cliente'
-                    }}</strong>
-                    <p>El mozo confirma el pago y la mesa vuelve a quedar disponible.</p>
-                  </div>
-                  <tumbo-boton-confirmacion
-                    buttonClass="primary-action"
-                    [disabled]="demo.cuenta()?.estado !== 'pagada'"
-                    title="Confirmar pago y liberar mesa"
-                    message="Vas a confirmar el pago y liberar la mesa. ¿Querés continuar?"
-                    (confirmado)="confirmarPago()"
-                    >Confirmar y liberar mesa</tumbo-boton-confirmacion
-                  >
-                </div>
-              </section>
+              <tumbo-cobros
+                [cuentas]="demo.cuentasEnCurso()"
+                [procesando]="procesandoSector()"
+                (confirmar)="confirmarPago($event)"
+              />
             }
           }
         </div>

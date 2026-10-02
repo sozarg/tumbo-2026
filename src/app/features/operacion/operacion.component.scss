@@ -114,6 +114,31 @@
   font-size: 0.62rem;
 }
 
+/* Puntos 16 y 17: el cliente ve en qué anda cada sector con su pedido. */
+.sector-progress {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sector-progress li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  background: rgb(0 53 146 / 7%);
+  color: #003592;
+  font-size: 0.8rem;
+}
+
+.sector-progress li.sector-progress--listo {
+  background: #006ae7;
+  color: #f8fbfd;
+}
+
 .order-summary-card__date {
   display: flex;
   align-items: center;

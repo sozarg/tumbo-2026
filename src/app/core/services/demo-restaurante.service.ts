@@ -8,6 +8,7 @@ import {
   ClientePendienteDemo,
   CuentaDemo,
   EstadoPedido,
+  EstadoSector,
   MensajeDemo,
   MesaDemo,
   NotificacionDemo,
@@ -18,6 +19,128 @@ import {
   SectorProducto,
   TipoMesa,
 } from '../models/demo-restaurante';
+import { PreguntaDeEncuesta, RespuestasDeEncuesta, ResultadosDeEncuesta } from '../models/encuesta';
+import { errorDeRespuesta } from './cuenta-y-encuesta';
+import {
+  formatearFechaHora,
+  pedidoCompleto,
+  pedidosEnSeguimiento,
+  sectoresSinEmpezar,
+} from './pedidos-por-sector';
+
+/** La encuesta de la base, para el modo demostración (punto 20). */
+const PREGUNTAS_DE_DEMOSTRACION: PreguntaDeEncuesta[] = [
+  {
+    id: 'pregunta-1',
+    texto: '¿Cómo calificarías la atención que recibiste?',
+    tipo: 'estrellas',
+    opciones: [],
+    minimo: 1,
+    maximo: 5,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-2',
+    texto: '¿Qué te pareció el tiempo de espera?',
+    tipo: 'radio',
+    opciones: ['Mucho más rápido de lo esperado', 'Rápido', 'Razonable', 'Lento', 'Muy lento'],
+    minimo: null,
+    maximo: null,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-3',
+    texto: '¿Qué aspectos disfrutaste de tu visita?',
+    tipo: 'checkbox',
+    opciones: [
+      'La comida',
+      'La atención',
+      'El ambiente',
+      'La música',
+      'Los precios',
+      'La limpieza',
+    ],
+    minimo: null,
+    maximo: null,
+    requerida: false,
+  },
+  {
+    id: 'pregunta-4',
+    texto: '¿Cómo conociste TUMBO?',
+    tipo: 'select',
+    opciones: [
+      'Un conocido me lo recomendó',
+      'Redes sociales',
+      'Pasaba por la puerta',
+      'Ya soy cliente habitual',
+    ],
+    minimo: null,
+    maximo: null,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-5',
+    texto: '¿Qué tan limpio encontraste el local?',
+    tipo: 'rango',
+    opciones: [],
+    minimo: 1,
+    maximo: 10,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-6',
+    texto: '¿Volverías a comer en TUMBO?',
+    tipo: 'interruptor',
+    opciones: [],
+    minimo: null,
+    maximo: null,
+    requerida: true,
+  },
+  {
+    id: 'pregunta-7',
+    texto: '¿Querés contarnos algo más?',
+    tipo: 'texto_largo',
+    opciones: [],
+    minimo: null,
+    maximo: null,
+    requerida: false,
+  },
+];
+
+/** Resultados de ejemplo para los gráficos en modo demostración. */
+const RESULTADOS_DE_DEMOSTRACION: ResultadosDeEncuesta = {
+  total: 128,
+  torta: {
+    pregunta: '¿Qué te pareció el tiempo de espera?',
+    datos: [
+      { etiqueta: 'Mucho más rápido de lo esperado', cantidad: 18 },
+      { etiqueta: 'Rápido', cantidad: 44 },
+      { etiqueta: 'Razonable', cantidad: 42 },
+      { etiqueta: 'Lento', cantidad: 17 },
+      { etiqueta: 'Muy lento', cantidad: 7 },
+    ],
+  },
+  barras: {
+    pregunta: '¿Qué aspectos disfrutaste de tu visita?',
+    datos: [
+      { etiqueta: 'La comida', cantidad: 61 },
+      { etiqueta: 'La atención', cantidad: 48 },
+      { etiqueta: 'El ambiente', cantidad: 39 },
+      { etiqueta: 'La música', cantidad: 22 },
+      { etiqueta: 'Los precios', cantidad: 30 },
+      { etiqueta: 'La limpieza', cantidad: 35 },
+    ],
+  },
+  linea: {
+    pregunta: '¿Cómo calificarías la atención que recibiste?',
+    datos: [
+      { etiqueta: 'Semana 1', promedio: 4.05 },
+      { etiqueta: 'Semana 2', promedio: 4.18 },
+      { etiqueta: 'Semana 3', promedio: 4.3 },
+      { etiqueta: 'Semana 4', promedio: 4.41 },
+    ],
+  },
+};
 
 /** Los tres lugares de foto del punto 2, en el orden en que se ven. */
 const LUGARES_DE_FOTO = [0, 1, 2] as const;
@@ -44,6 +167,15 @@ export class DemoRestauranteService {
     },
   ]);
   readonly pedidoActivo = signal<PedidoDemo>(this.pedidoInicial());
+  /**
+   * Los pedidos de las OTRAS mesas, para que cocina y bar tengan algo que
+   * agrupar en modo demostración (punto 16). El de la mesa del cliente
+   * es `pedidoActivo`; juntos forman lo que ve el personal.
+   */
+  readonly otrosPedidos = signal<PedidoDemo[]>(this.otrosPedidosIniciales());
+  readonly pedidosEnCurso = computed(() =>
+    pedidosEnSeguimiento([this.pedidoActivo(), ...this.otrosPedidos()]),
+  );
   readonly carrito = signal<PedidoItemDemo[]>([]);
   readonly mensajes = signal<MensajeDemo[]>([
     {
@@ -58,8 +190,15 @@ export class DemoRestauranteService {
   readonly descuento = signal(0);
   readonly intentosJuego = signal<Record<string, number>>({});
   readonly encuestaRespondida = signal(false);
-  readonly porcentajePropina = signal<number | null>(null);
   readonly cuenta = signal<CuentaDemo | null>(null);
+  /** Para el mozo: las cuentas que todavía no se confirmaron. */
+  readonly cuentasEnCurso = computed(() => {
+    const cuenta = this.cuenta();
+    return cuenta && cuenta.estado !== 'confirmada' ? [cuenta] : [];
+  });
+  /** Las mismas siete preguntas de `preguntas_encuesta`. */
+  readonly preguntas = signal<PreguntaDeEncuesta[]>(PREGUNTAS_DE_DEMOSTRACION);
+  readonly resultadosEncuesta = signal<ResultadosDeEncuesta | null>(RESULTADOS_DE_DEMOSTRACION);
   readonly mesaVinculada = signal<number | null>(2);
 
   readonly clientesPendientes = computed(() =>
@@ -298,11 +437,12 @@ export class DemoRestauranteService {
       mesa,
       cliente,
       creadoEn: this.ahora(),
+      momento: Date.now(),
       items: this.carrito(),
       estado: 'pendiente_confirmacion',
       motivoRechazo: '',
       descuentoPorJuego: this.descuento(),
-      sectoresListos: { cocina: false, bar: false },
+      sectores: sectoresSinEmpezar(this.carrito()),
     };
     this.pedidoActivo.set(pedido);
     this.carrito.set([]);
@@ -310,44 +450,105 @@ export class DemoRestauranteService {
     return true;
   }
 
-  rechazarPedido(motivo: string): void {
-    this.actualizarPedido({ estado: 'rechazado', motivoRechazo: motivo });
-    this.notificar(`Pedido rechazado: ${motivo}`, ['cliente_registrado', 'cliente_anonimo']);
-  }
-
-  confirmarPedido(): void {
-    this.actualizarPedido({ estado: 'confirmado', motivoRechazo: '' });
-    this.notificar('Pedido confirmado y derivado a cocina y bar.', ['cocinero', 'cantinero']);
-  }
-
-  marcarSectorListo(sector: SectorProducto): void {
-    const pedido = this.pedidoActivo();
-    const sectores = { ...pedido.sectoresListos, [sector]: true };
-    const participaCocina = pedido.items.some((item) => item.sector === 'cocina');
-    const participaBar = pedido.items.some((item) => item.sector === 'bar');
-    const completo = (!participaCocina || sectores.cocina) && (!participaBar || sectores.bar);
-    this.actualizarPedido({
-      sectoresListos: sectores,
-      estado: completo ? 'listo' : 'en_preparacion',
-    });
-    if (completo) {
-      this.notificar('Pedido completo: todos los sectores terminaron.', [
-        'mozo',
-        'cliente_registrado',
-      ]);
+  /** Punto 13: el mozo rechaza un pedido que esperaba su confirmación. */
+  rechazarPedido(pedidoId: string, motivo: string): boolean {
+    if (!this.cambiarPedidoPendiente(pedidoId, { estado: 'rechazado', motivoRechazo: motivo })) {
+      return false;
     }
+    this.notificar(`Pedido rechazado: ${motivo}`, ['cliente_registrado', 'cliente_anonimo']);
+    return true;
   }
 
-  marcarEntregado(): void {
-    this.actualizarPedido({ estado: 'entregado' });
+  /** Punto 14: el mozo confirma un pedido y lo deriva a cocina y bar. */
+  confirmarPedido(pedidoId: string): boolean {
+    if (!this.cambiarPedidoPendiente(pedidoId, { estado: 'confirmado', motivoRechazo: '' })) {
+      return false;
+    }
+    this.notificar('Pedido confirmado y derivado a cocina y bar.', ['cocinero', 'cantinero']);
+    return true;
+  }
+
+  private cambiarPedidoPendiente(pedidoId: string, cambios: Partial<PedidoDemo>): boolean {
+    const pedido = [this.pedidoActivo(), ...this.otrosPedidos()].find((p) => p.id === pedidoId);
+    if (!pedido || pedido.estado !== 'pendiente_confirmacion') return false;
+    if (pedido.id === this.pedidoActivo().id) this.actualizarPedido(cambios);
+    else
+      this.otrosPedidos.update((pedidos) =>
+        pedidos.map((p) => (p.id === pedidoId ? { ...p, ...cambios } : p)),
+      );
+    return true;
+  }
+
+  /** El sector empieza su parte (punto 18): el cliente pasa a ver «en preparación». */
+  empezarSector(pedidoId: string, sector: SectorProducto): boolean {
+    return this.avanzarSector(pedidoId, sector, 'en_preparacion');
+  }
+
+  /**
+   * El sector terminó su parte. Si era la última, el pedido queda
+   * completo y se avisa al mozo UNA vez: el aviso sale en la transición,
+   * no cada vez que alguien toca el botón (punto 18).
+   */
+  marcarSectorListo(pedidoId: string, sector: SectorProducto): boolean {
+    return this.avanzarSector(pedidoId, sector, 'listo');
+  }
+
+  private avanzarSector(
+    pedidoId: string,
+    sector: SectorProducto,
+    hasta: Extract<EstadoSector, 'en_preparacion' | 'listo'>,
+  ): boolean {
+    const pedido = [this.pedidoActivo(), ...this.otrosPedidos()].find((p) => p.id === pedidoId);
+    if (
+      !pedido ||
+      !['confirmado', 'en_preparacion'].includes(pedido.estado) ||
+      pedido.sectores[sector] === 'sin_items' ||
+      pedido.sectores[sector] === 'listo'
+    )
+      return false;
+    // Marcar listo sin haber tocado «Empezar» también vale: el cocinero
+    // puede tener algo que sale al instante. Lo que no se permite es
+    // volver atrás.
+    if (hasta === 'en_preparacion' && pedido.sectores[sector] !== 'pendiente') return false;
+
+    const sectores = { ...pedido.sectores, [sector]: hasta };
+    const completo = pedidoCompleto(sectores);
+    const cambios: Partial<PedidoDemo> = {
+      sectores,
+      estado: completo ? 'listo' : 'en_preparacion',
+    };
+    if (pedido.id === this.pedidoActivo().id) this.actualizarPedido(cambios);
+    else
+      this.otrosPedidos.update((pedidos) =>
+        pedidos.map((p) => (p.id === pedidoId ? { ...p, ...cambios } : p)),
+      );
+    if (completo) {
+      this.notificar(`Pedido completo de la mesa ${pedido.mesa}: listo para entregar.`, ['mozo']);
+    }
+    return true;
+  }
+
+  /** Punto 19: el mozo entrega un pedido completo, y solo si está listo. */
+  marcarEntregado(pedidoId: string): boolean {
+    const pedido = [this.pedidoActivo(), ...this.otrosPedidos()].find((p) => p.id === pedidoId);
+    if (!pedido || pedido.estado !== 'listo') return false;
+    if (pedido.id === this.pedidoActivo().id) this.actualizarPedido({ estado: 'entregado' });
+    else
+      this.otrosPedidos.update((pedidos) =>
+        pedidos.map((p) => (p.id === pedidoId ? { ...p, estado: 'entregado' } : p)),
+      );
     this.notificar('El pedido fue entregado. Confirmá la recepción.', [
       'cliente_registrado',
       'cliente_anonimo',
     ]);
+    return true;
   }
 
-  confirmarRecepcion(): void {
+  /** Punto 19: el cliente confirma que recibió su pedido, una vez y ya entregado. */
+  confirmarRecepcion(): boolean {
+    if (this.pedidoActivo().estado !== 'entregado') return false;
     this.actualizarPedido({ estado: 'recibido' });
+    return true;
   }
 
   agregarMensaje(autor: string, texto: string, esPropio: boolean): void {
@@ -368,25 +569,41 @@ export class DemoRestauranteService {
     return intentoActual;
   }
 
-  registrarEncuesta(): boolean {
-    if (this.encuestaRespondida()) {
-      return false;
+  /** Punto 20: la encuesta se guarda una vez y solo si todas las respuestas son válidas. */
+  responderEncuesta(respuestas: RespuestasDeEncuesta): string | null {
+    if (this.encuestaRespondida()) return 'Ya respondiste la encuesta de esta estadía.';
+    for (const pregunta of this.preguntas()) {
+      const error = errorDeRespuesta(pregunta, respuestas[pregunta.id]);
+      if (error) return `${pregunta.texto} ${error}`;
     }
     this.encuestaRespondida.set(true);
-    this.notificar('Encuesta guardada. Gracias por tu opinión.', [
-      'cliente_registrado',
-      'cliente_anonimo',
-    ]);
+    this.notificar('Encuesta guardada. Gracias por tu opinión.', ['cliente_registrado']);
+    return null;
+  }
+
+  /** Punto 21: el cliente pide la cuenta. Si ya la pidió, no pasa nada. */
+  solicitarCuenta(): boolean {
+    if (this.cuenta()) return true;
+    if (this.pedidoActivo().estado !== 'recibido') return false;
+    this.cuenta.set({
+      id: 'cuenta-demo',
+      mesa: this.pedidoActivo().mesa,
+      subtotal: 0,
+      descuento: 0,
+      porcentajeDescuento: 0,
+      porcentajePropina: null,
+      propina: 0,
+      total: 0,
+      estado: 'solicitada',
+    });
+    this.notificar(`La mesa ${this.pedidoActivo().mesa} pide la cuenta.`, ['mozo']);
     return true;
   }
 
-  seleccionarPropina(porcentaje: number): void {
-    this.porcentajePropina.set(porcentaje);
-  }
-
-  generarCuenta(): boolean {
-    const porcentaje = this.porcentajePropina();
-    if (porcentaje === null) {
+  /** Punto 21: con el QR de propina se arma el detalle. Se puede cambiar antes de pagar. */
+  generarCuenta(porcentaje: number): boolean {
+    const cuenta = this.cuenta();
+    if (!cuenta || (cuenta.estado !== 'solicitada' && cuenta.estado !== 'pendiente_pago')) {
       return false;
     }
     const pedido = this.pedidoActivo();
@@ -395,40 +612,42 @@ export class DemoRestauranteService {
     const base = subtotal - descuento;
     const propina = Math.round(base * (porcentaje / 100));
     this.cuenta.set({
+      ...cuenta,
       subtotal,
       descuento,
+      porcentajeDescuento: pedido.descuentoPorJuego,
       porcentajePropina: porcentaje,
       propina,
       total: base + propina,
       estado: 'pendiente_pago',
     });
-    this.notificar('La cuenta está disponible para pagar.', ['mozo', 'dueno', 'supervisor']);
     return true;
   }
 
-  pagarCuenta(): void {
+  /** Punto 21: el pago simulado; avisa al mozo, al dueño y al supervisor. */
+  pagarCuenta(): boolean {
     const cuenta = this.cuenta();
-    if (cuenta) {
-      this.cuenta.set({ ...cuenta, estado: 'pagada' });
-      this.notificar('Pago simulado realizado. Esperando confirmación del mozo.', [
-        'mozo',
-        'dueno',
-        'supervisor',
-      ]);
-    }
+    if (!cuenta || cuenta.estado !== 'pendiente_pago') return false;
+    this.cuenta.set({ ...cuenta, estado: 'pagada' });
+    this.notificar(`La mesa ${cuenta.mesa} pagó. Confirmá el pago.`, [
+      'mozo',
+      'dueno',
+      'supervisor',
+    ]);
+    return true;
   }
 
-  confirmarPago(): void {
+  /** Punto 22: el mozo confirma esa cuenta y la mesa queda libre. */
+  confirmarPago(cuentaId: string): boolean {
     const cuenta = this.cuenta();
-    if (cuenta) {
-      this.cuenta.set({ ...cuenta, estado: 'confirmada' });
-      const mesa = this.pedidoActivo().mesa;
-      this.mesas.update((mesas) =>
-        mesas.map((item) => (item.numero === mesa ? { ...item, disponible: true } : item)),
-      );
-      this.mesaVinculada.set(null);
-      this.notificar(`Pago confirmado. Mesa ${mesa} liberada.`, ['dueno', 'supervisor']);
-    }
+    if (!cuenta || cuenta.id !== cuentaId || cuenta.estado !== 'pagada') return false;
+    this.cuenta.set({ ...cuenta, estado: 'confirmada' });
+    this.mesas.update((mesas) =>
+      mesas.map((mesa) => (mesa.numero === cuenta.mesa ? { ...mesa, disponible: true } : mesa)),
+    );
+    this.mesaVinculada.set(null);
+    this.notificar(`Pago confirmado. La mesa ${cuenta.mesa} quedó libre.`, ['dueno', 'supervisor']);
+    return true;
   }
 
   private actualizarPedido(cambios: Partial<PedidoDemo>): void {
@@ -576,6 +795,7 @@ export class DemoRestauranteService {
       mesa: 2,
       cliente: 'Camila Pérez',
       creadoEn: '26/08/2026 20:18',
+      momento: new Date(2026, 7, 26, 20, 18).getTime(),
       items: [
         {
           productoId: 'plato-1',
@@ -597,8 +817,66 @@ export class DemoRestauranteService {
       estado: 'confirmado',
       motivoRechazo: '',
       descuentoPorJuego: 0,
-      sectoresListos: { cocina: false, bar: false },
+      sectores: { cocina: 'pendiente', bar: 'pendiente' },
     };
+  }
+
+  /**
+   * Dos mesas más con pedidos en curso, en distintos momentos del punto
+   * 18: una recién confirmada y otra con el bar ya terminado. Así se ve
+   * la agrupación por mesa y el orden por antigüedad sin cargar nada.
+   */
+  private otrosPedidosIniciales(): PedidoDemo[] {
+    const pedido = (
+      id: string,
+      mesa: number,
+      momento: Date,
+      items: PedidoItemDemo[],
+      sectores: Record<SectorProducto, EstadoSector>,
+    ): PedidoDemo => ({
+      id,
+      mesa,
+      cliente: 'Cliente de la mesa',
+      creadoEn: formatearFechaHora(momento),
+      momento: momento.getTime(),
+      items,
+      estado: Object.values(sectores).some((e) => e !== 'pendiente' && e !== 'sin_items')
+        ? 'en_preparacion'
+        : 'confirmado',
+      motivoRechazo: '',
+      descuentoPorJuego: 0,
+      sectores,
+    });
+    const item = (
+      productoId: string,
+      nombre: string,
+      cantidad: number,
+      sector: SectorProducto,
+    ): PedidoItemDemo => ({ productoId, nombre, cantidad, precio: 0, sector, minutos: 0 });
+
+    return [
+      pedido(
+        'pedido-demo-4',
+        4,
+        new Date(2026, 7, 26, 20, 5),
+        [
+          item('plato-2', 'Ravioles de la abuela', 2, 'cocina'),
+          item('plato-3', 'Ensalada fresca', 1, 'cocina'),
+          item('bebida-3', 'Gaseosa', 3, 'bar'),
+        ],
+        { cocina: 'en_preparacion', bar: 'listo' },
+      ),
+      pedido(
+        'pedido-demo-5',
+        5,
+        new Date(2026, 7, 26, 20, 31),
+        [
+          item('plato-4', 'Papas crocantes', 1, 'cocina'),
+          item('bebida-2', 'TUMBO Spritz', 2, 'bar'),
+        ],
+        { cocina: 'pendiente', bar: 'pendiente' },
+      ),
+    ];
   }
 
   private slug(texto: string): string {

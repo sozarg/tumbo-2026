@@ -1,0 +1,116 @@
+:host {
+  display: block;
+}
+
+figure {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+svg {
+  display: block;
+  width: 100%;
+  max-width: min(15rem, 80%);
+  height: auto;
+  margin: 0 auto;
+}
+
+.vacio {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  text-align: center;
+}
+
+/* Torta */
+.leyenda {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leyenda li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--tumbo-azul-sombra);
+  font-size: 0.9rem;
+}
+
+.muestra {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.25rem;
+}
+
+.etiqueta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Barras */
+.barras {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.barras .fila {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 0.75rem;
+  color: var(--tumbo-azul-sombra);
+  font-size: 0.9rem;
+}
+
+.pista {
+  grid-column: 1 / 2;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: rgb(0 53 146 / 10%);
+  overflow: hidden;
+}
+
+.barra {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.barras strong {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  align-self: end;
+}
+
+/* Línea */
+.guia {
+  stroke: rgb(0 53 146 / 15%);
+  stroke-width: 1;
+}
+
+.eje {
+  fill: var(--tumbo-azul-sombra);
+  font-size: 11px;
+}
+
+.linea {
+  fill: none;
+  stroke: var(--tumbo-azul-accion);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.punto {
+  fill: var(--tumbo-amarillo-marca);
+  stroke: var(--tumbo-azul-sombra);
+  stroke-width: 2;
+}
+
+.valor {
+  fill: var(--tumbo-azul-sombra);
+  font-size: 12px;
+  font-weight: 700;
+}

@@ -309,6 +309,63 @@ puesto no es peligroso, pero conviene decidirlo entre los cuatro.
 
 ---
 
+## 11. El aviso de pedido completo (punto 18)
+
+Cuando cocina y bar terminan, el trigger `avisar_pedido_listo` llama a
+la función `avisar-push`, que avisa a los mozos. La dirección y la firma
+**no están en la migración** —el repositorio es público—: se leen de
+Vault. Se cargan una sola vez, desde el SQL Editor:
+
+```sql
+select vault.create_secret('https://<REF>.supabase.co/functions/v1', 'tumbo_url_funciones');
+select vault.create_secret('<el mismo valor que TUMBO_FIRMA_WEBHOOK>', 'tumbo_firma_webhook');
+```
+
+La firma tiene que coincidir con el secret `TUMBO_FIRMA_WEBHOOK` de las
+funciones. Sin estos dos secretos el pedido igual queda listo; solo no
+sale la push. Por eso una base local nunca llama a producción.
+
+### Probarlo sin tocar producción
+
+Todo corre contra el Supabase local de Docker:
+
+```bash
+npx supabase start
+npx supabase test db                       # RLS, triggers y aviso (pgTAP, termina en ROLLBACK)
+cd supabase/functions && npx -y deno@2 test avisar-push/reglas_test.ts
+```
+
+Para el recorrido completo con cuatro teléfonos simulados, ver el
+encabezado de `tests/ui-puntos-16-18.mjs`: se niega a correr si
+`environment.local.ts` no apunta a `127.0.0.1:54321`. La entrega y la
+recepción del punto 19 tienen el suyo, `tests/ui-punto-19.mjs`, y la
+encuesta, la cuenta y la mesa libre de los puntos 20 a 22 el suyo,
+`tests/ui-puntos-20-22.mjs`, todos con la misma guarda.
+
+Los avisos de la cuenta (pedida, pagada y confirmada) usan los mismos
+dos secretos de Vault: no hace falta configurar nada más.
+
+---
+
+## 12. Las cuatro semanas de historial (punto 20)
+
+El enunciado pide «una base externa con interacciones simuladas de al
+menos cuatro semanas», y los gráficos de la encuesta salen de ahí.
+`seed_data/historico.sql` genera 28 días de estadías cerradas, con su
+pedido pagado, su cuenta confirmada y su encuesta respondida.
+
+```bash
+psql "<cadena de conexión>" -f supabase/seed_data/historico.sql
+```
+
+- Todo cuelga de ocho clientes ficticios, `historico1..8@tumbo.demo`,
+  con clave aleatoria: nadie puede ingresar con ellos.
+- Se puede correr más de una vez: si ya hay historial, no genera otro.
+- No dispara avisos push: apaga `encolar_aviso` para su transacción.
+- `seed_data/historico-borrar.sql` borra todo lo que generó, y nada más.
+
+---
+
 ## Cómo comprobar que quedó bien
 
 Con `npm run start:local` andando:

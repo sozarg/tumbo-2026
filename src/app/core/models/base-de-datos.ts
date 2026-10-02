@@ -2,7 +2,8 @@
 // TUMBO · Tipos de la base de datos
 //
 // Contratos 01–04 sincronizados con generación CLI del proyecto de desarrollo (18/09/2026).
-// Se preservan contratos históricos fuera de alcance; recibido_en sigue pendiente (punto 19).
+// Se preservan contratos históricos fuera de alcance. recibido_en y confirmar_recepcion: punto 19.
+// Cuenta (solicitar/generar/pagar/confirmar) y encuesta (responder/resultados): puntos 20 a 22.
 // Se regenera con el CLI de Supabase, desde la raíz del proyecto:
 //
 //   supabase gen types typescript --linked > src/app/core/models/base-de-datos.ts
@@ -663,6 +664,46 @@ export interface Database {
       };
     };
     Functions: {
+      confirmar_recepcion: {
+        Args: { p_pedido_id: string };
+        Returns: string;
+      };
+      estadia_con_pedido_recibido: {
+        Args: { p_sesion: string };
+        Returns: boolean;
+      };
+      enviar_pedido: {
+        Args: { p_items: Json };
+        Returns: string;
+      };
+      solicitar_cuenta: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
+      generar_cuenta: {
+        Args: { p_qr: string };
+        Returns: string;
+      };
+      pagar_cuenta: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
+      confirmar_pago: {
+        Args: { p_cuenta: string };
+        Returns: string;
+      };
+      responder_encuesta: {
+        Args: { p_respuestas: Json };
+        Returns: string;
+      };
+      encuesta_respondida: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      resultados_encuesta: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       cuil_coherente: {
         Args: { p_cuil: string; p_dni: string };
         Returns: boolean;
