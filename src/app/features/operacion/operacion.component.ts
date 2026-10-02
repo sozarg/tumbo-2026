@@ -1881,7 +1881,12 @@ export class Operacion implements OnInit {
     this.quitarFotoAnonima();
     this.mensaje.set('Te anotamos en la lista de espera.');
   }
-
+  
+  protected async ingresoJuego(idJuego: string): Promise<void> {
+    if (idJuego === 'juegoRecoleccion') {
+      await this.router.navigate(['/juego-recoleccion']);
+    }
+  }
   protected async escanearIngreso(): Promise<void> {
     const lectura: ResultadoDeCodigo = await this.lector.leerCodigo();
     if (lectura.estado === 'leido' && lectura.contenido === this.qr.contenidoDeEntrada()) {
