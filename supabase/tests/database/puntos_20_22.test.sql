@@ -263,11 +263,17 @@ select is(
   (public.resultados_encuesta() ->> 'total')::int - ((select r from antes) ->> 'total')::int,
   1, 'el total de encuestas suma una'
 );
+reset role;
+-- Dentro de la transacción `now()` no avanza: la encuesta recién creada
+-- queda justo en el borde de la semana actual, que es `[now - 7 días,
+-- now)`. Se la corre un minuto atrás para que la prueba no dependa de
+-- que el historial sembrado tenga respuestas de los últimos siete días.
+update public.encuestas set creado_en = now() - interval '1 minute'
+ where sesion_mesa_id = '32000000-0000-4000-8000-00000000000c';
 select isnt(
   public.resultados_encuesta() -> 'linea' -> 'datos' -> 3 ->> 'promedio', null,
   'la línea tiene el promedio de la semana actual'
 );
 
-reset role;
 select * from finish();
 rollback;

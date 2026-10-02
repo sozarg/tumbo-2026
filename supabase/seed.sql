@@ -82,7 +82,12 @@ with fotos (nombre, f1, f2, f3) as (
     ('Ensalada de estación',    'ensalada',  'cubiertos', 'saleros'),
     ('Sopa de calabaza',        'sopa',      'cubiertos', 'saleros'),
     ('Vino Malbec',             'vino',      'cubiertos', 'saleros'),
-    ('Café espresso',           'cafe',      'cubiertos', 'saleros')
+    ('Café espresso',           'cafe',      'cubiertos', 'saleros'),
+    ('Limonada con menta',      'sopa',      'cubiertos', 'saleros'),
+    ('Agua mineral',            'vino',      'cubiertos', 'saleros'),
+    ('Cerveza artesanal',       'vino',      'cubiertos', 'saleros'),
+    ('Flan casero',             'sopa',      'cubiertos', 'rodillo'),
+    ('Helado artesanal',        'sopa',      'cubiertos', 'rodillo')
 )
 insert into public.producto_fotos (producto_id, url, orden)
 select p.id, 'imagenes/tumbito/' || v.archivo || '.webp', v.orden

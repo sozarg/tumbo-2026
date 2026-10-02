@@ -68,16 +68,12 @@ const TEXTO = "'Trebuchet MS', Verdana, sans-serif";
  * El logo del encabezado.
  *
  * Se puede cambiar sin tocar el código con la variable `LOGO_URL`. El
- * valor de acá es el respaldo: apunta al lockup que ya está publicado en
- * la rama principal del repositorio, así el correo nunca sale sin marca
- * aunque nadie haya configurado nada.
- *
- * Pesa cerca de un megabyte, que para un correo es mucho. La versión
- * liviana es `logo-correo.png`, en la misma carpeta; cuando esté en la
- * rama principal o subida a Storage, conviene apuntar `LOGO_URL` ahí.
+ * valor de acá es el respaldo: la versión liviana del lockup (66 KB),
+ * publicada con la aplicación en Vercel. No depende del repositorio, que
+ * es privado, así el correo nunca sale sin marca aunque nadie haya
+ * configurado nada.
  */
-const LOGO_POR_DEFECTO =
-  'https://raw.githubusercontent.com/sozarg/tumbo-2026/main/public/imagenes/logo-nombre.png';
+const LOGO_POR_DEFECTO = 'https://tumbito.vercel.app/imagenes/logo-correo.png';
 
 /**
  * Escapa lo que escribió una persona antes de meterlo en el HTML.
