@@ -195,9 +195,9 @@ Verificado el 02/10/2026 con el código de `main`, la base de producción (solo 
 | 2 | Agregar un plato | Completo en código | Ferrari | Exige 3 fotos. Hay 5 platos con sus 3 fotos; «Papas fritas» no tiene ninguna. |
 | 3 | Agregar una bebida | **Faltan datos** | Ferrari | El cliente ve solo 3 bebidas y una se llama «prueba»: el enunciado pide 5. Los postres no se ven (tienen 1 foto). |
 | 4 | Agregar una mesa | Completo en código | Ferrari | Genera el QR. Solo 2 de 9 mesas tienen foto y hay números de prueba (6, 8, 19, 26). |
-| 5 | Registro de cliente | Parcial | Ferrari | Funciona, pero la push y los correos dependen de triggers que existen solo en producción, no en `supabase/migrations`. |
+| 5 | Registro de cliente | Completo en código | Ferrari | El alta crea el cliente pendiente y encola la push; los triggers están en `20261002123318_avisos_registro_y_permisos.sql`. |
 | 6 | Clientes pendientes | Parcial | Cruz | La push a dueño y supervisor sale; solo el dueño tiene un teléfono registrado. |
-| 7-8 | Rechazo y aceptación | Parcial | Cruz | Brevo envía los correos. El logo se descarga del repositorio, que hoy es público. |
+| 7-8 | Rechazo y aceptación | Completo en código | Cruz | Brevo envía los correos; el aviso lee dirección y firma de Vault. El logo se descarga del repositorio, que hoy es público. |
 | 9 | Cliente anónimo y espera | **Bloqueado** | Cruz | Los ingresos anónimos están deshabilitados en Auth de producción. La push al metre está en la rama `cruz`, sin mergear. |
 | 10 | Metre asigna mesa | **No cumple en `main`** | Cruz | En `main` el metre crea la estadía y el cliente no escanea el QR. El flujo correcto está en la rama `cruz`. |
 | 11 | Menú y consulta al mozo | Completo | Cruz / Terrile | Consulta por mesa con fecha y hora; el mozo elige a qué mesa responde. Push a los mozos y al cliente. |
@@ -222,7 +222,6 @@ Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en
 | Mergear la rama `cruz` (escaneo del QR de mesa y push del metre) | 9 y 10 |
 | Tres juegos funcionales con descuento al primer intento | 15 |
 | Cargar fotos y productos reales; borrar «prueba» y las mesas de prueba | 1 a 4 |
-| Pasar a una migración los triggers de correo y push del registro | 5 a 8 |
 | Registrar un teléfono por perfil | Todas las push |
 | Hacer privado el repositorio y mover el logo de los correos | 7 y 8 |
 
