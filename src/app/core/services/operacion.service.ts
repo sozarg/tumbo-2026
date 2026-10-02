@@ -1021,7 +1021,15 @@ export class OperacionService {
         options: { data: { nombres: nombre } },
       });
       if (error || !data.user) {
-        return { ok: false, error: error?.message ?? 'No se pudo crear la sesión anónima.' };
+        // Auth responde en inglés y con detalles internos: a la persona
+        // le sirve saber qué hacer, no el mensaje del servidor.
+        if (error) this.registrarError('crear la identidad anónima', error);
+        return {
+          ok: false,
+          error: error?.message?.toLowerCase().includes('anonymous sign-ins are disabled')
+            ? 'El ingreso sin cuenta no está habilitado en este momento. Pedile ayuda al metre.'
+            : 'No pudimos anotarte. Revisá tu nombre e intentá de nuevo.',
+        };
       }
       id = data.user.id;
       const { data: perfil, error: errorPerfil } = await this.cliente

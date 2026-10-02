@@ -145,6 +145,11 @@ export class Ingreso {
     void this.router.navigate(['/registro']);
   }
 
+  /** Punto 9: quien no tiene cuenta entra por el QR de ingreso, sin registrarse. */
+  protected entrarSinCuenta(): void {
+    void this.router.navigate(['/operacion'], { queryParams: { entrada: 1 } });
+  }
+
   protected ingresarRapido(acceso: AccesoRapido): void {
     this.enviado.set(false);
     this.errorMensaje.set('');

@@ -75,6 +75,11 @@ select ok(
   'calcular_cuenta: sin sesión no, con sesión sí'
 );
 select ok(
+  has_function_privilege('anon', 'public.resultados_encuesta()', 'execute')
+  and not has_function_privilege('anon', 'public.responder_encuesta(jsonb)', 'execute'),
+  'puntos 9 y 22: sin cuenta se consultan los resultados, pero no se responde la encuesta'
+);
+select ok(
   (select proconfig::text like '%search_path=public%' from pg_proc where proname = 'tocar_actualizado_en'),
   'tocar_actualizado_en tiene search_path fijo'
 );

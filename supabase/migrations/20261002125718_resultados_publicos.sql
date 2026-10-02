@@ -1,0 +1,11 @@
+-- ═══════════════════════════════════════════════════════════════════
+-- Resultados de las encuestas sin cuenta (puntos 9 y 22)
+--
+-- «Desde el QR de ingreso, el cliente puede consultar resultados de
+-- encuestas en gráficos». Quien está en la puerta todavía no tiene
+-- sesión: la identidad anónima recién se crea cuando se anota en la
+-- lista de espera. `resultados_encuesta()` devuelve solo agregados
+-- —el reparto de una pregunta, conteos y promedios semanales—, sin
+-- respuestas sueltas ni datos de nadie, así que puede ser pública.
+-- ═══════════════════════════════════════════════════════════════════
+grant execute on function public.resultados_encuesta() to anon;

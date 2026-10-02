@@ -37,6 +37,24 @@
         ><ion-icon aria-hidden="true" slot="icon-only" name="log-out-outline"
       /></ion-button>
     </div>
+  } @else if (esVisitante()) {
+    <div class="operation-header operation-header--detail">
+      <ion-button class="back-button" fill="clear" aria-label="Volver" (click)="volver()"
+        ><ion-icon aria-hidden="true" slot="icon-only" name="arrow-back-outline"
+      /></ion-button>
+      <div class="operation-brand">
+        <img
+          ngSrc="imagenes/logo-splash.webp"
+          width="768"
+          height="768"
+          disableOptimizedSrcset
+          priority
+          alt="Tumbito"
+          class="operation-brand__lockup"
+        />
+        <div class="operation-brand__text"><span>Entrada sin cuenta</span></div>
+      </div>
+    </div>
   }
 </ion-header>
 <!--
@@ -62,10 +80,15 @@
   [buttons]="[{ text: 'Cerrar', role: 'cancel' }]"
   (didDismiss)="error.set('')"
 />
+<!--
+  Sin `duration` de Ionic: el temporizador lo lleva un efecto del componente. El
+  de Ionic arranca al abrirse y no se reinicia si cambia el texto, así
+  que un aviso que llegaba mientras se veía otro duraba lo que le quedaba
+  al primero, o nada (pasaba con «Te anotamos en la lista de espera»).
+-->
 <ion-toast
   [isOpen]="mensaje() !== ''"
   [message]="mensaje()"
-  [duration]="3200"
   position="top"
   icon="checkmark-circle-outline"
   cssClass="toast-tumbo"
@@ -74,13 +97,13 @@
 
 <ion-content class="operation-page" [scrollY]="false">
   <tumbo-fondo-decorativo aria-hidden="true" />
-  @if (usuario(); as usuarioActual) {
+  @if (usuario() || esVisitante()) {
     <div
       class="operation-layout"
       [class.operation-layout--home]="!seccion()"
       [class.operation-layout--detail]="!!seccion()"
     >
-      @if (!seccion()) {
+      @if (!seccion() && usuario(); as usuarioActual) {
         <h1 #encabezado class="hub-title" tabindex="-1">Secciones del restaurante</h1>
         <tumbo-menu-operacion
           [accesos]="accesos()"
@@ -818,7 +841,7 @@
                             class="mesa-tarjeta__foto mesa-tarjeta__foto--vacia"
                             aria-hidden="true"
                           >
-                            <ion-icon name="camera-outline" />
+                            <ion-icon name="camera-outline" aria-hidden="true" />
                           </span>
                         }
                         <span class="mesa-teja">
@@ -1447,7 +1470,7 @@
                     Registrate con tu nombre, accedé a la espera y consultá las encuestas previas.
                   </p>
                   <ion-button fill="outline" (click)="escanearIngreso()">
-                    <ion-icon name="qr-code-outline" slot="start" />
+                    <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
                     Escanear QR de ingreso
                   </ion-button>
                 </div>
@@ -1473,7 +1496,7 @@
                     <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
                   } @else {
                     <ion-button fill="outline" (click)="elegirFotoAnonima()">
-                      <ion-icon name="camera-outline" slot="start" />
+                      <ion-icon name="camera-outline" slot="start" aria-hidden="true" />
                       Agregar foto
                     </ion-button>
                   }
@@ -1615,7 +1638,7 @@
                 <div><h2>Juegos y descuentos</h2></div>
                 <ion-chip class="discount-chip">{{ demo.descuento() }}% ganado</ion-chip>
               </div>
-              @if (usuarioActual.perfil === 'cliente_anonimo') {
+              @if (usuario()?.perfil === 'cliente_anonimo') {
                 <div class="locked-card">
                   <ion-icon aria-hidden="true" name="close-circle-outline" />
                   <div>
@@ -1871,7 +1894,7 @@
               <h2>Escaneá el QR de ingreso</h2>
               <p>Escaneá el código y completá tus datos para entrar a la lista de espera.</p>
               <ion-button fill="outline" (click)="escanearIngreso()">
-                <ion-icon name="qr-code-outline" slot="start" />
+                <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
                 Escanear QR de ingreso
               </ion-button>
             </div>
@@ -1893,7 +1916,7 @@
                 <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
               } @else {
                 <ion-button fill="outline" (click)="elegirFotoAnonima()">
-                  <ion-icon name="camera-outline" slot="start" />Agregar foto
+                  <ion-icon name="camera-outline" slot="start" aria-hidden="true" />Agregar foto
                 </ion-button>
               }
             </div>

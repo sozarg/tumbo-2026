@@ -24,7 +24,13 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonBadge } from '@ionic/angular/ion-badge';
 import { IonButton } from '@ionic/angular/ion-button';
@@ -229,6 +235,14 @@ export class Operacion implements OnInit {
   private readonly qr = inject(CodigoQrService);
 
   protected readonly usuario = this.sesion.usuario;
+  /**
+   * Punto 9: alguien sin cuenta llega por el QR de ingreso. Todavía no
+   * tiene sesión —la identidad anónima se crea al anotarse—, así que la
+   * pantalla tiene que poder dibujarse sin usuario, solo con la entrada
+   * y los resultados de las encuestas (punto 22).
+   */
+  private readonly entradaSinCuenta = signal(false);
+  protected readonly esVisitante = computed(() => this.entradaSinCuenta() && !this.usuario());
   protected readonly modo = this.autenticacion.modo;
   protected readonly seccion = signal<Seccion | null>(null);
   protected readonly pagina = signal(0);
@@ -748,6 +762,17 @@ export class Operacion implements OnInit {
   });
 
   constructor() {
+    /*
+     * Cada aviso se ve 3,2 segundos contados desde que aparece SU texto,
+     * aunque llegue mientras se veía otro.
+     */
+    let temporizadorDeAviso: ReturnType<typeof setTimeout> | undefined;
+    effect(() => {
+      const texto = this.mensaje();
+      clearTimeout(temporizadorDeAviso);
+      if (texto) temporizadorDeAviso = setTimeout(() => this.mensaje.set(''), 3200);
+    });
+    inject(DestroyRef).onDestroy(() => clearTimeout(temporizadorDeAviso));
     effect(() => {
       this.usuario();
       untracked(() => {
@@ -833,6 +858,7 @@ export class Operacion implements OnInit {
   ngOnInit(): void {
     if (!this.sesion.estaAutenticado()) {
       if (this.ruta.snapshot.queryParamMap.get('entrada') === '1') {
+        this.entradaSinCuenta.set(true);
         this.seccion.set('entrada');
         return;
       }
@@ -841,7 +867,8 @@ export class Operacion implements OnInit {
   }
 
   protected abrir(seccion: Seccion): void {
-    if (!puedeAcceder(this.usuario()?.perfil, seccion)) return;
+    const delVisitante = this.esVisitante() && (seccion === 'entrada' || seccion === 'reportes');
+    if (!delVisitante && !puedeAcceder(this.usuario()?.perfil, seccion)) return;
     this.seccion.set(seccion);
     this.enfocarEncabezado();
     this.pagina.set(0);
@@ -875,6 +902,15 @@ export class Operacion implements OnInit {
 
     if (this.creando()) {
       this.salirDelFormulario();
+      this.enfocarEncabezado();
+      return;
+    }
+
+    if (this.esVisitante()) {
+      // Sin cuenta no hay menú de secciones: de los resultados vuelve a la
+      // entrada, y de la entrada, al ingreso.
+      if (this.seccion() === 'reportes') this.seccion.set('entrada');
+      else void this.router.navigate(['/ingreso'], { replaceUrl: true });
       this.enfocarEncabezado();
       return;
     }
@@ -980,7 +1016,8 @@ export class Operacion implements OnInit {
     // NO `volver()`: esa ahora deshace un paso, y entrar a la pantalla
     // tiene que dejarla en el principio, venga de donde venga.
     this.salirDelFormulario();
-    this.seccion.set(null);
+    // El visitante del punto 9 no tiene menú: su pantalla es la entrada.
+    this.seccion.set(this.esVisitante() ? 'entrada' : null);
     this.error.set('');
     this.enfocarEncabezado();
     // `quitarFotoEmpleado` y no solo el `reset`: el reset limpia el
@@ -1811,6 +1848,20 @@ export class Operacion implements OnInit {
     const nombre = this.nombreAnonimo().trim();
     if (!nombre) {
       this.mensaje.set('Ingresá tu nombre para entrar a la lista de espera.');
+      return;
+    }
+    // Las mismas reglas que `formato_nombres` y `largo_nombres` en la base:
+    // sin esto, «Lucía 2» llegaba hasta Auth y volvía «Database error
+    // creating anonymous user».
+    const control = new FormControl(nombre, validadoresDeNombre('nombres'));
+    if (control.invalid) {
+      this.mensaje.set(mensajeDeError(control, 'nombre'));
+      return;
+    }
+    // Punto 9: «el cliente carga nombre y foto». La base lo exige para
+    // el anónimo; sin este control llegaba un error genérico de permisos.
+    if (!this.usuario() && !this.fotoAnonima()) {
+      this.mensaje.set('Agregá una foto tuya: el metre la usa para encontrarte.');
       return;
     }
     const resultado = await this.demo.anotarEnEspera(nombre, this.fotoAnonima());
