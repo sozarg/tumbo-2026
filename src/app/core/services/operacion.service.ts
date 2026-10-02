@@ -1389,18 +1389,20 @@ export class OperacionService {
       .select('*', { count: 'exact', head: true })
       .eq('sesion_mesa_id', this.sesionActiva.id)
       .eq('juego_id', juego.id);
-    const intento = (count ?? 0) + 1;
-    const descuento = gano && intento === 1 ? juego.porcentaje_descuento : 0;
-    const r = await this.insertar('partidas_juego', {
+    // Intento y descuento los decide la base (`validar_partida`): lo que
+    // se manda acá es solo una propuesta, y lo que vale es la fila guardada.
+    const r = await this.insertarConFila('partidas_juego', {
       juego_id: juego.id,
       sesion_mesa_id: this.sesionActiva.id,
       cliente_id: this.sesion.usuario()!.id,
-      intento,
+      intento: (count ?? 0) + 1,
       gano,
-      descuento_otorgado: descuento,
+      descuento_otorgado: 0,
     });
-    if (r.ok && descuento) this.descuento.set(descuento);
-    return { ok: r.ok, intento, descuento: this.descuento() };
+    if (!r.ok || !r.fila) return { ok: false, intento: 0, descuento: this.descuento() };
+    const otorgado = Number(r.fila.descuento_otorgado);
+    if (otorgado > 0) this.descuento.set(otorgado);
+    return { ok: true, intento: r.fila.intento, descuento: this.descuento() };
   }
 
   /**
