@@ -219,8 +219,7 @@ Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en
 | Pendiente | Puntos |
 |---|---|
 | Habilitar los ingresos anónimos en Supabase Auth | 9 |
-| Mergear la rama `cruz` (escaneo del QR de mesa y push del metre) | 9 y 10 |
-| Tres juegos funcionales con descuento al primer intento | 15 |
+| Tres juegos funcionales con descuento al primer intento (la rama `bianucci` tiene uno en beta) | 15 |
 | Cargar fotos y productos reales; borrar «prueba» y las mesas de prueba | 1 a 4 |
 | Registrar un teléfono por perfil | Todas las push |
 | Hacer privado el repositorio y mover el logo de los correos | 7 y 8 |
