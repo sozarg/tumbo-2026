@@ -1,4 +1,13 @@
-import { DestroyRef, Injectable, Signal, inject, signal, computed, effect } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  Signal,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Json, Tablas } from '../models/base-de-datos';
 import { comprimirFoto } from '../imagenes/comprimir-foto';
@@ -271,6 +280,27 @@ export class OperacionService {
         this.empleados.set([]);
         this.productos.set([]);
         this.mesas.set([]);
+        /*
+         * Lo de cada cliente también. El teléfono del restaurante pasa de
+         * mano en mano: sin esto, el que entraba después veía el carrito,
+         * el pedido, la cuenta, las consultas y el descuento del anterior
+         * hasta que la carga los pisaba, y algunos no se pisaban nunca
+         * (un cliente sin pedido seguía viendo el pedido ajeno).
+         */
+        untracked(() => {
+          this.carrito.set([]);
+          this.mensajes.set([]);
+          this.notificaciones.set([]);
+          this.descuento.set(0);
+          this.intentosJuego.set({});
+          this.encuestaRespondida.set(false);
+          this.cuenta.set(null);
+          this.pedidoActivo.set(this.pedidoVacio());
+          this.mesaVinculada.set(null);
+        });
+        this.sesionActiva = null;
+        this.pedidoReal = null;
+        this.cuentaReal = null;
       }
       if (usuario && this.cliente) void this.cargar();
     });
@@ -1538,14 +1568,15 @@ export class OperacionService {
             pedidos.map((p) => p.id),
           )
       : null;
-    if (this.pedidoReal) {
-      this.pedidoActivo.set(
-        this.aPedido(
-          this.pedidoReal,
-          (items?.data ?? []).filter((i) => i.pedido_id === this.pedidoReal!.id),
-        ),
-      );
-    }
+    // Una estadía nueva sin pedidos no hereda el de la estadía anterior.
+    this.pedidoActivo.set(
+      this.pedidoReal
+        ? this.aPedido(
+            this.pedidoReal,
+            (items?.data ?? []).filter((i) => i.pedido_id === this.pedidoReal!.id),
+          )
+        : this.pedidoVacio(),
+    );
     // El detalle de la cuenta lleva todo lo que la mesa consumió: cada
     // pedido que el mozo confirmó, no solo el último.
     const facturables = new Set(
