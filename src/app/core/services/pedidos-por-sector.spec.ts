@@ -1,6 +1,7 @@
-import { EstadoSector, PedidoDemo, PedidoItemDemo } from '../models/demo-restaurante';
+import { EstadoSector, PedidoDemo, PedidoItemDemo, ProductoDemo } from '../models/demo-restaurante';
 import {
   agruparPorMesa,
+  carritoDesdePedido,
   encuestaYCuentaHabilitadas,
   estadoDeSector,
   formatearFechaHora,
@@ -158,5 +159,27 @@ describe('Entrega (punto 19)', () => {
     expect(juegosHabilitados('recibido')).toBe(true);
     expect(encuestaYCuentaHabilitadas('entregado')).toBe(false);
     expect(encuestaYCuentaHabilitadas('recibido')).toBe(true);
+  });
+});
+
+describe('Pedido rechazado (punto 13)', () => {
+  const producto = (id: string, precio: number): ProductoDemo =>
+    ({ id, nombre: id, precio, sector: 'cocina', minutos: 15 }) as ProductoDemo;
+
+  it('vuelve al carrito con las cantidades y el precio de hoy', () => {
+    const carrito = carritoDesdePedido(
+      { items: [item('Bife', 'cocina', 2), item('Flan', 'cocina', 1)] },
+      [producto('Bife', 21000), producto('Flan', 6000)],
+    );
+    expect(carrito.map((i) => [i.nombre, i.cantidad, i.precio])).toEqual([
+      ['Bife', 2, 21000],
+      ['Flan', 1, 6000],
+    ]);
+  });
+
+  it('no trae lo que ya no está en la carta', () => {
+    expect(
+      carritoDesdePedido({ items: [item('Bife', 'cocina', 2)] }, [producto('Flan', 6000)]),
+    ).toEqual([]);
   });
 });

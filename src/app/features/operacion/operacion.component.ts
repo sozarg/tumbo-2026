@@ -129,6 +129,9 @@ import {
   puedeAcceder,
 } from '../../core/navegacion/secciones';
 
+/** Cuántos mensajes de la consulta entran en una página (punto 11). */
+const MENSAJES_POR_PAGINA = 4;
+
 @Component({
   imports: [
     MenuOperacion,
@@ -692,6 +695,49 @@ export class Operacion implements OnInit {
     },
     { validators: [clavesCoinciden] },
   );
+  /**
+   * Punto 11, del lado del mozo: las mesas que están conversando, la del
+   * último mensaje primero. Una por estadía, porque a eso responde.
+   */
+  protected readonly mesasEnConsulta = computed(() => {
+    const vistas = new Map<string, { sesionId: string; mesa: number | null }>();
+    for (const m of [...this.demo.mensajes()].reverse()) {
+      if (!vistas.has(m.sesionId)) vistas.set(m.sesionId, { sesionId: m.sesionId, mesa: m.mesa });
+    }
+    return [...vistas.values()];
+  });
+  /**
+   * La mesa que el mozo fijó: al elegirla o al empezar a escribir. Desde
+   * ahí una consulta nueva de otra mesa no le cambia la conversación, y
+   * su respuesta no se va a la mesa equivocada.
+   */
+  protected readonly mesaElegida = signal<string | null>(null);
+  /** A quién responde el mozo: la que fijó o, si no fijó ninguna, la última que escribió. */
+  protected readonly mesaDeRespuesta = computed(() => {
+    const mesas = this.mesasEnConsulta();
+    const elegida = this.mesaElegida();
+    return elegida && mesas.some((m) => m.sesionId === elegida)
+      ? elegida
+      : (mesas[0]?.sesionId ?? null);
+  });
+  /** El cliente ve su conversación; el mozo, la de la mesa elegida. */
+  protected readonly mensajesVisibles = computed(() =>
+    this.perfilEsCliente()
+      ? this.demo.mensajes()
+      : this.demo.mensajes().filter((m) => m.sesionId === this.mesaDeRespuesta()),
+  );
+  /**
+   * La página del chat. Una conversación no se lee de a un mensaje: la
+   * primera página muestra los últimos cuatro, en orden, y el paginador
+   * lleva a los anteriores. Así la respuesta del mozo aparece a la vista
+   * apenas llega, sin tener que buscarla.
+   */
+  protected readonly paginaDeChat = computed(() => {
+    const todos = this.mensajesVisibles();
+    const fin = Math.max(0, todos.length - this.pagina() * MENSAJES_POR_PAGINA);
+    return todos.slice(Math.max(0, fin - MENSAJES_POR_PAGINA), fin);
+  });
+
   protected readonly mensajeForm = this.formularioBuilder.nonNullable.group({
     texto: ['', [Validators.required, Validators.maxLength(180)]],
   });
@@ -962,7 +1008,7 @@ export class Operacion implements OnInit {
       case 'espera':
         return this.demo.espera().length;
       case 'consulta':
-        return this.demo.mensajes().length;
+        return Math.ceil(this.mensajesVisibles().length / MENSAJES_POR_PAGINA);
       case 'juegos':
         return 3;
       default:
@@ -2069,16 +2115,22 @@ export class Operacion implements OnInit {
   }
 
   /** Punto 13: el mozo rechaza ESE pedido para que el cliente lo modifique. */
-  protected async rechazarPedido(accion: AccionDeSector): Promise<void> {
+  protected async rechazarPedido(accion: AccionDeSector & { motivo: string }): Promise<void> {
     await this.avanzarSector(
       accion,
-      () =>
-        this.demo.rechazarPedido(
-          accion.pedidoId,
-          'Falta disponibilidad de un producto. Podés modificarlo y reenviarlo.',
-        ),
+      () => this.demo.rechazarPedido(accion.pedidoId, accion.motivo),
       `Mesa ${accion.mesa}: pedido rechazado y devuelto al cliente con el motivo.`,
     );
+  }
+
+  /** Punto 13: el cliente retoma el pedido rechazado en el carrito y lo corrige. */
+  protected retomarPedido(): void {
+    if (this.demo.retomarPedidoRechazado()) {
+      this.abrir('menu');
+      this.avisarExito('Tu pedido volvió al carrito: modificalo y envialo de nuevo.');
+    } else {
+      void this.avisarError('Los productos de ese pedido ya no están en la carta. Armá uno nuevo.');
+    }
   }
 
   /** Punto 14: el mozo confirma ESE pedido y lo deriva a cocina y bar. */
@@ -2257,14 +2309,24 @@ export class Operacion implements OnInit {
     if (!this.validar(this.mensajeForm)) {
       return;
     }
-    const usuario = this.usuario();
-    await this.demo.agregarMensaje(
-      usuario ? usuario.nombres + ' ' + usuario.apellidos : 'Cliente',
-      this.mensajeForm.controls.texto.value,
-      true,
+    const esCliente = this.perfilEsCliente();
+    const destino = esCliente ? undefined : (this.mesaDeRespuesta() ?? undefined);
+    const resultado = await this.demo.agregarMensaje(
+      this.mensajeForm.controls.texto.value.trim(),
+      destino,
     );
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No se pudo enviar el mensaje.');
+      return;
+    }
     this.mensajeForm.reset();
-    this.mensaje.set('Consulta enviada a todos los mozos.');
+    this.mesaElegida.set(null);
+    const mesa = this.mesasEnConsulta().find((m) => m.sesionId === destino)?.mesa;
+    this.mensaje.set(
+      esCliente
+        ? 'Consulta enviada a todos los mozos.'
+        : `Respuesta enviada${mesa ? ' a la mesa ' + mesa : ''}.`,
+    );
   }
 
   protected async jugar(idJuego: string, gano: boolean): Promise<void> {

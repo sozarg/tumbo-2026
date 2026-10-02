@@ -1,4 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
+import { IonButton } from '@ionic/angular/ion-button';
+import { IonTextarea } from '@ionic/angular/ion-textarea';
 import {
   ETIQUETA_DE_TIPO_ITEM,
   PedidoDemo,
@@ -34,7 +36,7 @@ import { AccionDeSector } from './sector-pedidos.component';
  */
 @Component({
   selector: 'tumbo-avance-pedidos',
-  imports: [BotonConfirmacion, Paginador],
+  imports: [BotonConfirmacion, IonButton, IonTextarea, Paginador],
   template: `
     <section class="avance" aria-labelledby="avance-titulo">
       <h2 id="avance-titulo">Pedidos de las mesas</h2>
@@ -71,37 +73,77 @@ import { AccionDeSector } from './sector-pedidos.component';
                 </ul>
               }
             </div>
-            <div class="avance__decision">
-              <tumbo-boton-confirmacion
-                buttonClass="reject-button"
-                fill="outline"
-                expand="block"
-                [disabled]="procesando() === pedido.id"
-                title="Rechazar pedido"
-                [message]="
-                  'Vas a rechazar el pedido de la mesa ' +
-                  pedido.mesa +
-                  ' para que el cliente lo modifique. ¿Querés continuar?'
-                "
-                (confirmado)="rechazar.emit({ pedidoId: pedido.id, mesa: pedido.mesa })"
-              >
-                Rechazar
-              </tumbo-boton-confirmacion>
-              <tumbo-boton-confirmacion
-                buttonClass="approve-button"
-                expand="block"
-                [disabled]="procesando() === pedido.id"
-                title="Confirmar pedido"
-                [message]="
-                  'Vas a confirmar el pedido de la mesa ' +
-                  pedido.mesa +
-                  ' y mandarlo a cocina y bar. ¿Querés continuar?'
-                "
-                (confirmado)="confirmar.emit({ pedidoId: pedido.id, mesa: pedido.mesa })"
-              >
-                Confirmar pedido
-              </tumbo-boton-confirmacion>
-            </div>
+            @if (rechazando() === pedido.id) {
+              <div class="avance__rechazo">
+                <ion-textarea
+                  label="Motivo del rechazo"
+                  labelPlacement="stacked"
+                  fill="outline"
+                  autoGrow="true"
+                  [maxlength]="300"
+                  [value]="motivo()"
+                  (ionInput)="motivo.set($any($event.target).value ?? '')"
+                  placeholder="Por ejemplo: no queda bife de chorizo, elegí otro plato."
+                  helperText="El cliente lo recibe para modificar el pedido."
+                />
+                @if (motivo().length > 0 && !motivoValido()) {
+                  <p class="avance__error" role="alert">
+                    El motivo tiene que tener entre 5 y 300 caracteres.
+                  </p>
+                }
+                <div class="avance__decision">
+                  <ion-button
+                    class="avance__cancelar"
+                    fill="clear"
+                    expand="block"
+                    (click)="cancelarRechazo()"
+                  >
+                    Cancelar
+                  </ion-button>
+                  <tumbo-boton-confirmacion
+                    buttonClass="reject-button"
+                    fill="outline"
+                    expand="block"
+                    [disabled]="!motivoValido() || procesando() === pedido.id"
+                    title="Rechazar pedido"
+                    [message]="
+                      'Vas a rechazar el pedido de la mesa ' +
+                      pedido.mesa +
+                      ' y el cliente va a recibir el motivo. ¿Querés continuar?'
+                    "
+                    (confirmado)="emitirRechazo(pedido)"
+                  >
+                    Rechazar pedido
+                  </tumbo-boton-confirmacion>
+                </div>
+              </div>
+            } @else {
+              <div class="avance__decision">
+                <ion-button
+                  class="reject-button"
+                  fill="outline"
+                  expand="block"
+                  [disabled]="procesando() === pedido.id"
+                  (click)="abrirRechazo(pedido.id)"
+                >
+                  Rechazar
+                </ion-button>
+                <tumbo-boton-confirmacion
+                  buttonClass="approve-button"
+                  expand="block"
+                  [disabled]="procesando() === pedido.id"
+                  title="Confirmar pedido"
+                  [message]="
+                    'Vas a confirmar el pedido de la mesa ' +
+                    pedido.mesa +
+                    ' y mandarlo a cocina y bar. ¿Querés continuar?'
+                  "
+                  (confirmado)="confirmar.emit({ pedidoId: pedido.id, mesa: pedido.mesa })"
+                >
+                  Confirmar pedido
+                </tumbo-boton-confirmacion>
+              </div>
+            }
           } @else if (pedido.estado === 'listo') {
             <p class="avance__aviso" role="status">Pedido completo: listo para entregar.</p>
             <div class="avance__entrega">
@@ -243,6 +285,28 @@ import { AccionDeSector } from './sector-pedidos.component';
       color: var(--tumbo-azul-sombra);
       text-align: center;
     }
+
+    .avance__rechazo {
+      display: grid;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
+
+    .avance__rechazo ion-textarea {
+      --background: var(--tumbo-azul-brillante);
+      --color: var(--tumbo-azul-sombra);
+    }
+
+    /* El azul de acento no llega a 4,5:1 sobre crema en texto de 14 px. */
+    .avance__cancelar {
+      --color: var(--tumbo-azul-sombra);
+    }
+
+    .avance__error {
+      margin: 0;
+      color: var(--tumbo-naranja-profundo);
+      font-weight: 700;
+    }
   `,
 })
 export class AvancePedidos {
@@ -251,7 +315,8 @@ export class AvancePedidos {
   readonly procesando = input<string | null>(null);
   readonly entregar = output<AccionDeSector>();
   readonly confirmar = output<AccionDeSector>();
-  readonly rechazar = output<AccionDeSector>();
+  /** Punto 13: el rechazo lleva el motivo que escribió el mozo. */
+  readonly rechazar = output<AccionDeSector & { readonly motivo: string }>();
 
   protected readonly etiqueta = ETIQUETA_DE_ESTADO_SECTOR;
   protected readonly etiquetaTipo = ETIQUETA_DE_TIPO_ITEM;
@@ -265,6 +330,31 @@ export class AvancePedidos {
   protected readonly actual = computed<PedidoDemo | undefined>(
     () => this.pedidos()[Math.max(0, Math.min(this.pagina(), this.pedidos().length - 1))],
   );
+
+  /** El pedido para el que está abierto el recuadro del motivo, o `null`. */
+  protected readonly rechazando = signal<string | null>(null);
+  protected readonly motivo = signal('');
+  /** Lo mismo que acepta la base (`largo_motivo_rechazo`). */
+  protected readonly motivoValido = computed(() => {
+    const largo = this.motivo().trim().length;
+    return largo >= 5 && largo <= 300;
+  });
+
+  protected abrirRechazo(pedidoId: string): void {
+    this.motivo.set('');
+    this.rechazando.set(pedidoId);
+  }
+
+  protected cancelarRechazo(): void {
+    this.rechazando.set(null);
+    this.motivo.set('');
+  }
+
+  protected emitirRechazo(pedido: PedidoDemo): void {
+    if (!this.motivoValido()) return;
+    this.rechazar.emit({ pedidoId: pedido.id, mesa: pedido.mesa, motivo: this.motivo().trim() });
+    this.cancelarRechazo();
+  }
 
   protected completo(pedido: PedidoDemo): boolean {
     return pedidoCompleto(pedido.sectores);

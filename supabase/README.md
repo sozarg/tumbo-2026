@@ -345,6 +345,21 @@ encuesta, la cuenta y la mesa libre de los puntos 20 a 22 el suyo,
 Los avisos de la cuenta (pedida, pagada y confirmada) usan los mismos
 dos secretos de Vault: no hace falta configurar nada más.
 
+Lo mismo los de los puntos 11 a 14 (`20261002112306_push_puntos_11_14.sql`):
+
+| Qué pasa | A quién le llega |
+|---|---|
+| El cliente envía un pedido (o lo reenvía corregido) | Mozos |
+| El mozo rechaza un pedido | El cliente de esa mesa, con el motivo |
+| El mozo confirma un pedido | Cocina con sus platos, bar con sus bebidas, y el cliente |
+| El cliente hace una consulta | Todos los mozos |
+| El mozo responde | El cliente de esa mesa |
+
+Quién escribió un mensaje se decide por la estadía (el cliente de la
+mesa o no), no por el `tipo` que manda la aplicación. La consulta y el
+rechazo por pantalla se prueban con `tests/ui-puntos-11-13.mjs`, que
+prepara sus propias estadías en la base local y las borra al terminar.
+
 ---
 
 ## 12. Las cuatro semanas de historial (punto 20)

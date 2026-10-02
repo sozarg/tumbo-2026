@@ -22,6 +22,7 @@ import {
 import { PreguntaDeEncuesta, RespuestasDeEncuesta, ResultadosDeEncuesta } from '../models/encuesta';
 import { errorDeRespuesta } from './cuenta-y-encuesta';
 import {
+  carritoDesdePedido,
   formatearFechaHora,
   pedidoCompleto,
   pedidosEnSeguimiento,
@@ -180,10 +181,13 @@ export class DemoRestauranteService {
   readonly mensajes = signal<MensajeDemo[]>([
     {
       id: 'mensaje-1',
-      autor: 'Mozo de turno',
+      autor: 'Mozo',
       texto: 'Hola, ¿en qué podemos ayudarte?',
       fecha: '26/08/2026 20:18',
       esPropio: false,
+      sesionId: 'sesion-demo',
+      mesa: 2,
+      deCliente: false,
     },
   ]);
   readonly notificaciones = signal<NotificacionDemo[]>([]);
@@ -418,6 +422,15 @@ export class DemoRestauranteService {
     });
   }
 
+  /** Punto 13: el pedido rechazado vuelve al carrito para modificarlo y reenviarlo. */
+  retomarPedidoRechazado(): boolean {
+    const pedido = this.pedidoActivo();
+    if (pedido.estado !== 'rechazado') return false;
+    const carrito = carritoDesdePedido(pedido, this.productos());
+    this.carrito.set(carrito);
+    return carrito.length > 0;
+  }
+
   quitarDelCarrito(productoId: string): void {
     this.carrito.update((items) =>
       items
@@ -551,10 +564,20 @@ export class DemoRestauranteService {
     return true;
   }
 
-  agregarMensaje(autor: string, texto: string, esPropio: boolean): void {
+  /** En la demostración hay una sola mesa conversando: la 2. */
+  agregarMensaje(texto: string, deCliente: boolean): void {
     this.mensajes.update((mensajes) => [
       ...mensajes,
-      { id: 'mensaje-' + Date.now(), autor, texto, fecha: this.ahora(), esPropio },
+      {
+        id: 'mensaje-' + Date.now(),
+        autor: 'Vos',
+        texto,
+        fecha: this.ahora(),
+        esPropio: true,
+        sesionId: 'sesion-demo',
+        mesa: 2,
+        deCliente,
+      },
     ]);
   }
 
@@ -790,6 +813,10 @@ export class DemoRestauranteService {
   }
 
   private pedidoInicial(): PedidoDemo {
+    // Los ids de la carta se numeran en orden de aparición: se buscan por
+    // nombre para que el pedido apunte a los productos de verdad.
+    const carta = this.productosIniciales();
+    const idDe = (nombre: string) => carta.find((p) => p.nombre === nombre)?.id ?? nombre;
     return {
       id: 'pedido-demo-1',
       mesa: 2,
@@ -798,7 +825,7 @@ export class DemoRestauranteService {
       momento: new Date(2026, 7, 26, 20, 18).getTime(),
       items: [
         {
-          productoId: 'plato-1',
+          productoId: idDe('Hamburguesa TUMBO'),
           nombre: 'Hamburguesa TUMBO',
           cantidad: 2,
           precio: 7800,
@@ -806,7 +833,7 @@ export class DemoRestauranteService {
           minutos: 18,
         },
         {
-          productoId: 'bebida-1',
+          productoId: idDe('Limonada de la casa'),
           nombre: 'Limonada de la casa',
           cantidad: 2,
           precio: 2400,

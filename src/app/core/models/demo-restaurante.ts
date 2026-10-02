@@ -159,8 +159,14 @@ export interface MensajeDemo {
   readonly id: string;
   readonly autor: string;
   readonly texto: string;
+  /** Fecha, hora y minutos (punto 11). */
   readonly fecha: string;
   readonly esPropio: boolean;
+  /** La estadía de la conversación: a ella responde el mozo. */
+  readonly sesionId: string;
+  readonly mesa: number | null;
+  /** Lo escribió el cliente de la mesa (consulta) y no un mozo (respuesta). */
+  readonly deCliente: boolean;
 }
 
 export interface CuentaDemo {

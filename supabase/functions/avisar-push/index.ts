@@ -8,13 +8,20 @@ import {
 import {
   DESTINATARIOS_DE_CUENTA,
   ESTADO_DE_CUENTA,
+  ESTADOS_DEL_MOMENTO,
   GERENCIA,
   MOZOS,
+  PREPARA,
   avisoDeClientePendiente,
   avisoDeCuenta,
+  avisoDeMensaje,
+  avisoDePedido,
+  avisoDePedidoConfirmadoAlCliente,
   avisoDePedidoListo,
   clasificar,
+  detalleDeItems,
   type CuerpoDelWebhook,
+  type MomentoDePedido,
 } from './reglas.ts';
 
 /**
@@ -28,14 +35,19 @@ import {
  *   el aviso de que el pedido está completo para entregarlo.
  * - Puntos 21 y 22: la cuenta pedida (al mozo), pagada (al mozo, al
  *   dueño y al supervisor) y confirmada (al dueño y al supervisor).
+ * - Punto 11: la consulta del cliente a todos los mozos, y la respuesta
+ *   del mozo al cliente.
+ * - Puntos 12 a 14: el pedido enviado (a los mozos), rechazado (al
+ *   cliente, con el motivo) y confirmado (a cocina y bar, cada uno con
+ *   su parte, y al cliente).
  *
  * ───────────────────────────────────────────────────────────────────
  * QUIÉN LA LLAMA
  *
- * La base, igual que la del correo: un trigger sobre `usuarios` en el
- * INSERT y otro sobre `pedidos` cuando pasa a «listo». Y por el mismo
- * motivo: que el aviso sea consecuencia del hecho y no una segunda
- * acción que puede no ocurrir.
+ * La base, igual que la del correo: triggers sobre `usuarios`,
+ * `pedidos`, `cuentas` y `mensajes` que llaman por `encolar_aviso`. Y
+ * por el mismo motivo: que el aviso sea consecuencia del hecho y no una
+ * segunda acción que puede no ocurrir.
  *
  * ───────────────────────────────────────────────────────────────────
  * POR QUÉ NO LE CREE AL PAYLOAD
@@ -112,6 +124,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
+  if (evento.tipo === 'pedido') return avisarPedido(admin, evento.id, evento.momento);
+  if (evento.tipo === 'mensaje') return avisarMensaje(admin, evento.id);
+
   /*
    * Punto 18. El estado se vuelve a leer: si entre el trigger y esta
    * llamada el mozo ya lo entregó, el aviso no tiene sentido.
@@ -130,10 +145,99 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
 /** El número de la mesa de una estadía, para que el aviso diga adónde ir. */
 async function numeroDeMesa(admin: SupabaseClient, sesionId: string): Promise<number | null> {
-  const sesion = await admin.from('sesiones_mesa').select('mesa_id').eq('id', sesionId).single();
-  if (!sesion.data) return null;
+  return (await estadia(admin, sesionId)).mesa;
+}
+
+/** La mesa y el cliente de una estadía: a quién avisar y qué mesa nombrar. */
+async function estadia(
+  admin: SupabaseClient,
+  sesionId: string,
+): Promise<{ mesa: number | null; cliente: string | null }> {
+  const sesion = await admin
+    .from('sesiones_mesa')
+    .select('mesa_id,cliente_id')
+    .eq('id', sesionId)
+    .single();
+  if (!sesion.data) return { mesa: null, cliente: null };
   const mesa = await admin.from('mesas').select('numero').eq('id', sesion.data.mesa_id).single();
-  return mesa.data?.numero ?? null;
+  return { mesa: mesa.data?.numero ?? null, cliente: sesion.data.cliente_id };
+}
+
+/**
+ * Puntos 12 a 14. El estado se vuelve a leer por el mismo motivo que
+ * en el 18: si el mozo ya decidió otra cosa, el aviso no corresponde.
+ */
+async function avisarPedido(
+  admin: SupabaseClient,
+  id: string,
+  momento: MomentoDePedido,
+): Promise<Response> {
+  const pedido = await admin
+    .from('pedidos')
+    .select('estado,sesion_mesa_id,motivo_rechazo')
+    .eq('id', id)
+    .single();
+  if (pedido.error || !pedido.data) return json({ error: 'No se encontró el pedido.' }, 404);
+  if (!ESTADOS_DEL_MOMENTO[momento].includes(pedido.data.estado)) {
+    return json({ ignorado: 'el pedido ya cambió de estado' });
+  }
+  const { mesa, cliente } = await estadia(admin, pedido.data.sesion_mesa_id);
+
+  if (momento === 'enviado') {
+    return json(await enviarA(admin, await aprobadosCon(admin, MOZOS), avisoDePedido(momento, mesa)));
+  }
+  if (momento === 'rechazado') {
+    const aviso = avisoDePedido(momento, mesa, { motivo: pedido.data.motivo_rechazo });
+    return json(await enviarA(admin, cliente ? [cliente] : [], aviso));
+  }
+
+  // Confirmado: cada sector recibe solo lo suyo, y el cliente se entera.
+  const items = await admin
+    .from('pedido_items')
+    .select('cantidad,sector,productos(nombre)')
+    .eq('pedido_id', id);
+  if (items.error) return json({ error: 'No se pudieron leer los ítems.' }, 500);
+
+  const resumen: Record<string, unknown> = {};
+  for (const [sector, perfil] of Object.entries(PREPARA)) {
+    const suyos = (items.data ?? [])
+      .filter((i) => i.sector === sector)
+      .map((i) => ({ cantidad: i.cantidad, nombre: nombreDelProducto(i.productos) }));
+    if (!suyos.length) continue;
+    const aviso = avisoDePedido(momento, mesa, { detalle: detalleDeItems(suyos) });
+    resumen[sector] = await enviarA(admin, await aprobadosCon(admin, [perfil]), aviso);
+  }
+  resumen['cliente'] = await enviarA(admin, cliente ? [cliente] : [], avisoDePedidoConfirmadoAlCliente());
+  return json(resumen);
+}
+
+/** El embebido de PostgREST puede llegar como objeto o como lista. */
+function nombreDelProducto(producto: unknown): string {
+  const fila = Array.isArray(producto) ? producto[0] : producto;
+  return (fila as { nombre?: string } | null)?.nombre ?? 'Producto';
+}
+
+/**
+ * Punto 11. Quién escribió se decide por la estadía y no por el `tipo`
+ * que manda la aplicación: si lo escribió el cliente de esa estadía es
+ * una consulta para todos los mozos; si no, es la respuesta del mozo.
+ */
+async function avisarMensaje(admin: SupabaseClient, id: string): Promise<Response> {
+  const mensaje = await admin
+    .from('mensajes')
+    .select('autor_id,cuerpo,sesion_mesa_id')
+    .eq('id', id)
+    .single();
+  if (mensaje.error || !mensaje.data) return json({ error: 'No se encontró el mensaje.' }, 404);
+  const { mesa, cliente } = await estadia(admin, mensaje.data.sesion_mesa_id);
+  const deCliente = mensaje.data.autor_id === cliente;
+  const aviso = avisoDeMensaje(deCliente, mesa, mensaje.data.cuerpo);
+  const destinatarios = deCliente
+    ? await aprobadosCon(admin, MOZOS)
+    : cliente
+      ? [cliente]
+      : [];
+  return json(await enviarA(admin, destinatarios, aviso));
 }
 
 /**
@@ -149,28 +253,37 @@ async function avisarAPerfiles(
   perfiles: readonly string[],
   aviso: Aviso,
 ): Promise<Response> {
+  return json(await enviarA(admin, await aprobadosCon(admin, perfiles), aviso));
+}
+
+/** Los ids de las personas aprobadas con alguno de esos perfiles. */
+async function aprobadosCon(admin: SupabaseClient, perfiles: readonly string[]): Promise<string[]> {
   const personas = await admin
     .from('usuarios')
     .select('id')
     .in('perfil', [...perfiles])
     .eq('estado', 'aprobado');
-  if (personas.error || !personas.data?.length) {
-    return json({ ignorado: 'no hay personas aprobadas a quien avisar' });
-  }
+  return personas.data?.map((u) => u.id) ?? [];
+}
+
+/** Manda el aviso a todos los teléfonos de esas personas y resume qué pasó. */
+async function enviarA(
+  admin: SupabaseClient,
+  usuarios: readonly string[],
+  aviso: Aviso,
+): Promise<Record<string, unknown>> {
+  if (!usuarios.length) return { ignorado: 'no hay personas a quien avisar' };
 
   const dispositivos = await admin
     .from('dispositivos_push')
     .select('token')
-    .in(
-      'usuario_id',
-      personas.data.map((u) => u.id),
-    );
+    .in('usuario_id', [...usuarios]);
 
-  if (dispositivos.error) return json({ error: 'No se pudieron leer los dispositivos.' }, 500);
+  if (dispositivos.error) return { error: 'No se pudieron leer los dispositivos.' };
   if (!dispositivos.data?.length) {
     // No es una falla: simplemente todavía nadie con ese perfil abrió la
     // aplicación en un teléfono. Decir que falló llenaría los registros.
-    return json({ ignorado: 'los destinatarios no tienen dispositivos registrados' });
+    return { ignorado: 'los destinatarios no tienen dispositivos registrados' };
   }
 
   let permiso: string;
@@ -181,7 +294,7 @@ async function avisarAPerfiles(
     permiso = await permisoDeGoogle(cuenta);
   } catch (falla) {
     console.error('[TUMBO] No se pudo obtener el permiso de Firebase', falla);
-    return json({ error: String(falla) }, 500);
+    return { error: String(falla) };
   }
 
   const envios = await Promise.all(
@@ -204,9 +317,9 @@ async function avisarAPerfiles(
     if (!f.ok) console.error('[TUMBO] Falló un aviso push', f.error);
   }
 
-  return json({
+  return {
     enviados: envios.filter((e) => e.ok).length,
     fallados: fallados.length,
     caducosBorrados: caducos.length,
-  });
+  };
 }

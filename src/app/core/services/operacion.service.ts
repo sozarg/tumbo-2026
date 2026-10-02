@@ -36,6 +36,7 @@ import { exigirCliente, supabaseConfigurado } from './supabase.client';
 import { SesionService } from './sesion.service';
 import { FotoTomada } from '../dispositivo/camara.service';
 import {
+  carritoDesdePedido,
   encuestaYCuentaHabilitadas,
   estadoDeSector,
   formatearFechaHora,
@@ -333,7 +334,22 @@ export class OperacionService {
         this.cargarCuentasEnCurso(usuario),
         this.cargarEncuesta(usuario),
       ]);
-      if (mensajes.data) this.mensajes.set(mensajes.data.map((m) => this.aMensaje(m, usuario.id)));
+      if (mensajes.data) {
+        // El cliente ve la conversación de su estadía actual; el personal,
+        // las de las mesas ocupadas. Las de estadías cerradas no van.
+        const enCurso = new Map((sesiones.data ?? []).map((s) => [s.id, s]));
+        const esCliente =
+          usuario.perfil === 'cliente_registrado' || usuario.perfil === 'cliente_anonimo';
+        this.mensajes.set(
+          mensajes.data
+            .filter((m) =>
+              esCliente
+                ? m.sesion_mesa_id === this.sesionActiva?.id
+                : enCurso.has(m.sesion_mesa_id),
+            )
+            .map((m) => this.aMensaje(m, usuario.id, enCurso.get(m.sesion_mesa_id))),
+        );
+      }
       this.suscribirRealtime();
     } catch (error) {
       this.registrarError('cargar Operaciones', error);
@@ -1067,6 +1083,15 @@ export class OperacionService {
           ];
     });
   }
+  /** Punto 13: el pedido rechazado vuelve al carrito para modificarlo y reenviarlo. */
+  retomarPedidoRechazado(): boolean {
+    if (!this.cliente) return this.mock.retomarPedidoRechazado();
+    const pedido = this.pedidoActivo();
+    if (pedido.estado !== 'rechazado') return false;
+    const carrito = carritoDesdePedido(pedido, this.productos());
+    this.carrito.set(carrito);
+    return carrito.length > 0;
+  }
   quitarDelCarrito(id: string): void {
     this.carrito.update((items) =>
       items
@@ -1253,19 +1278,38 @@ export class OperacionService {
     return { ok: true };
   }
 
-  async agregarMensaje(autor: string, texto: string, propio: boolean): Promise<Resultado> {
+  /**
+   * Punto 11. El cliente consulta desde SU estadía; el mozo responde a la
+   * estadía que eligió (`sesionId`). Antes el mozo escribía en la primera
+   * estadía que encontraba, que con varias mesas era cualquiera, y su
+   * respuesta quedaba guardada como otra consulta.
+   */
+  async agregarMensaje(texto: string, sesionId?: string): Promise<Resultado> {
+    const usuario = this.sesion.usuario();
+    const esCliente =
+      usuario?.perfil === 'cliente_registrado' || usuario?.perfil === 'cliente_anonimo';
     if (!this.cliente) {
-      this.mock.agregarMensaje(autor, texto, propio);
+      this.mock.agregarMensaje(texto, esCliente);
       return { ok: true };
     }
-    return this.sesionActiva && this.sesion.usuario()
-      ? this.insertar('mensajes', {
-          sesion_mesa_id: this.sesionActiva.id,
-          autor_id: this.sesion.usuario()!.id,
-          tipo: propio ? 'consulta' : 'respuesta',
-          cuerpo: texto,
-        })
-      : { ok: false, error: 'No hay estadía activa.' };
+    if (!usuario) return { ok: false, error: 'Tu sesión terminó. Volvé a ingresar.' };
+    const destino = esCliente ? this.sesionActiva?.id : sesionId;
+    if (!destino) {
+      return {
+        ok: false,
+        error: esCliente
+          ? 'Necesitás una mesa asignada para hacer una consulta.'
+          : 'Elegí a qué mesa responder.',
+      };
+    }
+    const resultado = await this.insertar('mensajes', {
+      sesion_mesa_id: destino,
+      autor_id: usuario.id,
+      tipo: esCliente ? 'consulta' : 'respuesta',
+      cuerpo: texto,
+    });
+    if (resultado.ok) this.programarCarga();
+    return resultado;
   }
   async jugar(
     id: string,
@@ -1574,19 +1618,24 @@ export class OperacionService {
       .eq('activa', true)
       .order('orden');
     if (preguntas.data) {
-      this.preguntas.set(
-        preguntas.data.map((p) => ({
-          id: p.id,
-          texto: p.texto,
-          tipo: p.tipo as TipoDeControl,
-          opciones: Array.isArray(p.opciones)
-            ? (p.opciones as Json[]).filter((o): o is string => typeof o === 'string')
-            : [],
-          minimo: p.minimo === null ? null : Number(p.minimo),
-          maximo: p.maximo === null ? null : Number(p.maximo),
-          requerida: p.requerida,
-        })),
-      );
+      const nuevas: PreguntaDeEncuesta[] = preguntas.data.map((p) => ({
+        id: p.id,
+        texto: p.texto,
+        tipo: p.tipo as TipoDeControl,
+        opciones: Array.isArray(p.opciones)
+          ? (p.opciones as Json[]).filter((o): o is string => typeof o === 'string')
+          : [],
+        minimo: p.minimo === null ? null : Number(p.minimo),
+        maximo: p.maximo === null ? null : Number(p.maximo),
+        requerida: p.requerida,
+      }));
+      /*
+       * Solo si cambiaron. Cada recarga (la suscripción que se confirma
+       * unos segundos después de entrar, una reconexión, un producto que
+       * cambia) armaba un arreglo nuevo, el formulario se rehacía y el
+       * cliente volvía a la pregunta 1 perdiendo lo respondido.
+       */
+      if (JSON.stringify(nuevas) !== JSON.stringify(this.preguntas())) this.preguntas.set(nuevas);
     }
     if (usuario.perfil === 'cliente_registrado') {
       const { data } = await this.cliente.rpc('encuesta_respondida');
@@ -1818,13 +1867,17 @@ export class OperacionService {
       sectores: { cocina: estadoDe('cocina'), bar: estadoDe('bar') },
     };
   }
-  private aMensaje(m: Tablas<'mensajes'>, id: string): MensajeDemo {
+  private aMensaje(m: Tablas<'mensajes'>, yo: string, estadia?: Sesion): MensajeDemo {
+    const deCliente = m.autor_id === estadia?.cliente_id;
     return {
       id: m.id,
-      autor: m.autor_id === id ? 'Vos' : 'Equipo TUMBO',
+      autor: m.autor_id === yo ? 'Vos' : deCliente ? 'Cliente' : 'Mozo',
       texto: m.cuerpo,
-      fecha: new Date(m.enviado_en).toLocaleString('es-AR'),
-      esPropio: m.autor_id === id,
+      fecha: formatearFechaHora(new Date(m.enviado_en)),
+      esPropio: m.autor_id === yo,
+      sesionId: m.sesion_mesa_id,
+      mesa: this.mesas().find((x) => x.id === estadia?.mesa_id)?.numero ?? null,
+      deCliente,
     };
   }
   private aNotificacion = (n: Tablas<'notificaciones'>): NotificacionDemo => ({

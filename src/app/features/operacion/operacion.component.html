@@ -1386,6 +1386,18 @@
                       <ion-icon aria-hidden="true" name="time-outline" />
                       {{ demo.pedidoActivo().creadoEn }}
                     </p>
+                    @if (demo.pedidoActivo().estado === 'rechazado') {
+                      <div class="order-rejected" role="status">
+                        <strong>El mozo rechazó tu pedido</strong>
+                        @if (demo.pedidoActivo().motivoRechazo) {
+                          <p>Motivo: {{ demo.pedidoActivo().motivoRechazo }}</p>
+                        }
+                        <ion-button expand="block" class="primary-action" (click)="retomarPedido()">
+                          <ion-icon aria-hidden="true" slot="start" name="pencil-outline" />
+                          Modificar y reenviar
+                        </ion-button>
+                      </div>
+                    }
                   </ion-card-content>
                 </ion-card>
               </section>
@@ -1709,24 +1721,66 @@
                 <div><h2>Sala de consulta al mozo</h2></div>
               </div>
               <div class="chat-card">
-                <div class="chat-messages">
-                  @for (mensajeChat of paginar(demo.mensajes()); track mensajeChat.id) {
+                @if (!perfilEsCliente()) {
+                  @if (mesasEnConsulta().length) {
+                    <ion-select
+                      class="chat-mesa"
+                      label="Conversación con"
+                      labelPlacement="stacked"
+                      fill="outline"
+                      interface="popover"
+                      [value]="mesaDeRespuesta()"
+                      (ionChange)="mesaElegida.set($any($event).detail.value); pagina.set(0)"
+                    >
+                      @for (opcion of mesasEnConsulta(); track opcion.sesionId) {
+                        <ion-select-option [value]="opcion.sesionId">{{
+                          opcion.mesa ? 'Mesa ' + opcion.mesa : 'Mesa sin número'
+                        }}</ion-select-option>
+                      }
+                    </ion-select>
+                  } @else {
+                    <p class="chat-vacio" role="status">Todavía no hay consultas de las mesas.</p>
+                  }
+                }
+                <div class="chat-messages" aria-live="polite">
+                  @for (mensajeChat of paginaDeChat(); track mensajeChat.id) {
                     <div class="chat-message" [class.chat-message--own]="mensajeChat.esPropio">
-                      <span>{{ mensajeChat.autor }} · {{ mensajeChat.fecha }}</span>
+                      <span
+                        >{{ mensajeChat.autor
+                        }}{{ mensajeChat.mesa ? ' · Mesa ' + mensajeChat.mesa : '' }} ·
+                        {{ mensajeChat.fecha }}</span
+                      >
                       <p>{{ mensajeChat.texto }}</p>
                     </div>
+                  } @empty {
+                    @if (perfilEsCliente()) {
+                      <p class="chat-vacio">
+                        Escribí tu consulta: le llega a todos los mozos y te avisamos cuando
+                        respondan.
+                      </p>
+                    }
                   }
                 </div>
-                <form [formGroup]="mensajeForm" (ngSubmit)="enviarMensaje()" class="chat-form">
-                  <ion-input
-                    formControlName="texto"
-                    aria-label="Consulta al mozo"
-                    fill="outline"
-                    placeholder="Escribí una consulta..."
-                  /><ion-button type="submit" aria-label="Enviar consulta"
-                    ><ion-icon aria-hidden="true" slot="icon-only" name="send-outline"
-                  /></ion-button>
-                </form>
+                @if (perfilEsCliente() || mesasEnConsulta().length) {
+                  <form [formGroup]="mensajeForm" (ngSubmit)="enviarMensaje()" class="chat-form">
+                    <ion-input
+                      formControlName="texto"
+                      (ionFocus)="perfilEsCliente() || mesaElegida.set(mesaDeRespuesta())"
+                      [attr.aria-label]="
+                        perfilEsCliente() ? 'Consulta al mozo' : 'Respuesta a la mesa'
+                      "
+                      fill="outline"
+                      [maxlength]="180"
+                      [placeholder]="
+                        perfilEsCliente() ? 'Escribí una consulta...' : 'Escribí la respuesta...'
+                      "
+                    /><ion-button
+                      type="submit"
+                      [attr.aria-label]="perfilEsCliente() ? 'Enviar consulta' : 'Enviar respuesta'"
+                      ><ion-icon aria-hidden="true" slot="icon-only" name="send-outline"
+                    /></ion-button>
+                  </form>
+                }
               </div>
             </section>
           }

@@ -3,8 +3,12 @@ import {
   DESTINATARIOS_DE_CUENTA,
   avisoDeClientePendiente,
   avisoDeCuenta,
+  avisoDeMensaje,
+  avisoDePedido,
   avisoDePedidoListo,
   clasificar,
+  detalleDeItems,
+  recortar,
 } from './reglas.ts';
 
 Deno.test('un cliente que se registra avisa a gerencia (punto 6)', () => {
@@ -35,7 +39,7 @@ Deno.test('un pedido que pasa a listo avisa al mozo (punto 18)', () => {
 });
 
 Deno.test('un pedido en cualquier otro estado no avisa', () => {
-  for (const estado of ['confirmado', 'en_preparacion', 'entregado']) {
+  for (const estado of ['en_preparacion', 'entregado', 'recibido', 'pagado']) {
     const evento = clasificar({ type: 'UPDATE', table: 'pedidos', record: { id: 'p1', estado } });
     assert.equal(evento.tipo, 'ignorado', estado);
   }
@@ -98,4 +102,77 @@ Deno.test('los avisos de la cuenta dicen la mesa y el monto', () => {
   assert.equal(avisoDeCuenta('solicitada', 4, 0).cuerpo, 'La mesa 4 pide la cuenta.');
   assert.match(avisoDeCuenta('pagada', 4, 44400).cuerpo, /^La mesa 4 pagó \$\s?44\.400\. Confirmá el pago\.$/);
   assert.match(avisoDeCuenta('confirmada', null, 100).cuerpo, /^Una mesa pagó .* y quedó libre\.$/);
+});
+
+Deno.test('el pedido que nace pendiente avisa a los mozos (punto 12)', () => {
+  assert.deepEqual(
+    clasificar({
+      type: 'INSERT',
+      table: 'pedidos',
+      record: { id: 'p2', estado: 'pendiente_confirmacion' },
+    }),
+    { tipo: 'pedido', id: 'p2', momento: 'enviado' },
+  );
+  // Un pedido que nace en borrador no le interesa a nadie todavía.
+  assert.equal(
+    clasificar({ type: 'INSERT', table: 'pedidos', record: { id: 'p3', estado: 'borrador' } }).tipo,
+    'ignorado',
+  );
+});
+
+Deno.test('rechazo y confirmación son momentos distintos (puntos 13 y 14)', () => {
+  assert.deepEqual(
+    clasificar({ type: 'UPDATE', table: 'pedidos', record: { id: 'p4', estado: 'rechazado' } }),
+    { tipo: 'pedido', id: 'p4', momento: 'rechazado' },
+  );
+  assert.deepEqual(
+    clasificar({ type: 'UPDATE', table: 'pedidos', record: { id: 'p4', estado: 'confirmado' } }),
+    { tipo: 'pedido', id: 'p4', momento: 'confirmado' },
+  );
+  // Un INSERT ya rechazado o confirmado no es un evento del circuito.
+  assert.equal(
+    clasificar({ type: 'INSERT', table: 'pedidos', record: { id: 'p5', estado: 'confirmado' } }).tipo,
+    'ignorado',
+  );
+});
+
+Deno.test('el rechazo le dice el motivo al cliente', () => {
+  const aviso = avisoDePedido('rechazado', 4, { motivo: 'No queda bife de chorizo' });
+  assert.equal(aviso.titulo, 'El mozo rechazó tu pedido');
+  assert.equal(
+    aviso.cuerpo,
+    'Motivo: No queda bife de chorizo. Podés modificarlo y volver a enviarlo.',
+  );
+  assert.equal(
+    avisoDePedido('rechazado', 4, { motivo: '  ' }).cuerpo,
+    'Podés modificarlo y volver a enviarlo.',
+  );
+});
+
+Deno.test('cocina y bar reciben solo lo suyo, con la mesa (punto 14)', () => {
+  const detalle = detalleDeItems([
+    { cantidad: 2, nombre: 'Bife de chorizo' },
+    { cantidad: 1, nombre: 'Flan' },
+  ]);
+  assert.equal(detalle, '2 × Bife de chorizo, 1 × Flan');
+  const aviso = avisoDePedido('confirmado', 7, { detalle });
+  assert.equal(aviso.titulo, 'Nuevo pedido · mesa 7');
+  assert.equal(aviso.cuerpo, 'Para preparar: 2 × Bife de chorizo, 1 × Flan.');
+});
+
+Deno.test('los mensajes avisan (punto 11): consulta a mozos, respuesta al cliente', () => {
+  assert.deepEqual(clasificar({ type: 'INSERT', table: 'mensajes', record: { id: 'm1' } }), {
+    tipo: 'mensaje',
+    id: 'm1',
+  });
+  assert.equal(avisoDeMensaje(true, 3, '¿Tienen opciones sin TACC?').titulo, 'Consulta de la mesa 3');
+  assert.equal(avisoDeMensaje(false, 3, 'Sí, tenemos.').titulo, 'El mozo te respondió');
+});
+
+Deno.test('un texto largo se recorta para que entre en la notificación', () => {
+  const largo = 'palabra '.repeat(40);
+  const corto = recortar(largo);
+  assert.ok(corto.length <= 140);
+  assert.ok(corto.endsWith('…'));
+  assert.equal(recortar('  hola   mozo  '), 'hola mozo');
 });

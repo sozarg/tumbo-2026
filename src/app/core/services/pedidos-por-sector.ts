@@ -2,6 +2,7 @@ import {
   EstadoSector,
   PedidoDemo,
   PedidoItemDemo,
+  ProductoDemo,
   SectorProducto,
   TipoDeItem,
 } from '../models/demo-restaurante';
@@ -175,4 +176,34 @@ export function juegosHabilitados(estado: PedidoDemo['estado']): boolean {
 /** Punto 19: encuesta y cuenta, recién cuando el cliente confirmó la recepción. */
 export function encuestaYCuentaHabilitadas(estado: PedidoDemo['estado']): boolean {
   return estado === 'recibido';
+}
+
+/**
+ * Punto 13: el pedido rechazado vuelve al carrito para que el cliente
+ * lo modifique («agregue o quite productos») y lo reenvíe sin armarlo
+ * de cero.
+ *
+ * Solo vuelven los productos que siguen en la carta, con el precio y el
+ * tiempo de HOY: si el mozo lo rechazó porque algo se terminó y ese
+ * producto se dio de baja, no tiene que reaparecer.
+ */
+export function carritoDesdePedido(
+  pedido: Pick<PedidoDemo, 'items'>,
+  carta: readonly ProductoDemo[],
+): PedidoItemDemo[] {
+  return pedido.items.flatMap((item) => {
+    const producto = carta.find((p) => p.id === item.productoId);
+    return producto
+      ? [
+          {
+            productoId: producto.id,
+            nombre: producto.nombre,
+            cantidad: item.cantidad,
+            precio: producto.precio,
+            sector: producto.sector,
+            minutos: producto.minutos,
+          },
+        ]
+      : [];
+  });
 }

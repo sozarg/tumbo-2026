@@ -148,6 +148,16 @@
   font-size: 0.7rem;
 }
 
+.order-rejected {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  border-left: 4px solid var(--tumbo-naranja-profundo);
+  padding: 0.8rem;
+  background: #fcedbb;
+  color: #003592;
+}
+
 .locked-card {
   display: flex;
   align-items: center;
@@ -798,13 +808,25 @@
 
 .chat-message span {
   display: block;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .chat-message p {
   margin: 0.25rem 0 0;
-  font-size: 0.75rem;
-  line-height: 1.35;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.chat-mesa {
+  margin-bottom: 0.7rem;
+  color: #003592;
+}
+
+.chat-vacio {
+  margin: 0.25rem;
+  color: #003592;
 }
 
 .chat-form {
@@ -1428,7 +1450,6 @@ strong {
   align-items: center;
   gap: 8px;
 }
-
 
 .status-pill {
   max-width: 100%;

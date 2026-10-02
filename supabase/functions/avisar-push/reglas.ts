@@ -24,8 +24,38 @@ export interface CuerpoDelWebhook {
 export type Evento =
   | { readonly tipo: 'cliente_pendiente'; readonly id: string }
   | { readonly tipo: 'pedido_listo'; readonly id: string }
+  | { readonly tipo: 'pedido'; readonly id: string; readonly momento: MomentoDePedido }
+  | { readonly tipo: 'mensaje'; readonly id: string }
   | { readonly tipo: 'cuenta'; readonly id: string; readonly momento: MomentoDeCuenta }
   | { readonly tipo: 'ignorado'; readonly motivo: string };
+
+/** Los momentos del pedido que avisan antes de que esté listo (12 a 14). */
+export type MomentoDePedido = 'enviado' | 'rechazado' | 'confirmado';
+
+/** El estado del pedido que dispara cada momento. */
+const MOMENTO_POR_ESTADO: Readonly<Record<string, MomentoDePedido>> = {
+  pendiente_confirmacion: 'enviado',
+  rechazado: 'rechazado',
+  confirmado: 'confirmado',
+};
+
+/**
+ * Los estados en los que el aviso todavía tiene sentido cuando la
+ * función vuelve a leer el pedido. El de «confirmado» admite que la
+ * cocina ya haya empezado: el aviso llega segundos después y el
+ * cocinero igual tiene que enterarse de lo que falta.
+ */
+export const ESTADOS_DEL_MOMENTO: Readonly<Record<MomentoDePedido, readonly string[]>> = {
+  enviado: ['pendiente_confirmacion'],
+  rechazado: ['rechazado'],
+  confirmado: ['confirmado', 'en_preparacion'],
+};
+
+/** Quién prepara cada sector (punto 14: «deriva cada parte a cocina y bar»). */
+export const PREPARA: Readonly<Record<string, string>> = {
+  cocina: 'cocinero',
+  bar: 'cantinero',
+};
 
 /** Los tres momentos de la cuenta que avisan (puntos 21 y 22). */
 export type MomentoDeCuenta = 'solicitada' | 'pagada' | 'confirmada';
@@ -66,9 +96,18 @@ export function clasificar(cuerpo: CuerpoDelWebhook): Evento {
     return { tipo: 'cliente_pendiente', id: fila.id };
   }
 
-  if (cuerpo.type === 'UPDATE' && cuerpo.table === 'pedidos') {
-    if (fila.estado !== 'listo') return { tipo: 'ignorado', motivo: 'el pedido no está listo' };
-    return { tipo: 'pedido_listo', id: fila.id };
+  if (cuerpo.table === 'pedidos' && (cuerpo.type === 'INSERT' || cuerpo.type === 'UPDATE')) {
+    if (cuerpo.type === 'UPDATE' && fila.estado === 'listo') return { tipo: 'pedido_listo', id: fila.id };
+    const momento = MOMENTO_POR_ESTADO[fila.estado ?? ''];
+    // Un pedido nuevo solo avisa si nace pendiente de confirmación.
+    if (!momento || (cuerpo.type === 'INSERT' && momento !== 'enviado')) {
+      return { tipo: 'ignorado', motivo: 'el pedido no cambió a un estado con aviso' };
+    }
+    return { tipo: 'pedido', id: fila.id, momento };
+  }
+
+  if (cuerpo.table === 'mensajes' && cuerpo.type === 'INSERT') {
+    return { tipo: 'mensaje', id: fila.id };
   }
 
   if (cuerpo.table === 'cuentas') {
@@ -130,3 +169,74 @@ export function avisoDeCuenta(momento: MomentoDeCuenta, mesa: number | null, tot
       };
   }
 }
+
+/** Lo que dice el aviso de un pedido; `detalle` lista lo que hay que preparar. */
+export function avisoDePedido(
+  momento: MomentoDePedido,
+  mesa: number | null,
+  extra: { motivo?: string | null; detalle?: string } = {},
+): Aviso {
+  const laMesa = mesa ? `La mesa ${mesa}` : 'Una mesa';
+  switch (momento) {
+    case 'enviado':
+      return {
+        titulo: 'Pedido para confirmar',
+        cuerpo: `${laMesa} envió un pedido. Revisalo y confirmalo.`,
+        seccion: 'pedidos',
+      };
+    case 'rechazado':
+      return {
+        titulo: 'El mozo rechazó tu pedido',
+        cuerpo: extra.motivo?.trim()
+          ? `Motivo: ${conPunto(recortar(extra.motivo))} Podés modificarlo y volver a enviarlo.`
+          : 'Podés modificarlo y volver a enviarlo.',
+        seccion: 'pedidos',
+      };
+    case 'confirmado':
+      return {
+        titulo: mesa ? `Nuevo pedido · mesa ${mesa}` : 'Nuevo pedido',
+        cuerpo: extra.detalle ? `Para preparar: ${extra.detalle}.` : 'Hay un pedido para preparar.',
+        seccion: 'pedidos',
+      };
+  }
+}
+
+/** El aviso al cliente cuando el mozo confirma: ya se está preparando. */
+export function avisoDePedidoConfirmadoAlCliente(): Aviso {
+  return {
+    titulo: 'Tu pedido fue confirmado',
+    cuerpo: 'Ya se está preparando. Mientras tanto podés jugar desde la aplicación.',
+    seccion: 'pedidos',
+  };
+}
+
+/**
+ * «2 × Bife de chorizo, 1 × Flan»: lo que un sector tiene que preparar,
+ * en el orden en que vino.
+ */
+export function detalleDeItems(items: readonly { cantidad: number; nombre: string }[]): string {
+  return items.map((i) => `${i.cantidad} × ${i.nombre}`).join(', ');
+}
+
+/** Los avisos del punto 11: la consulta va a los mozos y la respuesta al cliente. */
+export function avisoDeMensaje(
+  deCliente: boolean,
+  mesa: number | null,
+  texto: string,
+): Aviso {
+  return deCliente
+    ? {
+        titulo: mesa ? `Consulta de la mesa ${mesa}` : 'Nueva consulta',
+        cuerpo: recortar(texto),
+        seccion: 'consulta',
+      }
+    : { titulo: 'El mozo te respondió', cuerpo: recortar(texto), seccion: 'consulta' };
+}
+
+/** Una notificación muestra dos o tres líneas: el resto se lee en la aplicación. */
+export function recortar(texto: string, maximo = 140): string {
+  const limpio = texto.replace(/\s+/g, ' ').trim();
+  return limpio.length <= maximo ? limpio : `${limpio.slice(0, maximo - 1).trimEnd()}…`;
+}
+
+const conPunto = (texto: string) => (/[.!?…]$/.test(texto) ? texto : `${texto}.`);

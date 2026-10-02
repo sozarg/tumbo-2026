@@ -109,9 +109,14 @@ describe('El mozo decide sobre cada pedido (puntos 13 y 14)', () => {
     fixture.detectChanges();
     expect(texto(fixture, '.avance__nuevo')).toEqual(['Pedido nuevo: espera tu confirmación.']);
 
-    avance.rechazar.emit({ pedidoId: servicio.pedidoActivo().id, mesa: 2 });
+    avance.rechazar.emit({
+      pedidoId: servicio.pedidoActivo().id,
+      mesa: 2,
+      motivo: 'No queda limonada',
+    });
     await fixture.whenStable();
     expect(servicio.pedidoActivo().estado).toBe('rechazado');
+    expect(servicio.pedidoActivo().motivoRechazo).toBe('No queda limonada');
     expect(fixture.componentInstance['mensaje']()).toBe(
       'Mesa 2: pedido rechazado y devuelto al cliente con el motivo.',
     );
@@ -124,5 +129,104 @@ describe('El mozo decide sobre cada pedido (puntos 13 y 14)', () => {
     await fixture.whenStable();
     expect(servicio.pedidoActivo().estado).toBe('confirmado');
     expect(servicio.pedidosEnCurso().find((p) => p.mesa === 4)?.estado).not.toBe('confirmado');
+  });
+});
+
+describe('El rechazo lleva el motivo que escribe el mozo (punto 13)', () => {
+  it('no deja rechazar sin un motivo de 5 a 300 caracteres y lo manda limpio', async () => {
+    const fixture = await abrirComo('mozo', 'pedidos');
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({ ...p, estado: 'pendiente_confirmacion' }));
+    fixture.detectChanges();
+    const avance = fixture.debugElement.query(By.directive(AvancePedidos))
+      .componentInstance as AvancePedidos;
+    avance['pagina'].set(avance['pedidos']().findIndex((p) => p.mesa === 2));
+    fixture.detectChanges();
+
+    const emitidos: unknown[] = [];
+    avance.rechazar.subscribe((accion) => emitidos.push(accion));
+    avance['abrirRechazo'](servicio.pedidoActivo().id);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.avance__rechazo ion-textarea')).not.toBeNull();
+
+    avance['motivo'].set('No');
+    fixture.detectChanges();
+    expect(avance['motivoValido']()).toBe(false);
+    expect(texto(fixture, '.avance__error')).toEqual([
+      'El motivo tiene que tener entre 5 y 300 caracteres.',
+    ]);
+    avance['emitirRechazo'](servicio.pedidoActivo());
+    expect(emitidos).toEqual([]);
+
+    avance['motivo'].set('  No queda bife de chorizo  ');
+    avance['emitirRechazo'](servicio.pedidoActivo());
+    expect(emitidos).toEqual([
+      { pedidoId: servicio.pedidoActivo().id, mesa: 2, motivo: 'No queda bife de chorizo' },
+    ]);
+    expect(avance['rechazando']()).toBeNull();
+  });
+
+  it('el cliente ve el motivo y retoma el pedido en el carrito para reenviarlo', async () => {
+    const fixture = await abrirComo('cliente_registrado', 'pedidos');
+    const servicio = TestBed.inject(OperacionService);
+    servicio.pedidoActivo.update((p) => ({
+      ...p,
+      estado: 'rechazado',
+      motivoRechazo: 'No queda limonada',
+    }));
+    fixture.detectChanges();
+    expect(texto(fixture, '.order-rejected strong')).toEqual(['El mozo rechazó tu pedido']);
+    expect(texto(fixture, '.order-rejected p')).toEqual(['Motivo: No queda limonada']);
+
+    fixture.componentInstance['retomarPedido']();
+    fixture.detectChanges();
+    expect(servicio.carrito().map((i) => [i.nombre, i.cantidad])).toEqual(
+      servicio.pedidoActivo().items.map((i) => [i.nombre, i.cantidad]),
+    );
+    expect(fixture.componentInstance['seccion']()).toBe('menu');
+  });
+});
+
+describe('La consulta al mozo es por mesa (punto 11)', () => {
+  it('el cliente ve autor, mesa, fecha y hora de cada mensaje', async () => {
+    const fixture = await abrirComo('cliente_registrado', 'consulta');
+    expect(texto(fixture, '.chat-message span')[0]).toMatch(
+      /^Mozo · Mesa 2 · \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
+    );
+    expect(fixture.nativeElement.querySelector('.chat-mesa')).toBeNull();
+  });
+
+  it('el mozo elige a qué mesa responder', async () => {
+    const fixture = await abrirComo('mozo', 'consulta');
+    expect(fixture.nativeElement.querySelector('.chat-mesa')).not.toBeNull();
+    expect(fixture.componentInstance['mesasEnConsulta']()).toEqual([
+      { sesionId: 'sesion-demo', mesa: 2 },
+    ]);
+    expect(fixture.componentInstance['mesaDeRespuesta']()).toBe('sesion-demo');
+  });
+
+  it('sigue a la última mesa hasta que el mozo fija una, y después no se mueve', async () => {
+    const fixture = await abrirComo('mozo', 'consulta');
+    const servicio = TestBed.inject(OperacionService);
+    const mensaje = (sesionId: string, mesa: number, id: string) => ({
+      id,
+      autor: 'Cliente',
+      texto: 'Hola',
+      fecha: '01/10/2026 20:00',
+      esPropio: false,
+      sesionId,
+      mesa,
+      deCliente: true,
+    });
+    const pantalla = fixture.componentInstance;
+    servicio.mensajes.set([mensaje('s3', 3, 'a'), mensaje('s2', 2, 'b')]);
+    expect(pantalla['mesaDeRespuesta']()).toBe('s2');
+    servicio.mensajes.update((m) => [...m, mensaje('s3', 3, 'c')]);
+    expect(pantalla['mesaDeRespuesta']()).toBe('s3');
+
+    pantalla['mesaElegida'].set('s3');
+    servicio.mensajes.update((m) => [...m, mensaje('s2', 2, 'd')]);
+    expect(pantalla['mesaDeRespuesta']()).toBe('s3');
+    expect(pantalla['mensajesVisibles']().map((m) => m.id)).toEqual(['a', 'c']);
   });
 });
