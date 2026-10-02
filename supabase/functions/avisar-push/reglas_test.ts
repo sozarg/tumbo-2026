@@ -3,6 +3,7 @@ import {
   DESTINATARIOS_DE_CUENTA,
   avisoDeClientePendiente,
   avisoDeCuenta,
+  avisoDeEspera,
   avisoDeMensaje,
   avisoDePedido,
   avisoDePedidoListo,
@@ -175,4 +176,24 @@ Deno.test('un texto largo se recorta para que entre en la notificación', () => 
   assert.ok(corto.length <= 140);
   assert.ok(corto.endsWith('…'));
   assert.equal(recortar('  hola   mozo  '), 'hola mozo');
+});
+
+Deno.test('la lista de espera avisa al metre y al cliente (puntos 9 y 10)', () => {
+  assert.deepEqual(
+    clasificar({ type: 'INSERT', table: 'lista_espera', record: { id: 'e1', estado: 'esperando' } }),
+    { tipo: 'espera', id: 'e1', momento: 'nueva' },
+  );
+  assert.deepEqual(
+    clasificar({ type: 'UPDATE', table: 'lista_espera', record: { id: 'e1', estado: 'asignado' } }),
+    { tipo: 'espera', id: 'e1', momento: 'asignada' },
+  );
+  for (const estado of ['eliminado', 'finalizado']) {
+    assert.equal(
+      clasificar({ type: 'UPDATE', table: 'lista_espera', record: { id: 'e1', estado } }).tipo,
+      'ignorado',
+      estado,
+    );
+  }
+  assert.equal(avisoDeEspera('nueva', 'Lucía', null).cuerpo, 'Lucía se anotó y espera una mesa.');
+  assert.equal(avisoDeEspera('asignada', null, 4).titulo, 'Tu mesa es la 4');
 });

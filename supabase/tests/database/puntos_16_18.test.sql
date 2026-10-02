@@ -88,8 +88,8 @@ select ok(
 select is(
   (select array_agg(tablename::text order by tablename) from pg_publication_tables
     where pubname = 'supabase_realtime' and schemaname = 'public'),
-  array['cuentas', 'lista_espera', 'mensajes', 'mesas', 'pedido_items', 'pedidos', 'producto_fotos',
-        'productos', 'usuarios'],
+  array['cuentas', 'lista_espera', 'mensajes', 'mesas', 'notificaciones', 'pedido_items', 'pedidos',
+        'producto_fotos', 'productos', 'usuarios'],
   'todas las tablas que la aplicación escucha en su canal están publicadas'
 );
 

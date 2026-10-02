@@ -1084,6 +1084,27 @@ strong {
 .anonymous-entry {
   flex-wrap: wrap;
 }
+.table-link-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(0, 53, 146, 0.18);
+  border-radius: 16px;
+  background: #fcf1d5;
+}
+.table-link-card p {
+  margin: 4px 0 0;
+}
+.qr-link-status {
+  font-weight: 700;
+}
+.qr-link-status--ok {
+  color: #176b3a;
+}
+.qr-link-status--error {
+  color: #9b2c21;
+}
 .anonymous-entry > div:last-child {
   flex: 1 1 9rem;
 }

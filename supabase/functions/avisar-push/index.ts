@@ -9,11 +9,14 @@ import {
   DESTINATARIOS_DE_CUENTA,
   ESTADO_DE_CUENTA,
   ESTADOS_DEL_MOMENTO,
+  ESTADO_DE_ESPERA,
   GERENCIA,
+  METRES,
   MOZOS,
   PREPARA,
   avisoDeClientePendiente,
   avisoDeCuenta,
+  avisoDeEspera,
   avisoDeMensaje,
   avisoDePedido,
   avisoDePedidoConfirmadoAlCliente,
@@ -21,6 +24,7 @@ import {
   clasificar,
   detalleDeItems,
   type CuerpoDelWebhook,
+  type MomentoDeEspera,
   type MomentoDePedido,
 } from './reglas.ts';
 
@@ -35,6 +39,8 @@ import {
  *   el aviso de que el pedido está completo para entregarlo.
  * - Puntos 21 y 22: la cuenta pedida (al mozo), pagada (al mozo, al
  *   dueño y al supervisor) y confirmada (al dueño y al supervisor).
+ * - Puntos 9 y 10: alguien se anota en la espera (al metre) y le
+ *   asignan una mesa (al cliente).
  * - Punto 11: la consulta del cliente a todos los mozos, y la respuesta
  *   del mozo al cliente.
  * - Puntos 12 a 14: el pedido enviado (a los mozos), rechazado (al
@@ -45,9 +51,9 @@ import {
  * QUIÉN LA LLAMA
  *
  * La base, igual que la del correo: triggers sobre `usuarios`,
- * `pedidos`, `cuentas` y `mensajes` que llaman por `encolar_aviso`. Y
- * por el mismo motivo: que el aviso sea consecuencia del hecho y no una
- * segunda acción que puede no ocurrir.
+ * `lista_espera`, `pedidos`, `cuentas` y `mensajes` que llaman por
+ * `encolar_aviso`. Y por el mismo motivo: que el aviso sea consecuencia
+ * del hecho y no una segunda acción que puede no ocurrir.
  *
  * ───────────────────────────────────────────────────────────────────
  * POR QUÉ NO LE CREE AL PAYLOAD
@@ -126,6 +132,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   if (evento.tipo === 'pedido') return avisarPedido(admin, evento.id, evento.momento);
   if (evento.tipo === 'mensaje') return avisarMensaje(admin, evento.id);
+  if (evento.tipo === 'espera') return avisarEspera(admin, evento.id, evento.momento);
 
   /*
    * Punto 18. El estado se vuelve a leer: si entre el trigger y esta
@@ -209,6 +216,40 @@ async function avisarPedido(
   }
   resumen['cliente'] = await enviarA(admin, cliente ? [cliente] : [], avisoDePedidoConfirmadoAlCliente());
   return json(resumen);
+}
+
+/**
+ * Puntos 9 y 10. El estado se vuelve a leer: si la persona ya se fue de
+ * la lista o ya se sentó, el aviso no corresponde.
+ */
+async function avisarEspera(
+  admin: SupabaseClient,
+  id: string,
+  momento: MomentoDeEspera,
+): Promise<Response> {
+  const espera = await admin
+    .from('lista_espera')
+    .select('estado,cliente_id,mesa_id')
+    .eq('id', id)
+    .single();
+  if (espera.error || !espera.data) return json({ error: 'No se encontró la espera.' }, 404);
+  if (espera.data.estado !== ESTADO_DE_ESPERA[momento]) {
+    return json({ ignorado: 'la espera ya cambió de estado' });
+  }
+  if (momento === 'nueva') {
+    const persona = await admin
+      .from('usuarios')
+      .select('nombres')
+      .eq('id', espera.data.cliente_id)
+      .single();
+    const aviso = avisoDeEspera(momento, persona.data?.nombres ?? null, null);
+    return json(await enviarA(admin, await aprobadosCon(admin, METRES), aviso));
+  }
+  const mesa = espera.data.mesa_id
+    ? await admin.from('mesas').select('numero').eq('id', espera.data.mesa_id).single()
+    : null;
+  const aviso = avisoDeEspera(momento, null, mesa?.data?.numero ?? null);
+  return json(await enviarA(admin, [espera.data.cliente_id], aviso));
 }
 
 /** El embebido de PostgREST puede llegar como objeto o como lista. */

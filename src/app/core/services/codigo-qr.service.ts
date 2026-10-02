@@ -60,6 +60,12 @@ export class CodigoQrService {
     return `TUMBO://mesa/${qrToken}`;
   }
 
+  /** Extrae únicamente el token de un QR de mesa de TUMBO. */
+  tokenDeMesa(contenido: string): string | null {
+    const coincidencia = /^tumbo:\/\/mesa\/([^/\s]+)$/i.exec(contenido.trim());
+    return coincidencia?.[1] ?? null;
+  }
+
   /**
    * Devuelve el QR como PNG en una data URL, lista para un `<img>`.
    *

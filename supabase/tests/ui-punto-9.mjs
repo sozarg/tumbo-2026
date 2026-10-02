@@ -130,13 +130,27 @@ try {
   await revisarAxe(anonimo, 'resultados sin cuenta');
   await anonimo.getByRole('button', { name: 'Volver', exact: true }).click();
   await anonimo.getByRole('button', { name: 'Escanear QR de ingreso' }).click();
-  await esperar(
-    '9 · el QR de ingreso se valida',
-    async () =>
-      (await textos(anonimo, '.form-hint')).join() ===
+  await esperar('9 · el QR de ingreso se valida', async () =>
+    (await textos(anonimo, '.form-hint')).includes(
       'QR validado. Completá tus datos para anotarte.',
+    ),
   );
   await revisarAxe(anonimo, 'entrada del anónimo');
+
+  await anonimo.locator('.anonymous-form ion-input input').fill(NOMBRE);
+  await esperar(
+    '9 · sin foto no se puede anotar y la pantalla dice por qué',
+    async () =>
+      (await anonimo.getByRole('button', { name: 'Anotarme' }).first().isDisabled()) &&
+      (await textos(anonimo, '.form-hint')).includes(
+        'La foto es obligatoria para registrarte como cliente anónimo.',
+      ),
+  );
+
+  const selector = anonimo.waitForEvent('filechooser');
+  await anonimo.getByRole('button', { name: 'Agregar foto' }).click();
+  await (await selector).setFiles(FOTO);
+  await anonimo.getByAltText('Vista previa de tu foto').waitFor();
 
   await anonimo.locator('.anonymous-form ion-input input').fill('Lucía 2');
   await anonimo.getByRole('button', { name: 'Anotarme' }).click();
@@ -144,21 +158,12 @@ try {
   await esperar('9 · un nombre con números se rechaza en español, antes de crear nada', async () =>
     (await avisos(anonimo)).includes('El nombre solo puede tener letras y espacios.'),
   );
-  await anonimo.locator('.anonymous-form ion-input input').fill(NOMBRE);
-  await anonimo.getByRole('button', { name: 'Anotarme' }).click();
-  await confirmar(anonimo);
-  await esperar('9 · sin foto no se anota y lo explica', async () =>
-    (await avisos(anonimo)).includes('Agregá una foto tuya: el metre la usa para encontrarte.'),
-  );
   ok(
-    '9 · base: sin foto no se creó ninguna identidad anónima',
-    sql(`select count(*) from usuarios where nombres = '${NOMBRE}'`) === '0',
+    '9 · base: con datos inválidos no se creó ninguna identidad anónima',
+    sql(`select count(*) from usuarios where nombres in ('${NOMBRE}', 'Lucía 2')`) === '0',
   );
 
-  const selector = anonimo.waitForEvent('filechooser');
-  await anonimo.getByRole('button', { name: 'Agregar foto' }).click();
-  await (await selector).setFiles(FOTO);
-  await anonimo.getByAltText('Vista previa de tu foto').waitFor();
+  await anonimo.locator('.anonymous-form ion-input input').fill(NOMBRE);
   await anonimo.getByRole('button', { name: 'Anotarme' }).click();
   await confirmar(anonimo);
   await esperar('9 · con nombre y foto se anota', async () =>
@@ -212,7 +217,10 @@ try {
       await metre.locator('.wait-row img').evaluateAll((i) => i.map((x) => x.getAttribute('src'))),
     ];
     if (!(await buscarEnLaLista())) return false;
-    const src = await metre.locator('.wait-row', { hasText: NOMBRE }).locator('img').getAttribute('src');
+    const src = await metre
+      .locator('.wait-row', { hasText: NOMBRE })
+      .locator('img')
+      .getAttribute('src');
     return !!src && src.includes('fotos-usuarios');
   });
   await revisarAxe(metre, 'lista de espera del metre');
@@ -233,7 +241,8 @@ try {
     async () => (await metre.locator('.wait-row', { hasText: NOMBRE }).count()) === 0,
   );
 } finally {
-  if (resultados.some((r) => !r.ok) && visto) console.log('    el metre veía:', JSON.stringify(visto));
+  if (resultados.some((r) => !r.ok) && visto)
+    console.log('    el metre veía:', JSON.stringify(visto));
   await browser.close();
   sql(`delete from lista_espera where cliente_id in (select id from usuarios where nombres = '${NOMBRE}');
        delete from auth.users where id in (select id from usuarios where nombres = '${NOMBRE}');`);

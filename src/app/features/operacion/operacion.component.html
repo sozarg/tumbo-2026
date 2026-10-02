@@ -1501,11 +1501,16 @@
                     </ion-button>
                   }
                 </div>
+                @if (ingresoEscaneado() && !fotoAnonima() && !usuario()) {
+                  <p class="form-hint" role="status">
+                    La foto es obligatoria para registrarte como cliente anónimo.
+                  </p>
+                }
                 <tumbo-boton-confirmacion
                   buttonClass="primary-action"
                   title="Confirmar ingreso a la lista"
                   message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
-                  [disabled]="!ingresoEscaneado()"
+                  [disabled]="!ingresoEscaneado() || (!usuario() && !fotoAnonima())"
                   (confirmado)="anotarCliente()"
                   >Anotarme</tumbo-boton-confirmacion
                 >
@@ -1513,6 +1518,29 @@
                   Ver resultados de encuestas previas
                 </ion-button>
               </div>
+              @if (demo.mesaAsignada(); as mesaAsignada) {
+                <div class="table-link-card" aria-live="polite">
+                  <div>
+                    <strong>Mesa asignada: {{ mesaAsignada }}</strong>
+                    <p>Escaneá el QR de esa mesa para vincular tu estadía.</p>
+                  </div>
+                  <ion-button fill="outline" (click)="escanearMesaAsignada()">
+                    <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
+                    Escanear QR de mi mesa
+                  </ion-button>
+                  @if (estadoQrMesa() === 'correcto') {
+                    <p class="qr-link-status qr-link-status--ok" role="status">
+                      Mesa vinculada correctamente.
+                    </p>
+                  } @else if (estadoQrMesa() === 'incorrecto') {
+                    <p class="qr-link-status qr-link-status--error" role="alert">
+                      QR rechazado. Solo podés vincular la mesa {{ mesaAsignada }}.
+                    </p>
+                  }
+                </div>
+              } @else if (demo.mesaVinculada() === null) {
+                <p class="form-hint">Esperá la asignación del maître para vincular una mesa.</p>
+              }
             </section>
           }
 
@@ -1520,7 +1548,9 @@
             <section class="section-block">
               <div class="section-heading">
                 <div><h2>Menú Tumbito</h2></div>
-                <ion-chip class="table-chip">Mesa {{ demo.mesaVinculada() ?? 2 }}</ion-chip>
+                <ion-chip class="table-chip"
+                  >Mesa {{ demo.mesaVinculada() ?? 'Sin vincular' }}</ion-chip
+                >
               </div>
 
               <!--
@@ -1875,62 +1905,6 @@
           </nav>
         }
       }
-    </div>
-  } @else if (seccion() === 'entrada') {
-    <div class="operation-layout operation-layout--detail">
-      <div class="view-heading"><h1 id="operation-title">Entrada al restaurante</h1></div>
-      <div class="view-content" role="region" aria-labelledby="operation-title">
-        <section class="section-block">
-          <div class="anonymous-entry">
-            <div class="qr-preview">
-              @if (qrImagen('entrada'); as qr) {
-                <img [src]="qr" alt="QR de ingreso al restaurante" />
-              } @else {
-                <span>QR</span>
-              }
-              <small>tumbo://ingreso</small>
-            </div>
-            <div>
-              <h2>Escaneá el QR de ingreso</h2>
-              <p>Escaneá el código y completá tus datos para entrar a la lista de espera.</p>
-              <ion-button fill="outline" (click)="escanearIngreso()">
-                <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
-                Escanear QR de ingreso
-              </ion-button>
-            </div>
-          </div>
-          <div class="anonymous-form">
-            @if (ingresoEscaneado()) {
-              <p class="form-hint">QR validado. Completá tus datos para anotarte.</p>
-            }
-            <ion-input
-              label="Nombre para la lista de espera"
-              label-placement="stacked"
-              fill="outline"
-              [value]="nombreAnonimo()"
-              (ionInput)="actualizarNombreAnonimo($event)"
-            />
-            <div class="photo-control">
-              @if (fotoAnonima(); as foto) {
-                <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
-                <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
-              } @else {
-                <ion-button fill="outline" (click)="elegirFotoAnonima()">
-                  <ion-icon name="camera-outline" slot="start" aria-hidden="true" />Agregar foto
-                </ion-button>
-              }
-            </div>
-            <tumbo-boton-confirmacion
-              buttonClass="primary-action"
-              title="Confirmar ingreso a la lista"
-              message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
-              [disabled]="!ingresoEscaneado()"
-              (confirmado)="anotarCliente()"
-              >Anotarme</tumbo-boton-confirmacion
-            >
-          </div>
-        </section>
-      </div>
     </div>
   }
 </ion-content>

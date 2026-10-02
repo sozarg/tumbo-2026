@@ -345,10 +345,12 @@ encuesta, la cuenta y la mesa libre de los puntos 20 a 22 el suyo,
 Los avisos de la cuenta (pedida, pagada y confirmada) usan los mismos
 dos secretos de Vault: no hace falta configurar nada más.
 
-Lo mismo los de los puntos 11 a 14 (`20261002112306_push_puntos_11_14.sql`):
+Lo mismo los de los puntos 9 a 14 (`20261002135039_push_espera.sql` y `20261002112306_push_puntos_11_14.sql`):
 
 | Qué pasa | A quién le llega |
 |---|---|
+| Alguien se anota en la lista de espera | Metres |
+| El metre le asigna una mesa | Ese cliente, con el número de mesa |
 | El cliente envía un pedido (o lo reenvía corregido) | Mozos |
 | El mozo rechaza un pedido | El cliente de esa mesa, con el motivo |
 | El mozo confirma un pedido | Cocina con sus platos, bar con sus bebidas, y el cliente |
@@ -428,3 +430,15 @@ migración nueva.
 **No tocar tablas desde el panel web.** Es cómodo y rompe el esquema
 versionado: el repositorio deja de reflejar la base y el próximo
 `npx supabase db push` de otro integrante puede fallar o pisar algo.
+
+## Los puntos 9 y 10 en producción
+
+Las push de la lista de espera (al metre cuando alguien se anota y al
+cliente cuando le asignan mesa) salen de la base por `avisar-push`,
+como todas las demás: no hace falta configurar nada aparte. La función
+`enviar-push` que las mandaba desde la aplicación se quitó: la invocaba
+el propio cliente y necesitaba un secret propio.
+
+Lo que sí hay que activar a mano es el ingreso anónimo, en
+*Authentication › Sign In / Providers › Anonymous sign-ins*. La
+configuración local (`config.toml`) ya lo deja activo.

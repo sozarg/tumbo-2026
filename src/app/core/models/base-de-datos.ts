@@ -745,6 +745,14 @@ export interface Database {
           base: number;
         }[];
       };
+      asignar_mesa_a_cliente: {
+        Args: { p_espera_id: string; p_mesa_id: string };
+        Returns: string;
+      };
+      vincular_mesa_asignada: {
+        Args: { p_qr_token: string };
+        Returns: string;
+      };
     };
     Enums: {
       estado_cuenta: 'pendiente' | 'pagada' | 'confirmada';

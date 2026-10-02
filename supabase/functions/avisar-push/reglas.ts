@@ -26,8 +26,21 @@ export type Evento =
   | { readonly tipo: 'pedido_listo'; readonly id: string }
   | { readonly tipo: 'pedido'; readonly id: string; readonly momento: MomentoDePedido }
   | { readonly tipo: 'mensaje'; readonly id: string }
+  | { readonly tipo: 'espera'; readonly id: string; readonly momento: MomentoDeEspera }
   | { readonly tipo: 'cuenta'; readonly id: string; readonly momento: MomentoDeCuenta }
   | { readonly tipo: 'ignorado'; readonly motivo: string };
+
+/** Los momentos de la lista de espera que avisan (puntos 9 y 10). */
+export type MomentoDeEspera = 'nueva' | 'asignada';
+
+/** El estado que tiene que tener la fila de espera para cada aviso. */
+export const ESTADO_DE_ESPERA: Readonly<Record<MomentoDeEspera, string>> = {
+  nueva: 'esperando',
+  asignada: 'asignado',
+};
+
+/** Quién atiende la puerta, según el punto 9. */
+export const METRES = ['metre'] as const;
 
 /** Los momentos del pedido que avisan antes de que esté listo (12 a 14). */
 export type MomentoDePedido = 'enviado' | 'rechazado' | 'confirmado';
@@ -104,6 +117,16 @@ export function clasificar(cuerpo: CuerpoDelWebhook): Evento {
       return { tipo: 'ignorado', motivo: 'el pedido no cambió a un estado con aviso' };
     }
     return { tipo: 'pedido', id: fila.id, momento };
+  }
+
+  if (cuerpo.table === 'lista_espera') {
+    if (cuerpo.type === 'INSERT' && fila.estado === 'esperando') {
+      return { tipo: 'espera', id: fila.id, momento: 'nueva' };
+    }
+    if (cuerpo.type === 'UPDATE' && fila.estado === 'asignado') {
+      return { tipo: 'espera', id: fila.id, momento: 'asignada' };
+    }
+    return { tipo: 'ignorado', motivo: 'la espera no cambió a un estado con aviso' };
   }
 
   if (cuerpo.table === 'mensajes' && cuerpo.type === 'INSERT') {
@@ -240,3 +263,22 @@ export function recortar(texto: string, maximo = 140): string {
 }
 
 const conPunto = (texto: string) => (/[.!?…]$/.test(texto) ? texto : `${texto}.`);
+
+/** Los avisos de la lista de espera: al metre cuando alguien llega, al cliente con su mesa. */
+export function avisoDeEspera(
+  momento: MomentoDeEspera,
+  nombre: string | null,
+  mesa: number | null,
+): Aviso {
+  return momento === 'nueva'
+    ? {
+        titulo: 'Nueva persona en la lista de espera',
+        cuerpo: `${nombre?.trim() || 'Un cliente'} se anotó y espera una mesa.`,
+        seccion: 'espera',
+      }
+    : {
+        titulo: mesa ? `Tu mesa es la ${mesa}` : 'Ya tenés mesa',
+        cuerpo: 'Escaneá el QR de tu mesa para sentarte y ver el menú.',
+        seccion: 'entrada',
+      };
+}

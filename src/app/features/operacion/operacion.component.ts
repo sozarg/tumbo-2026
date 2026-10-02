@@ -250,7 +250,13 @@ export class Operacion implements OnInit {
   protected readonly paso = signal(0);
   protected readonly paginaItems = signal(0);
   protected readonly mesasDisponibles = computed(() =>
-    this.demo.mesas().filter((mesa) => mesa.disponible),
+    this.demo
+      .mesas()
+      .filter(
+        (mesa) =>
+          mesa.disponible &&
+          !this.demo.espera().some((persona) => persona.mesaAsignada === mesa.numero),
+      ),
   );
   protected readonly itemsPedido = computed(() => {
     const sector =
@@ -485,6 +491,8 @@ export class Operacion implements OnInit {
   protected readonly nombreAnonimo = signal('');
   protected readonly fotoAnonima = signal<FotoTomada | null>(null);
   protected readonly ingresoEscaneado = signal(false);
+  protected readonly qrSeleccionado = signal<number | null>(null);
+  protected readonly estadoQrMesa = signal<'correcto' | 'incorrecto' | 'error' | null>(null);
 
   /** `false` en el navegador: ahí la cámara y el lector se simulan. */
   protected readonly camaraReal = this.camara.esReal;
@@ -1891,6 +1899,46 @@ export class Operacion implements OnInit {
             ? 'Escaneo cancelado.'
             : 'No se encontró un código válido.',
     );
+  }
+
+  protected async escanearMesaAsignada(): Promise<void> {
+    this.estadoQrMesa.set(null);
+    const asignada = this.demo.mesaAsignada();
+    if (asignada === null) {
+      this.estadoQrMesa.set('incorrecto');
+      this.mensaje.set('Todavía no tenés una mesa asignada por el maître.');
+      return;
+    }
+
+    const lectura: ResultadoDeCodigo = await this.lector.leerCodigo();
+    if (lectura.estado !== 'leido') {
+      this.estadoQrMesa.set('error');
+      this.mensaje.set(
+        lectura.estado === 'error'
+          ? lectura.mensaje
+          : lectura.estado === 'cancelado'
+            ? 'Escaneo cancelado.'
+            : 'No se encontró un código QR de mesa válido.',
+      );
+      return;
+    }
+
+    const token = this.qr.tokenDeMesa(lectura.contenido);
+    if (!token) {
+      this.estadoQrMesa.set('incorrecto');
+      this.mensaje.set(`Tenés asignada la mesa ${asignada}. Escaneá el QR de esa mesa.`);
+      return;
+    }
+
+    const resultado = await this.demo.vincularMesaPorQr(token);
+    if (resultado.ok) {
+      this.estadoQrMesa.set('correcto');
+      this.mensaje.set(`Vinculación exitosa. Ya estás en la mesa ${asignada}.`);
+      return;
+    }
+
+    this.estadoQrMesa.set('incorrecto');
+    this.mensaje.set(resultado.error ?? `Tenés asignada la mesa ${asignada}.`);
   }
 
   protected async elegirFotoAnonima(): Promise<void> {
