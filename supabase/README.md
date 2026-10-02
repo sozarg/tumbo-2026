@@ -355,6 +355,13 @@ Lo mismo los de los puntos 11 a 14 (`20261002112306_push_puntos_11_14.sql`):
 | El cliente hace una consulta | Todos los mozos |
 | El mozo responde | El cliente de esa mesa |
 
+Los avisos del registro de clientes (push a gerencia en el punto 6 y
+correo de aprobación o rechazo en los 7 y 8) también leen la dirección
+y la firma de Vault desde `20261002123318_avisos_registro_y_permisos.sql`.
+Antes vivían solo en producción, con la firma escrita en el SQL. Para
+cambiar la firma alcanza con actualizar el secret `TUMBO_FIRMA_WEBHOOK`
+de las funciones y `tumbo_firma_webhook` en Vault, sin tocar código.
+
 Quién escribió un mensaje se decide por la estadía (el cliente de la
 mesa o no), no por el `tipo` que manda la aplicación. La consulta y el
 rechazo por pantalla se prueban con `tests/ui-puntos-11-13.mjs`, que
