@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, inject, NgZone, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import * as Phaser from 'phaser';
 
@@ -7,74 +7,133 @@ import * as Phaser from 'phaser';
   templateUrl: './juego-recoleccion.component.html',
   styleUrls: ['./juego-recoleccion.component.scss'],
 })
-export class JuegoRecoleccionComponent implements OnInit, OnDestroy {
+export class JuegoRecoleccionComponent implements OnInit, OnDestroy, AfterViewInit {
   private game!: Phaser.Game;
   private router = inject(Router);
   private ngZone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
+  private timeoutId: any = null; // Para controlar el timer de inicialización
   
   protected showModal: boolean = false;
   protected showGameOverModal: boolean = false;
   protected finalScore: number = 0;
+  protected finalDiscount: number = 0;
 
-  ngOnInit() {
-    const config: Phaser.Types.Core.GameConfig = {
-      type: Phaser.AUTO,  
-      width: 480,
-      height: 800,
-      parent: 'phaser-game',
-      physics: {
-        default: 'arcade',
-        arcade: {
-          gravity: { y: 400, x: 0 },
-          debug: false
-        }
-      },
-      scale: {
-        mode: Phaser.Scale.ENVELOP,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-      },
-      scene: [FrutiCatScene]
-    };
+  ngOnInit() {}
 
-    this.game = new Phaser.Game(config);
-    // Inyectamos la referencia del componente de Angular a la escena de Phaser
-    this.game.registry.set('angularComponent', this);
+  ngAfterViewInit() {
+    // Limpiamos cualquier canvas rezagado en el DOM por seguridad
+    const container = document.getElementById('phaser-game');
+    if (container) {
+      container.innerHTML = '';
+    }
+
+    this.timeoutId = setTimeout(() => {
+      if (this.game) {
+        return; 
+      }
+
+      (window as any).currentJuegoComponent = this;
+
+      const config: Phaser.Types.Core.GameConfig = {
+        type: Phaser.AUTO,  
+        width: 480,
+        height: 800,
+        parent: 'phaser-game',
+        physics: {
+          default: 'arcade',
+          arcade: {
+            gravity: { y: 400, x: 0 },
+            debug: false
+          }
+        },
+        scale: {
+          mode: Phaser.Scale.ENVELOP,
+          autoCenter: Phaser.Scale.CENTER_BOTH
+        },
+        scene: [FrutiCatScene]
+      };
+
+      this.game = new Phaser.Game(config);
+    }, 100);
   }
 
-  // Método que llamará Phaser al terminar el tiempo
   public finalizarPartidaDesdePhaser(scoreFinal: number) {
     this.ngZone.run(() => {
       this.finalScore = scoreFinal;
+      this.finalDiscount = Math.floor(scoreFinal / 10);
       this.showGameOverModal = true;
+      this.cdr.detectChanges();
     });
   }
 
   protected pedirSalida() {
     this.showModal = true;
-    const escena = this.game.scene.getScene('FrutiCatScene');
+    const escena = this.game?.scene.getScene('FrutiCatScene');
     if (escena) escena.scene.pause();
   }
 
   protected continuarJuego() {
     this.showModal = false;
-    const escena = this.game.scene.getScene('FrutiCatScene');
+    const escena = this.game?.scene.getScene('FrutiCatScene');
     if (escena) escena.scene.resume();
   }
 
   protected salirAjustes() {
+    this.cleanupAndNavigate('/operacion');
+  }
+
+  private cleanupAndNavigate(route: string) {
     this.showModal = false;
     this.showGameOverModal = false;
-    this.router.navigate(['/home']); 
+    
+    // Cancelamos el timeout pendiente si el usuario sale rápido
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+
+    if ((window as any).currentJuegoComponent === this) {
+      delete (window as any).currentJuegoComponent;
+    }
+
+    if (this.game) {
+      this.game.destroy(true);
+      this.game = undefined as any;
+    }
+
+    // Limpiamos el contenedor DOM de Phaser
+    const container = document.getElementById('phaser-game');
+    if (container) {
+      container.innerHTML = '';
+    }
+
+    this.router.navigate([route]);
   }
 
   ngOnDestroy() {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+
+    if ((window as any).currentJuegoComponent === this) {
+      delete (window as any).currentJuegoComponent;
+    }
+
     if (this.game) {
-      this.game.registry.remove('angularComponent');
       this.game.destroy(true);
+      this.game = undefined as any;
+    }
+
+    const container = document.getElementById('phaser-game');
+    if (container) {
+      container.innerHTML = '';
     }
   }
 }
 
+// --- La clase FrutiCatScene se mantiene exactamente igual ---
 class FrutiCatScene extends Phaser.Scene {
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -82,7 +141,7 @@ class FrutiCatScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private fruitsGroup!: Phaser.Physics.Arcade.Group;
   
-  private timeLeft: number = 30;          
+  private timeLeft: number = 10; 
   private timerText!: Phaser.GameObjects.Text;
   private gameTimer?: Phaser.Time.TimerEvent;
 
@@ -91,17 +150,17 @@ class FrutiCatScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('background', 'assets/juego-recoleccion-assets/fondo.png');
-    this.load.image('tumbito', 'assets/juego-recoleccion-assets/tumbito-avatar.png');
-    this.load.image('tortita', 'assets/juego-recoleccion-assets/tortita.png');
-    this.load.image('brocoli', 'assets/juego-recoleccion-assets/brocoli.png'); 
-    this.load.image('pollo', 'assets/juego-recoleccion-assets/pollo.png');
-    this.load.image('sopa', 'assets/juego-recoleccion-assets/sopa.png');
-    this.load.image('pizza', 'assets/juego-recoleccion-assets/pizza.png');
+    this.load.image('background', '/assets/juego-recoleccion-assets/fondo.png');
+    this.load.image('tumbito', '/assets/juego-recoleccion-assets/tumbito-avatar.png');
+    this.load.image('tortita', '/assets/juego-recoleccion-assets/tortita.png');
+    this.load.image('brocoli', '/assets/juego-recoleccion-assets/brocoli.png'); 
+    this.load.image('pollo', '/assets/juego-recoleccion-assets/pollo.png');
+    this.load.image('sopa', '/assets/juego-recoleccion-assets/sopa.png');
+    this.load.image('pizza', '/assets/juego-recoleccion-assets/pizza.png');
   }
 
   create() {
-    this.timeLeft = 30;
+    this.timeLeft = 10;
     this.score = 0;
     this.physics.resume();
 
@@ -122,20 +181,22 @@ class FrutiCatScene extends Phaser.Scene {
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (this.scene.isPaused()) return;
-
       if (pointer.isDown) {
         this.player.x = pointer.x;
       }
     });
 
-    // --- LÓGICA DE COLISIÓN DIFERENCIADA CON LÍMITE EN 0 ---
     this.physics.add.overlap(this.player, this.fruitsGroup, (player, object) => {
       const fruit = object as Phaser.Physics.Arcade.Sprite;
       
-      if (fruit.texture.key === 'tortita' || fruit.texture.key === 'pollo' || fruit.texture.key === 'sopa' || fruit.texture.key === 'pizza') {
-        this.score += 10; // Suma puntos
+      if (
+        fruit.texture.key === 'tortita' || 
+        fruit.texture.key === 'pollo' || 
+        fruit.texture.key === 'sopa' || 
+        fruit.texture.key === 'pizza'
+      ) {
+        this.score += 10;
       } else if (fruit.texture.key === 'brocoli') {
-        // Resta 10, pero nos aseguramos de que nunca baje de 0
         this.score = Math.max(0, this.score - 10); 
       }
 
@@ -143,7 +204,6 @@ class FrutiCatScene extends Phaser.Scene {
       this.scoreText.setText('Puntuación: ' + this.score);
     }, undefined, this);
 
-    // Generador de tortitas cada 1 segundo
     this.time.addEvent({
       delay: 1000,
       callback: this.spawnFruit,
@@ -151,7 +211,6 @@ class FrutiCatScene extends Phaser.Scene {
       loop: true
     });
 
-    // Generador de brócolis cada 0.5 segundos
     this.time.addEvent({
       delay: 500,
       callback: this.spawnBrocoli,
@@ -159,26 +218,22 @@ class FrutiCatScene extends Phaser.Scene {
       loop: true
     });
     
-    // Texto de Puntuación
-    // --- Texto de Puntuación con margen seguro ---
     this.scoreText = this.add.text(60, 40, 'Puntuación: 0', {
       fontSize: '26px',
-      color: '#black',
-      fontStyle: 'bold',
-      stroke: '#000000', // Borde negro alrededor de las letras para que se lea perfecto
-      strokeThickness: 2
-    });
-
-    // --- Texto del Timer con espacio debajo del puntaje ---
-    this.timerText = this.add.text(60, 80, 'Tiempo: 30s', {
-      fontSize: '26px',
-      color: '#380000', // Color rojizo destacado
+      color: '#ffffff',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 2
     });
 
-    // Temporizador de cuenta regresiva
+    this.timerText = this.add.text(60, 80, 'Tiempo: 10s', {
+      fontSize: '26px',
+      color: '#ff4d4d',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2
+    });
+
     this.gameTimer = this.time.addEvent({
       delay: 1000,
       callback: () => {
@@ -196,22 +251,16 @@ class FrutiCatScene extends Phaser.Scene {
 
   spawnFruit() {
     const randomX = Phaser.Math.Between(40, 440); 
-    
-    // Array con las 4 opciones de imágenes
     const items = ['tortita', 'pollo', 'sopa', 'pizza'];
-    
-    // Elegimos una al azar del array
     const texturaAleatoria = Phaser.Math.RND.pick(items);
 
     const fruit = this.physics.add.sprite(randomX, -50, texturaAleatoria);
     if (texturaAleatoria === 'sopa' || texturaAleatoria === 'pizza') {
       fruit.setScale(0.1);
-    }
-    else{
+    } else {
       fruit.setScale(0.2);
     }
     this.fruitsGroup.add(fruit);
-    
   }
 
   spawnBrocoli() {
@@ -229,10 +278,9 @@ class FrutiCatScene extends Phaser.Scene {
     this.physics.pause();
     this.scene.pause();
 
-    // Notificamos a Angular para abrir el modal con la puntuación final
-    const angularComponent = this.registry.get('angularComponent');
-    if (angularComponent) {
-      angularComponent.finalizarPartidaDesdePhaser(this.score);
+    const angularComp = (window as any).currentJuegoComponent;
+    if (angularComp) {
+      angularComp.finalizarPartidaDesdePhaser(this.score);
     }
   }
   
@@ -246,6 +294,5 @@ class FrutiCatScene extends Phaser.Scene {
         this.player.setVelocityX(0);
       }
     }
-
   }
 }

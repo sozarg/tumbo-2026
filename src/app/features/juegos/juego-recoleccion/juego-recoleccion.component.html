@@ -5,7 +5,7 @@
   <!-- Contenedor de Phaser -->
   <div id="phaser-game"></div>
 
-  <!-- Modal de confirmación (Se muestra cuando showModal es true) -->
+  <!-- Modal de confirmación de salida manual -->
   @if (showModal) {
     <div class="modal-overlay">
       <div class="modal-content">
@@ -18,4 +18,25 @@
       </div>
     </div>
   }
+
+  <!-- Modal de Fin de Partida (Perdiste) -->
+  @if (showGameOverModal) {
+    <div class="modal-overlay">
+      <div class="modal-content game-over-box">
+        <h2>¡Tiempo terminado!</h2>
+        
+        <div class="score-display">
+          <span>Puntos: </span>
+          <strong> {{ finalScore }} </strong>
+          <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+          <span>Descuento total: </span>
+          <strong style="color: #27ae60;"> {{ finalDiscount }} %</strong>
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 20px;">
+          <button class="btn-aceptar" (click)="salirAjustes()">Volver</button>
+        </div>
+      </div>
+    </div>
+  } 
 </div>

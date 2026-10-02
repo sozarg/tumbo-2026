@@ -1771,7 +1771,12 @@ export class Operacion implements OnInit {
     this.quitarFotoAnonima();
     this.mensaje.set('Te anotamos en la lista de espera.');
   }
-
+  
+  protected async ingresoJuego(idJuego: string): Promise<void> {
+    if (idJuego === 'juegoRecoleccion') {
+      await this.router.navigate(['/juego-recoleccion']);
+    }
+  }
   protected async escanearIngreso(): Promise<void> {
     const lectura: ResultadoDeCodigo = await this.lector.leerCodigo();
     if (lectura.estado === 'leido' && lectura.contenido === this.qr.contenidoDeEntrada()) {
@@ -2274,59 +2279,6 @@ export class Operacion implements OnInit {
         ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
         : 'Partida registrada. Solo el primer intento ganador otorga beneficio.',
     );
-  }
-    protected async jugar(idJuego: string, gano: boolean): Promise<void> {
-      const intento = (await this.demo.jugar(idJuego, gano)).intento;
-      this.mensaje.set(
-        gano && intento === 1
-          ? '¡Ganaste! Obtuviste ' + this.demo.descuento() + '% de descuento.'
-          : 'Partida registrada. Solo el primer intento ganador otorga beneficio.',
-      );
-    }
-    protected async ingresoJuego(idJuego: string): Promise<void> {
-      if(idJuego === 'juegoRecoleccion') {
-        this.router.navigate(['/juego-recoleccion']);
-      }
-    }
-  protected async registrarEncuesta(): Promise<void> {
-    if (!this.validar(this.encuestaForm)) {
-      return;
-    }
-    const registrada = (await this.demo.registrarEncuesta()).ok;
-    this.mensaje.set(
-      registrada
-        ? 'Encuesta guardada: los gráficos ya tienen un nuevo dato.'
-        : 'Ya respondiste la encuesta de esta estadía.',
-    );
-  }
-
-  protected seleccionarPropina(porcentaje: number): void {
-    this.demo.seleccionarPropina(porcentaje);
-    this.mensaje.set('Seleccionaste una propina del ' + porcentaje + '%.');
-  }
-
-  protected async generarCuenta(): Promise<void> {
-    const generada = (await this.demo.generarCuenta()).ok;
-    this.mensaje.set(
-      generada
-        ? 'Cuenta generada con el detalle completo.'
-        : 'Primero seleccioná uno de los cinco QR de propina.',
-    );
-  }
-
-  protected async pagarCuenta(): Promise<void> {
-    await this.demo.pagarCuenta();
-    this.mensaje.set('Pago simulado realizado. El mozo debe confirmarlo.');
-  }
-
-  protected async confirmarPago(): Promise<void> {
-    await this.demo.confirmarPago();
-    this.mensaje.set('Pago confirmado y mesa liberada.');
-  }
-
-  protected seleccionarQr(porcentaje: number): void {
-    this.qrSeleccionado.set(porcentaje);
-    this.seleccionarPropina(porcentaje);
   }
 
   /**
