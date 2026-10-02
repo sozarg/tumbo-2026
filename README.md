@@ -198,7 +198,7 @@ Verificado el 02/10/2026 con el código de `main`, la base de producción (solo 
 | 5 | Registro de cliente | Completo en código | Ferrari | El alta crea el cliente pendiente y encola la push; los triggers están en `20261002123318_avisos_registro_y_permisos.sql`. |
 | 6 | Clientes pendientes | Parcial | Cruz | La push a dueño y supervisor sale; solo el dueño tiene un teléfono registrado. |
 | 7-8 | Rechazo y aceptación | Completo en código | Cruz | Brevo envía los correos; el aviso lee dirección y firma de Vault. El logo se descarga del repositorio, que hoy es público. |
-| 9 | Cliente anónimo y espera | **Bloqueado** | Cruz | Los ingresos anónimos están deshabilitados en Auth de producción. La push al metre está en la rama `cruz`, sin mergear. |
+| 9 | Cliente anónimo y espera | **Bloqueado por configuración** | Cruz / Terrile | Funciona de punta a punta en local (`tests/ui-punto-9.mjs`): entrada sin cuenta, nombre y foto, lista de espera, el metre lo ve y lo quita, y resultados sin cuenta. En producción falta activar *Anonymous sign-ins* en Supabase Auth; hasta entonces la app lo explica. La push al metre está en la rama `cruz`. |
 | 10 | Metre asigna mesa | **No cumple en `main`** | Cruz | En `main` el metre crea la estadía y el cliente no escanea el QR. El flujo correcto está en la rama `cruz`. |
 | 11 | Menú y consulta al mozo | Completo | Cruz / Terrile | Consulta por mesa con fecha y hora; el mozo elige a qué mesa responde. Push a los mozos y al cliente. |
 | 12 | Realizar pedido | Completo | Terrile | `enviar_pedido` crea el pedido y sus ítems en una sola operación; push a los mozos. |
