@@ -39,7 +39,7 @@ export interface AccesoRapido {
 const ETIQUETAS_PERFIL: Record<PerfilUsuario, string> = {
   dueno: 'Dueño',
   supervisor: 'Supervisor',
-  metre: 'Maitre',
+  metre: 'Maître',
   mozo: 'Mozo',
   cocinero: 'Cocinero',
   cantinero: 'Cantinero',
