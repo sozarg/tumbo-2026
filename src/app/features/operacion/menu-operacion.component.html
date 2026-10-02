@@ -154,7 +154,10 @@
               [class.dashboard-action--bloqueada]="bloqueadas().includes(acceso.id)"
               [attr.aria-label]="
                 bloqueadas().includes(acceso.id)
-                  ? acceso.titulo + ', se habilita con tu pedido'
+                  ? acceso.titulo +
+                    (acceso.id === 'consulta'
+                      ? ', se habilita con tu mesa'
+                      : ', se habilita con tu pedido')
                   : acceso.titulo
               "
               (click)="seleccionar.emit(acceso.id)"

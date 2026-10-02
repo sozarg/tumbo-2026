@@ -346,10 +346,15 @@ export class Operacion implements OnInit {
   protected readonly mesasDelSector = computed(() =>
     agruparPorMesa(this.demo.pedidosEnCurso(), this.sectorActual()),
   );
-  /** Puntos 14 y 19: lo que el cliente todavía no puede usar según su pedido. */
+  /**
+   * Lo que el cliente todavía no puede usar: la consulta sin mesa (punto
+   * 11: «con mesa asignada se habilita»), los juegos sin pedido
+   * confirmado (14) y la encuesta y la cuenta sin recepción (19).
+   */
   protected readonly seccionesBloqueadas = computed<readonly Seccion[]>(() => {
     if (!this.perfilEsCliente()) return [];
     return [
+      ...(this.demo.mesaVinculada() === null ? (['consulta'] as const) : []),
       ...(this.demo.juegosHabilitados() ? [] : (['juegos'] as const)),
       ...(this.demo.encuestaYCuentaHabilitadas() ? [] : (['encuesta', 'cuenta'] as const)),
     ];

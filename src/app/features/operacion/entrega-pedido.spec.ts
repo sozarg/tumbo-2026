@@ -188,6 +188,15 @@ describe('El rechazo lleva el motivo que escribe el mozo (punto 13)', () => {
 });
 
 describe('La consulta al mozo es por mesa (punto 11)', () => {
+  it('sin mesa asignada la consulta queda bloqueada y explica por qué', async () => {
+    const fixture = await abrirComo('cliente_registrado', 'consulta');
+    TestBed.inject(OperacionService).mesaVinculada.set(null);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['seccionesBloqueadas']()).toContain('consulta');
+    expect(texto(fixture, '.locked-card strong')).toEqual(['La consulta se habilita con tu mesa']);
+    expect(fixture.nativeElement.querySelector('.chat-form')).toBeNull();
+  });
+
   it('el cliente ve autor, mesa, fecha y hora de cada mensaje', async () => {
     const fixture = await abrirComo('cliente_registrado', 'consulta');
     expect(texto(fixture, '.chat-message span')[0]).toMatch(
