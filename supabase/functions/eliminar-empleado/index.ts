@@ -77,6 +77,9 @@ function responder(cuerpo: unknown, estado: number): Response {
 
 const error = (mensaje: string, estado: number) => responder({ error: mensaje }, estado);
 
+/** El bucket de las fotos de personas, con permisos de servicio. */
+type Bucket = ReturnType<ReturnType<typeof createClient>['storage']['from']>;
+
 /**
  * Borra las fotos del empleado del bucket.
  *
@@ -84,17 +87,40 @@ const error = (mensaje: string, estado: number) => responder({ error: mensaje },
  * empleado que no se puede dar de baja es un problema de verdad. Se
  * devuelve el aviso para que quien llame lo sepa.
  */
-async function borrarFotos(
-  admin: ReturnType<typeof createClient>,
-  id: string,
-): Promise<string | undefined> {
-  const { data, error: errorLista } = await admin.storage.from('fotos-usuarios').list(id);
-  if (errorLista || !data?.length) return undefined;
+async function borrarFotos(bucket: Bucket, id: string): Promise<string | undefined> {
+  const rutas = await archivosEn(bucket, id);
+  if (rutas === undefined) return 'El empleado se dio de baja, pero no se pudo revisar su foto.';
+  if (!rutas.length) return undefined;
 
-  const rutas = data.map((archivo) => `${id}/${archivo.name}`);
-  const { error: errorBorrado } = await admin.storage.from('fotos-usuarios').remove(rutas);
+  const { error: errorBorrado } = await bucket.remove(rutas);
 
   return errorBorrado ? 'El empleado se dio de baja, pero su foto quedó guardada.' : undefined;
+}
+
+/**
+ * Todos los archivos debajo de una carpeta del bucket.
+ *
+ * `list` devuelve un solo nivel, y la foto de un empleado no siempre
+ * está en el primero: la que se carga desde un alta queda en
+ * `<id>/<alta>/<archivo>`. Las subcarpetas vienen sin `id`; se recorren.
+ * Devuelve `undefined` si no se pudo listar.
+ */
+async function archivosEn(bucket: Bucket, carpeta: string): Promise<string[] | undefined> {
+  const { data, error: errorLista } = await bucket.list(carpeta);
+  if (errorLista) return undefined;
+
+  const rutas: string[] = [];
+  for (const entrada of data ?? []) {
+    const ruta = `${carpeta}/${entrada.name}`;
+    if (entrada.id !== null) {
+      rutas.push(ruta);
+      continue;
+    }
+    const internas = await archivosEn(bucket, ruta);
+    if (internas === undefined) return undefined;
+    rutas.push(...internas);
+  }
+  return rutas;
 }
 
 Deno.serve(async (peticion: Request) => {
@@ -163,7 +189,7 @@ Deno.serve(async (peticion: Request) => {
   }
 
   // ── 3. Borrar ─────────────────────────────────────────────────────
-  const aviso = await borrarFotos(admin, id);
+  const aviso = await borrarFotos(admin.storage.from('fotos-usuarios'), id);
 
   // Se borra la cuenta de Auth: la fila de `public.usuarios` se va sola
   // por el `on delete cascade`.

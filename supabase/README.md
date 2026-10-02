@@ -313,7 +313,7 @@ puesto no es peligroso, pero conviene decidirlo entre los cuatro.
 
 Cuando cocina y bar terminan, el trigger `avisar_pedido_listo` llama a
 la función `avisar-push`, que avisa a los mozos. La dirección y la firma
-**no están en la migración** —el repositorio es público—: se leen de
+**no están en la migración**, porque un secreto no se versiona: se leen de
 Vault. Se cargan una sola vez, desde el SQL Editor:
 
 ```sql
@@ -324,6 +324,23 @@ select vault.create_secret('<el mismo valor que TUMBO_FIRMA_WEBHOOK>', 'tumbo_fi
 La firma tiene que coincidir con el secret `TUMBO_FIRMA_WEBHOOK` de las
 funciones. Sin estos dos secretos el pedido igual queda listo; solo no
 sale la push. Por eso una base local nunca llama a producción.
+
+**Cambiar la firma.** Tiene que cambiar en los dos lugares a la vez, y
+no se escribe en ningún archivo del repositorio:
+
+```bash
+FIRMA=$(openssl rand -hex 32)
+printf 'TUMBO_FIRMA_WEBHOOK=%s\n' "$FIRMA" > /tmp/firma.env
+npx supabase secrets set --project-ref <REF> --env-file /tmp/firma.env
+printf "select vault.update_secret((select id from vault.secrets where name = 'tumbo_firma_webhook'), '%s');" "$FIRMA" \
+  | npx supabase db query --linked
+rm /tmp/firma.env; unset FIRMA
+```
+
+Para comprobarla sin ver el valor: `npx supabase secrets list` muestra
+el SHA-256 de cada secreto, y tiene que coincidir con
+`encode(extensions.digest(decrypted_secret, 'sha256'), 'hex')` de
+`vault.decrypted_secrets`. Una llamada con la firma vieja responde 401.
 
 ### Probarlo sin tocar producción
 

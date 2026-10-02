@@ -191,13 +191,13 @@ Verificado el 02/10/2026 con el código de `main`, la base de producción (solo 
 
 | # | Funcionalidad | Estado | Responsable | Detalle |
 |---|---|---|---|---|
-| 1 | Agregar un empleado | Completo en código | Ferrari | Función `crear-empleado` con validaciones. Faltan datos: 9 de 11 empleados no tienen foto. |
-| 2 | Agregar un plato | Completo en código | Ferrari | Exige 3 fotos. Hay 5 platos con sus 3 fotos; «Papas fritas» no tiene ninguna. |
-| 3 | Agregar una bebida | **Faltan datos** | Ferrari | El cliente ve solo 3 bebidas y una se llama «prueba»: el enunciado pide 5. Los postres no se ven (tienen 1 foto). |
-| 4 | Agregar una mesa | Completo en código | Ferrari | Genera el QR. Solo 2 de 9 mesas tienen foto y hay números de prueba (6, 8, 19, 26). |
+| 1 | Agregar un empleado | Completo en código | Ferrari | Función `crear-empleado` con validaciones. Las cuentas de demostración no tienen foto; la que se carga en el alta se borra con la baja, incluso la que queda en la carpeta del alta. |
+| 2 | Agregar un plato | Completo | Ferrari | Exige 3 fotos. El cliente ve 6 platos, todos con sus 3 fotos. |
+| 3 | Agregar una bebida | Completo | Ferrari | El cliente ve 5 bebidas (agua, café, cerveza, limonada y vino) y 2 postres, todos con 3 fotos (`20261002175505_catalogo_tres_fotos.sql`). |
+| 4 | Agregar una mesa | Completo en código | Ferrari | Genera el QR. Mesas 1 a 5 y 26; la 1 y la 26 tienen foto. |
 | 5 | Registro de cliente | Completo en código | Ferrari | El alta crea el cliente pendiente y encola la push; los triggers están en `20261002123318_avisos_registro_y_permisos.sql`. |
 | 6 | Clientes pendientes | Parcial | Cruz | La push a dueño y supervisor sale; solo el dueño tiene un teléfono registrado. |
-| 7-8 | Rechazo y aceptación | Completo en código | Cruz | Brevo envía los correos; el aviso lee dirección y firma de Vault. El logo se descarga del repositorio, que hoy es público. |
+| 7-8 | Rechazo y aceptación | Completo en código | Cruz | Brevo envía los correos; el aviso lee dirección y firma de Vault. El logo se descarga de la aplicación publicada en Vercel. |
 | 9 | Cliente anónimo y espera | **Bloqueado por configuración** | Cruz / Terrile | Funciona de punta a punta en local (`tests/ui-punto-9.mjs`): entrada sin cuenta, nombre y foto, lista de espera con push al metre, el metre lo ve y lo quita, y resultados sin cuenta. En producción falta activar *Anonymous sign-ins* en Supabase Auth; hasta entonces la app lo explica. |
 | 10 | Metre asigna mesa | Completo | Cruz | El metre asigna con `asignar_mesa_a_cliente` (atómica); el cliente recibe push y la ve en vivo, y se sienta escaneando el QR de ESA mesa: otro QR se rechaza y la mesa no se le ofrece a nadie más (`tests/ui-punto-10.mjs`). |
 | 11 | Menú y consulta al mozo | Completo | Cruz / Terrile | Consulta por mesa con fecha y hora; el mozo elige a qué mesa responde. Push a los mozos y al cliente. |
@@ -218,10 +218,11 @@ Para que las push lleguen, cada perfil tiene que abrir la aplicación una vez en
 
 | Pendiente | Puntos |
 |---|---|
-| Habilitar los ingresos anónimos en Supabase Auth | 9 |
-| Cargar fotos y productos reales; borrar «prueba» y las mesas de prueba | 1 a 4 |
-| Registrar un teléfono por perfil | Todas las push |
-| Hacer privado el repositorio y mover el logo de los correos | 7 y 8 |
+| Habilitar los ingresos anónimos en Supabase Auth (*Authentication › Sign In / Providers › Allow anonymous sign-ins*) | 9 |
+| Activar la protección de claves filtradas (*Authentication › Attack Protection*) | Seguridad |
+| Registrar un teléfono por perfil (el supervisor abre la aplicación en su Android) | 6 y todas las push |
+
+Los datos de prueba de producción se borraron el 02/10/2026: productos, empleados, mesas y fotos de Storage sin dueño. Qué se borró y por qué está en `supabase/mantenimiento/2026-10-02-limpieza.sql`.
 
 ## Identidad visual
 
