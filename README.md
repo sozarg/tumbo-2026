@@ -122,11 +122,6 @@ Qué hace cada perfil en cada módulo, paso a paso: [`docs/flujos-por-modulo.md`
 
 Las reglas importantes las decide la base, no la pantalla: que una mesa no se asigne dos veces, el descuento de los juegos (solo el primer intento y sin acumular) y el total de la cuenta.
 
-## Lo que falta
-
-- Segunda entrega (07/11): factura en PDF al confirmar el pago e ingreso con redes sociales (punto 23). No empezada.
-- Tercera entrega (28/11): reservas, pedidos a domicilio con mapa y repartidor, y menú con sensores (puntos 24 a 31). No empezada.
-
 ## Pantallas
 
 ![Animación de ingreso](docs/imagenes/pantallas/1-presentacion-gif.gif)
