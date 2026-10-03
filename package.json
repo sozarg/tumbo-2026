@@ -9,6 +9,7 @@
     "icons": "node tools/generar-iconos.mjs",
     "ilustraciones": "node tools/generar-ilustraciones.mjs",
     "qr:dni": "node tools/generar-qr-dni.mjs",
+    "readme:imagenes": "node tools/generar-indice-imagenes.mjs",
     "icons:android": "npx @capacitor/assets generate --android && node tools/corregir-iconos-android.mjs",
     "prebuild": "node tools/generar-entorno.mjs && node tools/generar-ilustraciones.mjs",
     "build:local": "ng build --configuration local",
