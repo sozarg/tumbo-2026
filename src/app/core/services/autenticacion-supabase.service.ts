@@ -4,13 +4,10 @@ import { Tablas, Vistas } from '../models/base-de-datos';
 import { AccesoRapido, Usuario, etiquetaDePerfil } from '../models/usuario';
 import { AutenticacionPort, ModoAutenticacion, ResultadoAutenticacion } from './autenticacion.port';
 import { SesionService } from './sesion.service';
-import { almacenamientoSesion } from './almacenamiento-sesion';
+import { CLAVE_TOKEN_PUSH, almacenamientoSesion } from './almacenamiento-sesion';
 import { exigirCliente, supabaseClient } from './supabase.client';
 
 type FilaUsuario = Tablas<'usuarios'>;
-
-/** Dónde se guarda el token de notificaciones de este dispositivo. */
-const CLAVE_TOKEN_PUSH = 'tumbo.token-push';
 
 /**
  * Fila de la vista accesos_rapidos.
@@ -228,10 +225,12 @@ export class AutenticacionSupabaseService implements AutenticacionPort {
    * enunciado se demuestra con cuatro celulares en simultáneo y cerrar
    * sesión en uno no puede dejar mudos a los demás.
    *
-   * Hoy todavía no hay nada que escriba en `dispositivos_push` —falta el
-   * alta con Firebase—, así que esto no borra nada. Se deja escrito
-   * ahora para que el día que se registre el token, el cierre de sesión
-   * ya lo contemple y nadie se olvide.
+   * Corre ANTES del `signOut()` a propósito. La política de la tabla es
+   * `usuario_id = auth.uid()`, así que después de cerrar la sesión de
+   * Supabase el DELETE ya no alcanza ninguna fila —y PostgREST no lo
+   * reporta como error: contesta que salió bien con cero filas—. El
+   * token quedaría colgado del usuario anterior y la persona siguiente
+   * no podría tomarlo.
    */
   private async olvidarDispositivo(): Promise<void> {
     const token = await almacenamientoSesion.getItem(CLAVE_TOKEN_PUSH);

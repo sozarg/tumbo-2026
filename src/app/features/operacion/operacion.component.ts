@@ -136,6 +136,7 @@ import {
   Seccion,
   puedeAcceder,
 } from '../../core/navegacion/secciones';
+import { SeccionPedida } from '../../core/navegacion/seccion-pedida';
 
 /** Cuántos mensajes de la consulta entran en una página (punto 11). */
 const MENSAJES_POR_PAGINA = 4;
@@ -231,6 +232,7 @@ export class Operacion implements OnInit {
   private readonly errores = inject(ErroresService);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly seccionPedida = inject(SeccionPedida);
   private readonly sesion = inject(SesionService);
   private readonly autenticacion = inject(AUTENTICACION);
   protected readonly demo = inject(OperacionService);
@@ -864,6 +866,27 @@ export class Operacion implements OnInit {
       lockClosedOutline,
       trashOutline,
       walletOutline,
+    });
+
+    /*
+     * Abre la sección que pidió una notificación tocada.
+     *
+     * Depende también de `usuario()` a propósito, y no por casualidad:
+     * si la notificación se toca con la aplicación cerrada, el pedido
+     * queda escrito antes de que la sesión termine de restaurarse, y
+     * `abrir()` lo descartaría por falta de perfil. Al leer las dos
+     * señales, el efecto se vuelve a ejecutar cuando el usuario llega y
+     * recién ahí abre.
+     */
+    effect(() => {
+      const pedida = this.seccionPedida.valor();
+      const hayUsuario = this.usuario() !== null;
+      if (!pedida || !hayUsuario) return;
+
+      untracked(() => {
+        this.seccionPedida.limpiar();
+        this.abrir(pedida);
+      });
     });
   }
 
@@ -1894,7 +1917,7 @@ export class Operacion implements OnInit {
   }
   protected async escanearIngreso(): Promise<void> {
     const lectura: ResultadoDeCodigo = await this.lector.leerCodigo();
-    if (lectura.estado === 'leido' && lectura.contenido === this.qr.contenidoDeEntrada()) {
+    if (lectura.estado === 'leido' && this.qr.esContenidoDeEntrada(lectura.contenido)) {
       this.ingresoEscaneado.set(true);
       this.mensaje.set('QR válido. Ahora completá tu nombre y foto.');
       return;
