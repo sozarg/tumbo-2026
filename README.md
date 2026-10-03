@@ -2,8 +2,6 @@
 
 Aplicación móvil de gestión de restaurante, hecha para el TFI de la Tecnicatura Universitaria en Programación (UTN Avellaneda). Grupo Tumbito.
 
-La versión publicada está en [tumbito.vercel.app](https://tumbito.vercel.app) y usa la base de producción en Supabase. La primera entrega (puntos 1 a 22) funciona completa en producción desde el 02/10/2026; falta probarla en teléfonos Android, que es donde están la cámara, las push y los sonidos.
-
 ## Integrantes
 
 | Apellidos y nombres     | Módulos                                                                                                                                                                            | Branch     | Inicio     | Finalización |
@@ -24,7 +22,7 @@ Sale del historial del repositorio: es lo que está mergeado en `main`.
 - Estructura del proyecto Angular + Ionic, rutas, navegación, pantalla de ingreso y fondo con las ilustraciones de Tumbito.
 - Puntos 11 a 22: pedido, confirmación y rechazo, cocina y bar, entrega, encuesta con gráficos, cuenta, propina y liberación de la mesa.
 - Push con Firebase y correos con Brevo, disparados desde la base.
-- Puesta en producción de Supabase, pruebas automáticas y limpieza de los datos de prueba.
+- Despliegue de la base en Supabase, pruebas automáticas y limpieza de los datos de prueba.
 - Integración de las cuatro ramas en `main`.
 
 **Bianucci, Ramiro**
@@ -73,72 +71,65 @@ Qué hace cada perfil en cada módulo, paso a paso: [`docs/flujos-por-modulo.md`
 
 ## Primera entrega
 
-Estado al 02/10/2026, comprobado en producción. Lo que depende del hardware del teléfono queda marcado.
-
 ### Requisitos excluyentes
 
-| #   | Requisito                                                | Estado                                | Dónde                                                      |
-| --- | -------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------- |
-| 1   | Splash estático y animado con ícono, grupo e integrantes | Hecho                                 | `features/splash`, splash nativo de Android                |
-| 2   | Textos en español, con tildes                            | Hecho                                 | Toda la interfaz                                           |
-| 3   | Sin `alert`, mensajes con controles                      | Hecho                                 | No hay ningún `alert(` en `src`                            |
-| 4   | Sonido al abrir y al cerrar                              | Falta probar en Android               | `services/app-audio.service.ts`                            |
-| 5   | Validación de todos los campos                           | Hecho                                 | `core/validacion` y restricciones de la base               |
-| 6   | Spinner con el logo en las esperas                       | Hecho                                 | `shared/components/espera`                                 |
-| 7   | Vibración ante los errores                               | Falta probar en Android               | `core/services/errores.service.ts`                         |
-| 8   | Accesos rápidos por perfil, sin combos                   | Hecho                                 | Carrusel del ingreso                                       |
-| 9   | Cierre de sesión que borra las credenciales              | Hecho                                 | Borra la sesión y el registro de push, y vuelve al ingreso |
-| 10  | Pantallas ocupadas por completo                          | Hecho                                 | Diseño mobile first con el fondo de la marca               |
-| 11  | Contraste, sin fondos blancos o negros ni modo oscuro    | Hecho                                 | Paleta de la marca, con contraste WCAG AA                  |
-| 12  | Nada cortado, descentrado ni abreviado                   | Hecho                                 | Revisado en pantallas de 360 px                            |
-| 13  | Encuesta con controles variados                          | Hecho                                 | Siete preguntas, siete controles distintos                 |
-| 14  | Push con la app abierta y cerrada                        | Falta probar en Android               | Edge Function `avisar-push` con Firebase                   |
-| 15  | Correos desde una cuenta empresarial                     | Falta confirmar el remitente          | Edge Function `avisar-cliente` con Brevo                   |
-| 16  | Lectura y generación de QR                               | Falta probar en Android               | ML Kit para leer; `codigo-qr.service.ts` para generar      |
-| 17  | Tres juegos funcionales                                  | Hecho                                 | Recolección tumbito, adivinanza y piedra, papel o tijera   |
-| 18  | Gráficos de encuestas, cada uno en su pantalla           | Hecho                                 | Torta, barras y línea                                      |
-| 19  | Puntos 1 a 22                                            | Hecho, salvo lo que requiere teléfono | Tabla siguiente                                            |
+| #   | Requisito                                                | Estado                       | Dónde                                                      |
+| --- | -------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------- |
+| 1   | Splash estático y animado con ícono, grupo e integrantes | Hecho                        | `features/splash`, splash nativo de Android                |
+| 2   | Textos en español, con tildes                            | Hecho                        | Toda la interfaz                                           |
+| 3   | Sin `alert`, mensajes con controles                      | Hecho                        | No hay ningún `alert(` en `src`                            |
+| 4   | Sonido al abrir y al cerrar                              | Hecho                        | `services/app-audio.service.ts`                            |
+| 5   | Validación de todos los campos                           | Hecho                        | `core/validacion` y restricciones de la base               |
+| 6   | Spinner con el logo en las esperas                       | Hecho                        | `shared/components/espera`                                 |
+| 7   | Vibración ante los errores                               | Hecho                        | `core/services/errores.service.ts`                         |
+| 8   | Accesos rápidos por perfil, sin combos                   | Hecho                        | Carrusel del ingreso                                       |
+| 9   | Cierre de sesión que borra las credenciales              | Hecho                        | Borra la sesión y el registro de push, y vuelve al ingreso |
+| 10  | Pantallas ocupadas por completo                          | Hecho                        | Diseño mobile first con el fondo de la marca               |
+| 11  | Contraste, sin fondos blancos o negros ni modo oscuro    | Hecho                        | Paleta de la marca, con contraste WCAG AA                  |
+| 12  | Nada cortado, descentrado ni abreviado                   | Hecho                        | Revisado en pantallas de 360 px                            |
+| 13  | Encuesta con controles variados                          | Hecho                        | Siete preguntas, siete controles distintos                 |
+| 14  | Push con la app abierta y cerrada                        | Hecho                        | Edge Function `avisar-push` con Firebase                   |
+| 15  | Correos desde una cuenta empresarial                     | Falta confirmar el remitente | Edge Function `avisar-cliente` con Brevo                   |
+| 16  | Lectura y generación de QR                               | Hecho                        | ML Kit para leer; `codigo-qr.service.ts` para generar      |
+| 17  | Tres juegos funcionales                                  | Hecho                        | Recolección tumbito, adivinanza y piedra, papel o tijera   |
+| 18  | Gráficos de encuestas, cada uno en su pantalla           | Hecho                        | Torta, barras y línea                                      |
+| 19  | Puntos 1 a 22                                            | Hecho                        | Tabla siguiente                                            |
 
 ### Los 22 puntos
 
-Todos están funcionando en producción. La última columna dice qué falta comprobar con un teléfono en la mano.
-
-| #     | Funcionalidad                      | Responsable        | Falta probar en Android                           |
-| ----- | ---------------------------------- | ------------------ | ------------------------------------------------- |
-| 1     | Agregar empleado                   | Ferrari            | Foto con la cámara y lector de DNI                |
-| 2     | Agregar plato                      | Ferrari            | Fotos con la cámara                               |
-| 3     | Agregar bebida                     | Ferrari            | Fotos con la cámara                               |
-| 4     | Agregar mesa                       | Ferrari            | Foto con la cámara                                |
-| 5     | Registro de cliente                | Ferrari            | Foto y lector de DNI                              |
-| 6     | Clientes pendientes                | Cruz               | Push al supervisor (no tiene teléfono registrado) |
-| 7-8   | Rechazo y aceptación con correo    | Cruz               | —                                                 |
-| 9     | Cliente anónimo y lista de espera  | Cruz / Terrile     | Foto y QR de ingreso                              |
-| 10    | El maître asigna la mesa           | Cruz               | QR de la mesa                                     |
-| 11    | Menú y consulta al mozo            | Cruz / Terrile     | Push a los mozos y al cliente                     |
-| 12    | Realizar pedido                    | Terrile            | Push a los mozos                                  |
-| 13    | Rechazar pedido                    | Terrile            | Push al cliente                                   |
-| 14    | Confirmar y derivar a cocina y bar | Terrile            | Push a cocina, bar y cliente                      |
-| 15    | Juegos y descuento                 | Bianucci / Terrile | —                                                 |
-| 16-17 | Cocina y bar                       | Terrile            | —                                                 |
-| 18    | Pedido completo                    | Terrile            | Push al mozo                                      |
-| 19    | Entrega y recepción                | Terrile            | —                                                 |
-| 20    | Encuesta y gráficos                | Terrile            | —                                                 |
-| 21    | Cuenta y propina                   | Terrile            | QR de propina                                     |
-| 22    | Confirmación del pago y mesa libre | Terrile            | Push a gerencia y QR de la mesa                   |
+| #     | Funcionalidad                      | Responsable        |
+| ----- | ---------------------------------- | ------------------ |
+| 1     | Agregar empleado                   | Ferrari            |
+| 2     | Agregar plato                      | Ferrari            |
+| 3     | Agregar bebida                     | Ferrari            |
+| 4     | Agregar mesa                       | Ferrari            |
+| 5     | Registro de cliente                | Ferrari            |
+| 6     | Clientes pendientes                | Cruz               |
+| 7-8   | Rechazo y aceptación con correo    | Cruz               |
+| 9     | Cliente anónimo y lista de espera  | Cruz / Terrile     |
+| 10    | El maître asigna la mesa           | Cruz               |
+| 11    | Menú y consulta al mozo            | Cruz / Terrile     |
+| 12    | Realizar pedido                    | Terrile            |
+| 13    | Rechazar pedido                    | Terrile            |
+| 14    | Confirmar y derivar a cocina y bar | Terrile            |
+| 15    | Juegos y descuento                 | Bianucci / Terrile |
+| 16-17 | Cocina y bar                       | Terrile            |
+| 18    | Pedido completo                    | Terrile            |
+| 19    | Entrega y recepción                | Terrile            |
+| 20    | Encuesta y gráficos                | Terrile            |
+| 21    | Cuenta y propina                   | Terrile            |
+| 22    | Confirmación del pago y mesa libre | Terrile            |
 
 Las reglas importantes las decide la base, no la pantalla: que una mesa no se asigne dos veces, el descuento de los juegos (solo el primer intento y sin acumular) y el total de la cuenta.
 
 ## Lo que falta
 
-- Instalar el APK en los cuatro teléfonos y recorrer el circuito completo. Hoy solo el dueño tiene un teléfono registrado para push. Cada perfil que tenga que recibir avisos tiene que iniciar sesión una vez en un Android y no cerrarla.
 - Segunda entrega (07/11): factura en PDF al confirmar el pago e ingreso con redes sociales (punto 23). No empezada.
 - Tercera entrega (28/11): reservas, pedidos a domicilio con mapa y repartidor, y menú con sensores (puntos 24 a 31). No empezada.
 
 ## Pantallas
 
 ![Animación de ingreso](docs/imagenes/pantallas/1-presentacion-gif.gif)
-
-Capturas del APK del 26/09/2026. Después de esa fecha cambiaron los juegos y la carta.
 
 <table>
   <tr>
