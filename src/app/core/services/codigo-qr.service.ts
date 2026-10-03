@@ -40,6 +40,22 @@ export class CodigoQrService {
   contenidoDeEntrada(): string {
     return 'tumbo://ingreso';
   }
+
+  /**
+   * Si lo escaneado es el cartel de ingreso.
+   *
+   * Compara sin distinguir mayúsculas, igual que `tokenDeMesa`.
+   * El PNG que está en `public/imagenes/qr-entrada.png` —y que es
+   * el que se imprime y se pega en la puerta— dice
+   * `TUMBO://ingreso`, con el esquema en mayúsculas. Como el
+   * esquema de una URI es insensible a la caja por norma, los dos
+   * textos son el mismo código; la igualdad estricta contra la
+   * constante en minúsculas los daba por distintos y rechazaba el
+   * cartel de la puerta.
+   */
+  esContenidoDeEntrada(contenido: string): boolean {
+    return contenido.trim().toLowerCase() === this.contenidoDeEntrada();
+  }
   /**
    * El módulo, una sola vez.
    *

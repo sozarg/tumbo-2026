@@ -58,6 +58,18 @@ function disponible(): Storage | null {
   }
 }
 
+/**
+ * Dónde se guarda el token de notificaciones de ESTE teléfono.
+ *
+ * Vive acá y no en un servicio porque la escriben y la leen dos lados
+ * que no se conocen entre sí: el servicio de push la escribe cuando
+ * Firebase entrega el token, y el cierre de sesión la lee para soltar
+ * el teléfono antes de irse. Si cada uno tuviera su propia constante,
+ * bastaría con que alguien cambiara una para que el cierre de sesión
+ * dejara de encontrar nada que borrar, sin que nada fallara.
+ */
+export const CLAVE_TOKEN_PUSH = 'tumbo.token-push';
+
 /** Reemplazo en memoria: la sesión dura lo que dura la pestaña. */
 const enMemoria = new Map<string, string>();
 

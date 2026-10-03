@@ -81,6 +81,18 @@ export const SECCIONES: readonly AccesoSeccion[] = [
     perfiles: [...gerencia, 'mozo', ...clientes],
   },
 ];
+/**
+ * Si un texto cualquiera nombra una sección.
+ *
+ * Existe porque el nombre de la sección llega desde afuera: viaja en el
+ * dato de una notificación, que la aplicación no escribió y no controla.
+ * Comprobarlo contra `SECCIONES` evita que un valor inventado termine
+ * convertido a `Seccion` de prepo.
+ */
+export function esSeccion(valor: unknown): valor is Seccion {
+  return typeof valor === 'string' && SECCIONES.some((acceso) => acceso.id === valor);
+}
+
 export function esGerencia(perfil: PerfilUsuario | undefined): boolean {
   return perfil === 'dueno' || perfil === 'supervisor';
 }
