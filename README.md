@@ -1,6 +1,6 @@
 # Tumbito — Trabajo Final Integrador 2026
 
-Aplicación móvil de gestión de restaurante, hecha para el TFI de la Tecnicatura Universitaria en Programación (UTN Avellaneda). Grupo Tumbito.
+Aplicación móvil de gestión de restaurante, Grupo Tumbito.
 
 ## Integrantes
 
