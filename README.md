@@ -6,8 +6,8 @@ Aplicación móvil de gestión de restaurante, hecha para el TFI de la Tecnicatu
 
 | Apellidos y nombres     | Módulos                                                                                                                                                                            | Branch     | Inicio     | Finalización |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- | ------------ |
-| Terrile, Mateo (líder)  | Operación (Pedidos), Servicio (Cocina y Barra), Experiencia del cliente (Menú y Encuesta) y Seguimiento (Reportes, Consultas y Cuenta). Puntos 11 a 22. Arquitectura e integración | `terrile`  | 26/08/2026 | 02/10/2026   |
-| Bianucci, Ramiro        | Experiencia del cliente (Juegos). Punto 15. Identidad visual, sonidos, vibración y proyecto Android                                                                                | `bianucci` | 26/08/2026 | 02/10/2026   |
+| Terrile, Mateo (líder)  |  Servicio (Cocina y Barra), Experiencia del cliente (Menú y Encuesta) y Seguimiento (Reportes, Consultas y Cuenta). Puntos 11 a 22. Arquitectura e integración                     | `terrile`  | 26/08/2026 | 02/10/2026   |
+| Bianucci, Ramiro        | Experiencia del cliente (Juegos). Punto 15. Identidad visual, sonidos, vibración y proyecto Android, Operación (Pedidos),                                                          | `bianucci` | 26/08/2026 | 02/10/2026   |
 | Cruz, Ignacio Agustín   | Gestión (Clientes) y Operación (Espera). Puntos 6 a 11                                                                                                                             | `cruz`     | 27/08/2026 | 30/09/2026   |
 | Ferrari, Matías Gabriel | Gestión (Personal y Productos) y Operación (Mesas). Puntos 1 a 5. Autenticación, validaciones y APK                                                                                | `ferrari`  | 28/08/2026 | 28/09/2026   |
 
@@ -20,7 +20,7 @@ Sale del historial del repositorio: es lo que está mergeado en `main`.
 **Terrile, Mateo**
 
 - Estructura del proyecto Angular + Ionic, rutas, navegación, pantalla de ingreso y fondo con las ilustraciones de Tumbito.
-- Puntos 11 a 22: pedido, confirmación y rechazo, cocina y bar, entrega, encuesta con gráficos, cuenta, propina y liberación de la mesa.
+- Puntos: cocina y bar, entrega, encuesta con gráficos, cuenta, propina y liberación de la mesa.
 - Push con Firebase y correos con Brevo, disparados desde la base.
 - Despliegue de la base en Supabase, pruebas automáticas y limpieza de los datos de prueba.
 - Integración de las cuatro ramas en `main`.
@@ -31,7 +31,7 @@ Sale del historial del repositorio: es lo que está mergeado en `main`.
 - Proyecto de Android Studio y recursos nativos.
 - Sonido al abrir y al cerrar (`AppAudio`) y vibración con Haptics.
 - Juego «Recolección tumbito» con Phaser.
-- Capturas de pantalla del README.
+- Puntos 12 al 15
 
 **Cruz, Ignacio Agustín**
 
@@ -109,9 +109,9 @@ Qué hace cada perfil en cada módulo, paso a paso: [`docs/flujos-por-modulo.md`
 | 9     | Cliente anónimo y lista de espera  | Cruz / Terrile     |
 | 10    | El maître asigna la mesa           | Cruz               |
 | 11    | Menú y consulta al mozo            | Cruz / Terrile     |
-| 12    | Realizar pedido                    | Terrile            |
-| 13    | Rechazar pedido                    | Terrile            |
-| 14    | Confirmar y derivar a cocina y bar | Terrile            |
+| 12    | Realizar pedido                    | Bianucci            |
+| 13    | Rechazar pedido                    | Bianucci            |
+| 14    | Confirmar y derivar a cocina y bar | Bianucci            |
 | 15    | Juegos y descuento                 | Bianucci / Terrile |
 | 16-17 | Cocina y bar                       | Terrile            |
 | 18    | Pedido completo                    | Terrile            |
