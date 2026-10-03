@@ -245,6 +245,7 @@ Se usa #003592 para texto corriente por contraste, #006AE7 para acciones y títu
 - [Puesta en marcha de Supabase](supabase/README.md)
 - [Auditoría de cumplimiento](docs/AUDITORIA_CUMPLIMIENTO.md)
 - [Guía para armar el APK](docs/apk.md)
+- [Cómo se opera cada módulo (flujos para la revisión)](docs/flujos-por-modulo.md)
 - [Consigna original del TFI](docs/Trabajo-practico-2026-TFI.pdf)
 - [Contexto ampliado del proyecto](CONTEXTO-PROYECTO.md)
 - [Manual visual de referencia](docs/manual-tfi.html)
