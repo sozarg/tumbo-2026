@@ -70,7 +70,7 @@ const bloques = [...porGrupo]
       `<details>\n<summary>${titulo} (${rutas.length})</summary>\n\n${rutas.map((r) => `- ${enlace(r)}`).join('\n')}\n\n</details>`,
   );
 
-const indice = `${INICIO}\n\n${imagenes.length} imágenes. Generado con \`npm run readme:imagenes\`.\n\n${bloques.join('\n\n')}\n\n${FIN}`;
+const indice = `${INICIO}\n\n${imagenes.length} imágenes.\n\n${bloques.join('\n\n')}\n\n${FIN}`;
 
 const readme = await readFile(README, 'utf8');
 const desde = readme.indexOf(INICIO);

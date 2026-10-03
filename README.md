@@ -24,7 +24,7 @@ Sale del historial del repositorio: es lo que está mergeado en `main`.
 - Estructura del proyecto Angular + Ionic, rutas, navegación, pantalla de ingreso y fondo con las ilustraciones de Tumbito.
 - Puntos 11 a 22: pedido, confirmación y rechazo, cocina y bar, entrega, encuesta con gráficos, cuenta, propina y liberación de la mesa.
 - Push con Firebase y correos con Brevo, disparados desde la base.
-- Puesta en producción de Supabase, pruebas automáticas (pgTAP y por pantalla) y limpieza de los datos de prueba.
+- Puesta en producción de Supabase, pruebas automáticas y limpieza de los datos de prueba.
 - Integración de las cuatro ramas en `main`.
 
 **Bianucci, Ramiro**
@@ -73,31 +73,31 @@ Qué hace cada perfil en cada módulo, paso a paso: [`docs/flujos-por-modulo.md`
 
 ## Primera entrega
 
-Estado al 02/10/2026, comprobado contra la base de producción y con las pruebas del repositorio. Lo que depende del hardware del teléfono no se puede comprobar desde una computadora y queda marcado.
+Estado al 02/10/2026, comprobado en producción. Lo que depende del hardware del teléfono queda marcado.
 
 ### Requisitos excluyentes
 
-| #   | Requisito                                                | Estado                                | Dónde                                                    |
-| --- | -------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------- |
-| 1   | Splash estático y animado con ícono, grupo e integrantes | Hecho                                 | `features/splash`, splash nativo de Android              |
-| 2   | Textos en español, con tildes                            | Hecho                                 | Toda la interfaz                                         |
-| 3   | Sin `alert`, mensajes con controles                      | Hecho                                 | No hay ningún `alert(` en `src`                          |
-| 4   | Sonido al abrir y al cerrar                              | Falta probar en Android               | `services/app-audio.service.ts`                          |
-| 5   | Validación de todos los campos                           | Hecho                                 | `core/validacion` y restricciones de la base             |
-| 6   | Spinner con el logo en las esperas                       | Hecho                                 | `shared/components/espera`                               |
-| 7   | Vibración ante los errores                               | Falta probar en Android               | `core/services/errores.service.ts`                       |
-| 8   | Accesos rápidos por perfil, sin combos                   | Hecho                                 | Carrusel del ingreso                                     |
-| 9   | Cierre de sesión que borra las credenciales              | Hecho                                 | `tests/ui-cambio-de-usuario.mjs`                         |
-| 10  | Pantallas ocupadas por completo                          | Hecho                                 | `tools/verificar-layout.cjs`                             |
-| 11  | Contraste, sin fondos blancos o negros ni modo oscuro    | Hecho                                 | Paleta de la marca; axe en las pruebas por pantalla      |
-| 12  | Nada cortado, descentrado ni abreviado                   | Hecho                                 | Pruebas a 360 px sin desplazamiento horizontal           |
-| 13  | Encuesta con controles variados                          | Hecho                                 | Siete preguntas, siete controles distintos               |
-| 14  | Push con la app abierta y cerrada                        | Falta probar en Android               | Edge Function `avisar-push` con Firebase                 |
-| 15  | Correos desde una cuenta empresarial                     | Falta confirmar el remitente          | Edge Function `avisar-cliente` con Brevo                 |
-| 16  | Lectura y generación de QR                               | Falta probar en Android               | ML Kit para leer; `codigo-qr.service.ts` para generar    |
-| 17  | Tres juegos funcionales                                  | Hecho                                 | Recolección tumbito, adivinanza y piedra, papel o tijera |
-| 18  | Gráficos de encuestas, cada uno en su pantalla           | Hecho                                 | Torta, barras y línea                                    |
-| 19  | Puntos 1 a 22                                            | Hecho, salvo lo que requiere teléfono | Tabla siguiente                                          |
+| #   | Requisito                                                | Estado                                | Dónde                                                      |
+| --- | -------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------- |
+| 1   | Splash estático y animado con ícono, grupo e integrantes | Hecho                                 | `features/splash`, splash nativo de Android                |
+| 2   | Textos en español, con tildes                            | Hecho                                 | Toda la interfaz                                           |
+| 3   | Sin `alert`, mensajes con controles                      | Hecho                                 | No hay ningún `alert(` en `src`                            |
+| 4   | Sonido al abrir y al cerrar                              | Falta probar en Android               | `services/app-audio.service.ts`                            |
+| 5   | Validación de todos los campos                           | Hecho                                 | `core/validacion` y restricciones de la base               |
+| 6   | Spinner con el logo en las esperas                       | Hecho                                 | `shared/components/espera`                                 |
+| 7   | Vibración ante los errores                               | Falta probar en Android               | `core/services/errores.service.ts`                         |
+| 8   | Accesos rápidos por perfil, sin combos                   | Hecho                                 | Carrusel del ingreso                                       |
+| 9   | Cierre de sesión que borra las credenciales              | Hecho                                 | Borra la sesión y el registro de push, y vuelve al ingreso |
+| 10  | Pantallas ocupadas por completo                          | Hecho                                 | Diseño mobile first con el fondo de la marca               |
+| 11  | Contraste, sin fondos blancos o negros ni modo oscuro    | Hecho                                 | Paleta de la marca, con contraste WCAG AA                  |
+| 12  | Nada cortado, descentrado ni abreviado                   | Hecho                                 | Revisado en pantallas de 360 px                            |
+| 13  | Encuesta con controles variados                          | Hecho                                 | Siete preguntas, siete controles distintos                 |
+| 14  | Push con la app abierta y cerrada                        | Falta probar en Android               | Edge Function `avisar-push` con Firebase                   |
+| 15  | Correos desde una cuenta empresarial                     | Falta confirmar el remitente          | Edge Function `avisar-cliente` con Brevo                   |
+| 16  | Lectura y generación de QR                               | Falta probar en Android               | ML Kit para leer; `codigo-qr.service.ts` para generar      |
+| 17  | Tres juegos funcionales                                  | Hecho                                 | Recolección tumbito, adivinanza y piedra, papel o tijera   |
+| 18  | Gráficos de encuestas, cada uno en su pantalla           | Hecho                                 | Torta, barras y línea                                      |
+| 19  | Puntos 1 a 22                                            | Hecho, salvo lo que requiere teléfono | Tabla siguiente                                            |
 
 ### Los 22 puntos
 
@@ -233,7 +233,6 @@ Angular 22 con componentes standalone y signals, Ionic 9 para la interfaz, Capac
     │   ├── navegacion/      secciones y módulos por perfil
     │   ├── services/        sesión, operación, catálogo, QR
     │   ├── validacion/      las mismas reglas que la base
-    │   ├── demo/            personas inventadas para probar las altas
     │   ├── guards/
     │   ├── models/
     │   └── rutas/
@@ -248,22 +247,10 @@ Angular 22 con componentes standalone y signals, Ionic 9 para la interfaz, Capac
 
     supabase/
     ├── migrations/          esquema, RLS, triggers y funciones (30)
-    ├── functions/           crear-empleado, guardar-producto, guardar-mesa,
-    │                        eliminar-empleado, avisar-push, avisar-cliente
-    ├── tests/               pgTAP y pruebas por pantalla con Playwright
-    └── mantenimiento/       scripts aplicados a mano en producción
+    └── functions/           crear-empleado, guardar-producto, guardar-mesa,
+                             eliminar-empleado, avisar-push, avisar-cliente
 
 Rutas: `splash`, `ingreso`, `registro`, `operacion` y `juego-recoleccion`. Todas se cargan de forma lazy.
-
-| Para                                | Comando                                          |
-| ----------------------------------- | ------------------------------------------------ |
-| Levantar la app                     | `npm start`                                      |
-| Pruebas unitarias                   | `npm test`                                       |
-| Pruebas de la base (Supabase local) | `npx supabase test db`                           |
-| Armar el APK                        | `npm run apk` (ver [`docs/apk.md`](docs/apk.md)) |
-| Actualizar el índice de imágenes    | `npm run readme:imagenes`                        |
-
-La puesta en marcha de Supabase, los secretos y cómo probar sin tocar producción están en [`supabase/README.md`](supabase/README.md). La URL y la clave pública de Supabase van en `src/environments/environment.local.ts`, que no se versiona; en el repositorio no hay ninguna clave.
 
 ## Identidad visual
 
@@ -294,7 +281,6 @@ El texto corriente va en #003592 por contraste, las acciones y los títulos en #
 
 - [Cómo se opera cada módulo](docs/flujos-por-modulo.md)
 - [Consigna del TFI, transcripta](docs/Trabajo-practico-2026-TFI.md)
-- [Puesta en marcha de Supabase](supabase/README.md)
 - [Guía para armar el APK](docs/apk.md)
 - [Contexto ampliado del proyecto](CONTEXTO-PROYECTO.md)
 - [Manual visual de referencia](docs/manual-tfi.html)
@@ -304,7 +290,7 @@ El texto corriente va en #003592 por contraste, las acciones y los títulos en #
 
 <!-- indice-imagenes:inicio -->
 
-261 imágenes. Generado con `npm run readme:imagenes`.
+261 imágenes.
 
 <details>
 <summary>Códigos QR (12)</summary>
