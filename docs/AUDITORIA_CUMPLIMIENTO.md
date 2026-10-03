@@ -1,5 +1,7 @@
 # Auditoría de cumplimiento — Tumbito
 
+> **Documento histórico.** Esta auditoría es del 18/09/2026 y quedó superada: casi todo lo que marca como «NO CUMPLE» se resolvió después. El estado vigente está en el [README](../README.md#primera-entrega).
+
 ## A. Alcance y resumen ejecutivo
 
 **Actualización de implementación 01–04, 18/09/2026:** código integrado y desplegado en Supabase de desarrollo `weeemajondwqstaoldtu` (`tumbo`, uso confirmado por el usuario). Ver [H. Cierre de implementación](#h-cierre-de-implementación-0104). Las matrices 01–04 y evidencias indicadas describen esta intervención. **05–22 mantienen el diagnóstico histórico y no se reauditaron.** Las observaciones iniciales sobre ausencia de acceso remoto/despliegues y una sola foto quedaron superadas exclusivamente en este alcance. No se declara listo todo el sistema.
