@@ -1896,6 +1896,8 @@ export class OperacionService {
       etiquetaPerfil: etiquetaDePerfil(f.perfil),
       estado: f.estado,
       fotoUrl: f.foto_url,
+      dni: f.dni,
+      cuil: f.cuil,
     };
   }
   private aPedido(
@@ -1936,7 +1938,7 @@ export class OperacionService {
     const deCliente = m.autor_id === estadia?.cliente_id;
     return {
       id: m.id,
-      autor: m.autor_id === yo ? 'Vos' : deCliente ? 'Cliente' : 'Mozo',
+      autor: m.autor_id === yo ? 'Vos' : deCliente ? 'Cliente' : this.nombreDelMozo(m.autor_id),
       texto: m.cuerpo,
       fecha: formatearFechaHora(new Date(m.enviado_en)),
       esPropio: m.autor_id === yo,
@@ -1945,6 +1947,22 @@ export class OperacionService {
       deCliente,
     };
   }
+  /**
+   * Cómo firma el mozo del otro lado del chat (corrección P2).
+   *
+   * El profesor pidió que el cliente vea el nombre del mozo y no la
+   * palabra «Mozo». Sale del listado de personal, que el cliente puede
+   * o no tener cargado según con qué perfil entró: si no está, queda
+   * «Mozo», que es lo que se mostraba hasta ahora. Preferimos un
+   * nombre genérico a inventar uno.
+   */
+  private nombreDelMozo(autorId: string): string {
+    const empleado = this.empleados().find((persona) => persona.id === autorId);
+    if (!empleado) return 'Mozo';
+    const nombre = `${empleado.nombres} ${empleado.apellidos}`.trim();
+    return nombre || 'Mozo';
+  }
+
   private aNotificacion = (n: Tablas<'notificaciones'>): NotificacionDemo => ({
     id: n.id,
     mensaje: n.cuerpo,

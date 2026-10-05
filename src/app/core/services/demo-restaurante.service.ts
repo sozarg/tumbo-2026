@@ -699,17 +699,32 @@ export class DemoRestauranteService {
   }
 
   private productosIniciales(): ProductoDemo[] {
-    const fotosPorNombre: Readonly<Record<string, string>> = {
-      'Hamburguesa TUMBO': 'imagenes/tumbito/carne.webp',
-      'Ravioles de la abuela': 'imagenes/tumbito/fideos.webp',
-      'Ensalada fresca': 'imagenes/tumbito/ensalada.webp',
-      'Papas crocantes': 'imagenes/tumbito/pizza.webp',
-      'Taco de vegetales': 'imagenes/tumbito/ensalada.webp',
-      'Limonada de la casa': 'imagenes/tumbito/sopa.webp',
-      'TUMBO Spritz': 'imagenes/tumbito/vino.webp',
-      Gaseosa: 'imagenes/tumbito/vino.webp',
-      'Agua mineral': 'imagenes/tumbito/vino.webp',
-      'Café de especialidad': 'imagenes/tumbito/cafe.webp',
+    const foto = (...nombres: readonly string[]): readonly string[] =>
+      nombres.map((nombre) => `imagenes/tumbito/${nombre}.webp`);
+
+    /*
+     * TRES FOTOS POR PRODUCTO, COMO EN LA CARTA DE VERDAD.
+     *
+     * El punto 2 pide tres y la carta las muestra en un carrusel. Un
+     * producto cargado desde la aplicación siempre trae tres —el alta
+     * tiene tres lugares—, así que la carta de demostración tiene que
+     * traerlas también: con una sola, el carrusel no tiene flechas ni
+     * puntos y parece que no estuviera hecho.
+     *
+     * El orden es el de cualquier carta: el plato, el acompañamiento o
+     * una segunda toma, y un plano de la mesa servida.
+     */
+    const fotosPorNombre: Readonly<Record<string, readonly string[]>> = {
+      'Hamburguesa TUMBO': foto('carne', 'pizza', 'cubiertos'),
+      'Ravioles de la abuela': foto('fideos', 'rodillo', 'cubiertos'),
+      'Ensalada fresca': foto('ensalada', 'saleros', 'cubiertos'),
+      'Papas crocantes': foto('pizza', 'carne', 'saleros'),
+      'Taco de vegetales': foto('ensalada', 'pizza', 'cubiertos'),
+      'Limonada de la casa': foto('sopa', 'vino', 'saleros'),
+      'TUMBO Spritz': foto('vino', 'cafe', 'cubiertos'),
+      Gaseosa: foto('vino', 'sopa', 'saleros'),
+      'Agua mineral': foto('vino', 'cubiertos', 'saleros'),
+      'Café de especialidad': foto('cafe', 'sopa', 'cubiertos'),
     };
     return [
       [
@@ -765,7 +780,7 @@ export class DemoRestauranteService {
       sector: sector as SectorProducto,
       precio: precio as number,
       minutos: minutos as number,
-      fotos: [fotosPorNombre[nombre as string] ?? 'imagenes/logo.png'],
+      fotos: fotosPorNombre[nombre as string] ?? ['imagenes/logo.png'],
     }));
   }
 

@@ -101,3 +101,145 @@
   color: var(--tumbo-naranja-profundo) !important;
   font-weight: 600;
 }
+
+/**
+ * LA BARRA DE PASOS.
+ *
+ * Misma composición que la de las altas de adentro —la cuenta a la
+ * izquierda, los botones a la derecha, una línea que la separa del
+ * formulario— para que recorrer un alta se sienta igual en las dos
+ * pantallas. No se puede compartir la regla: aquella vive encapsulada
+ * en la pantalla de operación.
+ */
+.pasos {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(0 53 146 / 14%);
+}
+
+.pasos__cuenta {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pasos__botones {
+  display: flex;
+  gap: 8px;
+}
+
+.pasos__botones ion-button {
+  margin: 0;
+  min-height: 44px;
+  --border-radius: 10px;
+}
+
+/**
+ * LA PANTALLA SE USA ENTERA.
+ *
+ * El ingreso es una tarjeta chica centrada, y para ese formulario —dos
+ * campos— está bien. El registro tiene foto y siete campos repartidos
+ * en dos tramos: centrarlo dejaba una banda de fondo arriba del logo y
+ * otra abajo de la barra de pasos, que es exactamente lo que el
+ * profesor marca como mala distribución.
+ *
+ * Acá el panel se estira a lo alto y adentro de cada tramo hay un solo
+ * elemento que se queda con lo que sobra: la caja de la foto en el
+ * primero y el resumen de quién se registra en el segundo. El resto de
+ * los campos conserva su tamaño natural, así que no aparecen bandas
+ * entre uno y otro.
+ *
+ * Solo afecta al registro: esta hoja se carga después de la del
+ * ingreso y únicamente en esta pantalla.
+ */
+.login-layout {
+  align-items: stretch;
+}
+
+.login-panel {
+  height: 100%;
+  min-height: 0;
+}
+
+.login-card-wrapper,
+.login-card,
+.login-card__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.login-card__content > form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+/* El primer tramo: la foto se lleva el alto libre. */
+.login-card__content > form > .registro-foto {
+  flex: 1;
+  min-height: 170px;
+  margin-bottom: 0;
+}
+
+/*
+ * Con la foto sacada, la vista previa crece con la caja en vez de
+ * quedarse en los 220 px de antes. Recorta desde el centro: la cámara
+ * saca vertical y acá el hueco cambia de forma según el teléfono.
+ */
+.registro-foto:has(.registro-foto__vista) {
+  justify-content: stretch;
+}
+
+.registro-foto__vista {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+/*
+ * Los dos botones del final ocupan el ancho entero y tienen el alto de
+ * un objetivo táctil cómodo: son la acción de la pantalla.
+ */
+.login-submit {
+  min-height: 56px;
+  font-size: 15px;
+}
+
+.login-card__content > form > ion-button[fill='clear'] {
+  min-height: 48px;
+  margin: 0;
+}
+
+/* En teléfonos bajos el formulario ya llena solo: la foto deja de pedir. */
+@media (max-height: 740px) {
+  .login-card__content > form > .registro-foto {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .login-submit {
+    min-height: 50px;
+  }
+}
+
+/*
+ * La separación entre campos la pone el `gap` del formulario, no cada
+ * campo por su cuenta. Sumadas, esas cuatro sangrías eran 24 px que en
+ * los teléfonos medianos hacían la diferencia entre entrar y pedir
+ * scroll.
+ */
+.login-card__content > form > .field {
+  margin-bottom: 0;
+}

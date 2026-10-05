@@ -19,6 +19,14 @@ export interface Usuario {
   readonly etiquetaPerfil: string;
   readonly estado: EstadoRegistro;
   readonly fotoUrl: string | null;
+  /*
+   * Opcionales porque no siempre hay de dónde sacarlos: el acceso
+   * rápido y la sesión restaurada arman un `Usuario` con lo que expone
+   * la vista pública, que no incluye el documento. Donde sí están —el
+   * listado de personal— el enunciado pide mostrarlos.
+   */
+  readonly dni?: string | null;
+  readonly cuil?: string | null;
 }
 
 /**

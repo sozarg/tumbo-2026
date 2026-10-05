@@ -269,7 +269,7 @@
   border-style: dashed;
 }
 
-.view-content :is(ion-input, ion-textarea, ion-select) {
+.view-content :is(ion-input, ion-textarea, ion-select, tumbo-campo-clave) {
   --background: var(--tumbo-azul-brillante);
   --border-color: #bac5d3;
 }
@@ -281,10 +281,253 @@
 }
 
 /* Listados compartidos de gestión. */
+/*
+ * EL AIRE SE REPARTE, NO SE AMONTONA ABAJO.
+ *
+ * Con `align-content: start` todo el sobrante quedaba en una banda
+ * muerta debajo de la última ficha. Repartido, la pantalla se ocupa de
+ * punta a punta, que es lo que pide el requisito excluyente R5.
+ *
+ * Las fichas NO se estiran para llenar, y es a propósito:
+ * `medirCuantasEntran` mide la ficha ya dibujada para saber cuántas
+ * entran. Si la ficha creciera hasta llenar el hueco, la medición
+ * leería ese alto crecido y el resultado sería siempre uno —la primera
+ * ficha ocuparía toda la pantalla y nunca entraría una segunda—. El
+ * sobrante va a los huecos, que la medición lee aparte.
+ */
 .person-list {
   display: grid;
   gap: 10px;
-  align-content: start;
+  align-content: space-evenly;
+}
+
+/* Mesas: la sección entera crece para que la grilla tenga de dónde
+   repartir. Va acá, en la hoja del componente, y no en la global de
+   mesas, para ganarle por orden al `align-content: center` de
+   `operacion.component.scss` sin tener que usar `!important`. */
+.table-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/*
+ * EL PADRE VA ADELANTE A PROPÓSITO.
+ *
+ * Unas líneas más arriba, `.view-content > *` le pone `flex: 0 0 auto`
+ * a todos los hijos. Con la encapsulación de Angular ese selector
+ * termina pesando más que `.person-list` suelta —cada compuesto suma su
+ * atributo—, así que la regla corta perdía y la lista no crecía.
+ *
+ * Medido en Chromium con las reglas reales: sin el padre adelante, la
+ * lista computa `flex: 0 0 auto` y el sobrante queda todo abajo; con
+ * él, `1 1 0%` y el aire se reparte.
+ */
+.view-content > .person-list,
+.view-content > .table-section,
+.view-content > .employee-form,
+.view-content > tumbo-cuenta-cliente {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * EL FORMULARIO POR PASOS.
+ *
+ * Columna que ocupa todo el alto disponible para que la barra de pasos
+ * quede abajo de todo con `margin-top: auto`. Si no, la barra subiría y
+ * bajaría según cuántos campos tenga el paso, y el botón de seguir
+ * cambiaría de lugar entre un tramo y el siguiente.
+ */
+.view-content > .employee-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/*
+ * En pantallas bajas la separación se achica antes que el contenido.
+ *
+ * El paso 2 del alta de empleado son seis campos: a 740 px de alto se
+ * pasaba 16 px y aparecía scroll. Son 4 px por hueco; sacarlos de la
+ * separación no se nota, y es preferible a achicar los campos o a
+ * partir el formulario en un tercer paso.
+ */
+@media (max-height: 780px) {
+  .view-content > .employee-form {
+    gap: 6px;
+  }
+}
+
+/*
+ * En los teléfonos más bajos (360 × 640 y parecidos) tampoco alcanza
+ * con la separación: el título del formulario cede unos píxeles. El
+ * nombre de la pantalla ya está arriba en grande, así que el encabezado
+ * de la tarjeta puede ser más chico sin que nadie se pierda.
+ */
+@media (max-height: 700px) {
+  .employee-form .form-title {
+    gap: 0.4rem;
+  }
+
+  .employee-form .form-title h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .employee-form .form-title > ion-icon {
+    font-size: 1.15rem;
+  }
+
+  /* Los campos también ceden unos píxeles: 50 px sigue siendo un
+     objetivo cómodo para el dedo y son seis campos en el paso 2 del
+     alta de empleado, el tramo más cargado de la aplicación. */
+  .employee-form ion-input,
+  .employee-form ion-select,
+  .employee-form tumbo-campo-clave {
+    --min-height: 50px;
+    min-height: 50px;
+  }
+
+  .pasos {
+    padding-top: 6px;
+  }
+}
+
+/*
+ * EL SOBRANTE VA A UN SOLO LUGAR, NO A TODOS LOS HUECOS.
+ *
+ * El primer intento repartía el alto con `justify-content:
+ * space-between`. En un paso lleno queda bien, pero el paso 1 del
+ * producto tiene cuatro campos cortos: estirarlos abría cuatro bandas
+ * vacías en vez de una. Es el mismo error que ya habíamos cometido y
+ * revertido en la tarjeta de mesa.
+ *
+ * El criterio que queda es el de «Buena Distribución» del enunciado
+ * pero aplicado con cabeza: el paso ocupa toda la pantalla porque UN
+ * elemento se queda con lo que sobra —el que gana algo con ser más
+ * grande— y el resto conserva su tamaño natural.
+ *
+ * Qué crece en cada tramo:
+ *   · alta de empleado y de cliente, paso 1 → la foto
+ *   · alta de producto, paso 1            → la descripción
+ * Cuando el paso no tiene nada que estirar, el sobrante se va abajo:
+ * los campos quedan arriba y el botón principal baja al pie, que es
+ * donde la mano lo busca.
+ */
+.employee-form ion-textarea[formcontrolname='descripcion'] {
+  flex: 1;
+  min-height: 140px;
+}
+
+/* Minutos y precio son dos números de pocos dígitos: no necesitan las
+   12rem por columna que pide el resto de las filas. */
+.employee-form__row--angosto {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/*
+ * La caja de la foto se queda con el alto que sobra en su tramo. Sin
+ * esto el primer paso mostraba el botón de sacar la foto arriba y una
+ * banda vacía hasta la barra de pasos.
+ */
+.employee-form .employee-photo {
+  flex: 1;
+  min-height: 168px;
+}
+
+.employee-form .employee-photo__preview {
+  width: clamp(104px, 22dvh, 168px);
+  height: clamp(104px, 22dvh, 168px);
+}
+
+/*
+ * LAS TRES FOTOS DEL PRODUCTO, EN DOS COLUMNAS.
+ *
+ * Apiladas en una columna a 4:3 cada hueco medía unos 280 px: las tres
+ * pedían 840 y el paso desbordaba 511 px en un teléfono de 870. Medido.
+ *
+ * Tres columnas entraban pero dejaban los huecos de 110 px de ancho:
+ * demasiado chicos para ver qué foto se eligió, y media pantalla vacía
+ * debajo. Dos columnas son el punto medio —dos arriba, una abajo— con
+ * huecos de unos 165 px que llenan el paso y dejan ver la imagen.
+ *
+ * Siguen siendo tres contenedores individuales y rotulados, que es lo
+ * que pide el punto 2.
+ */
+.employee-form .product-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.employee-form .product-photos__grid {
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * Los huecos miden lo que les deja la pantalla, no una proporción fija.
+ *
+ * Con `aspect-ratio` el alto salía del ancho: en un teléfono de 870 px
+ * el paso desbordaba 68 px y en uno chico sobraba aire. Atados a la
+ * fila de la grilla crecen y se achican con el teléfono, que es lo que
+ * pide la figura «Buena Distribución» del enunciado.
+ *
+ * El `min-height` es el piso: por debajo de eso el ícono de la cámara y
+ * su rótulo ya no entran y el hueco deja de leerse como un lugar donde
+ * tocar.
+ */
+.employee-form .product-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.employee-form .product-photo__slot {
+  aspect-ratio: auto;
+  flex: 1;
+  min-height: 92px;
+}
+
+.pasos {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #d4d7d5;
+}
+
+.pasos__cuenta {
+  margin: 0;
+  color: #526582;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pasos__botones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pasos__botones ion-button {
+  margin: 0;
+}
+
+.table-section .table-grid {
+  flex: 1;
+  min-height: 0;
+  align-content: space-evenly;
 }
 
 .person-card + .person-card {
@@ -303,11 +546,120 @@
   overflow-wrap: anywhere;
 }
 
+/*
+ * Dos fichas por pantalla, no cuatro apretadas. El alto sale del token
+ * compartido; el resto del tamaño acompaña para que la ficha no quede
+ * alta y vacía, que es lo que el enunciado llama «espacios neutros».
+ */
+.person-card,
+.catalog-item {
+  min-height: var(--tumbo-tarjeta-listado);
+}
+
+/*
+ * LA FICHA SE LLENA DE ARRIBA ABAJO.
+ *
+ * Con la ficha más alta, el contenido centrado dejaba una banda vacía
+ * arriba y otra abajo. En vez de estirar los controles, el alto se lo
+ * queda la FOTO, que además es lo que el punto 2 pide ver «en buen
+ * tamaño»; el texto y los botones se reparten el resto.
+ */
+.catalog-item {
+  grid-template-columns: clamp(96px, 30vw, 150px) minmax(0, 1fr) 52px;
+  align-items: stretch;
+  gap: clamp(12px, 3vw, 18px);
+  padding: clamp(14px, 3vw, 20px);
+}
+
+.catalog-item__image,
+.catalog-item__placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: clamp(96px, 30vw, 150px);
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+/* Nombre arriba, precio abajo: el hueco queda entre los dos y no al
+   final, que es lo que se leía como ficha a medio llenar. */
+.catalog-item__details {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.catalog-item__details p {
+  margin: 0;
+}
+
+/* Editar arriba, borrar abajo: la columna acompaña el alto de la ficha
+   y los dos controles quedan más lejos uno de otro, que para un botón
+   que borra no está de más. */
+.catalog-item__actions {
+  justify-content: space-between;
+}
+
+.catalog-item__edit {
+  width: 52px;
+  height: 52px;
+}
+
+.catalog-item h2 {
+  font-size: clamp(16px, 2.2dvh, 19px);
+}
+
+.catalog-item p {
+  font-size: clamp(12px, 1.7dvh, 14px);
+}
+
+.catalog-item strong {
+  font-size: clamp(15px, 2.1dvh, 18px);
+}
+
+.person-card__foto {
+  flex: none;
+  width: clamp(88px, 26vw, 132px);
+  height: clamp(88px, 26vw, 132px);
+  border-radius: 14px;
+  border: 2px solid var(--tumbo-azul-accion-claro);
+  object-fit: cover;
+  background: var(--tumbo-crema-brillante);
+}
+
 .person-card h2 {
-  margin: 0 0 6px;
-  font-size: 16px;
+  margin: 0 0 4px;
+  font-size: clamp(17px, 2.3dvh, 20px);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.3;
+}
+
+.person-card__perfil {
+  margin: 0 0 10px;
+  color: var(--tumbo-naranja-profundo);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Etiqueta y valor en dos columnas: el dato se lee sin tener que
+   adivinar cuál es cuál, y las tres filas quedan alineadas. */
+.person-card__datos {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  margin: 0;
+  font-size: clamp(12px, 1.7dvh, 14px);
+  line-height: 1.5;
+}
+
+.person-card__datos dt {
+  color: #526582;
+  font-weight: 600;
+}
+
+.person-card__datos dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .person-card p {
@@ -332,4 +684,113 @@
 .person-card__details {
   flex: 1;
   min-width: 0;
+}
+
+/*
+ * La tercera foto ocupa el ancho entero.
+ *
+ * Tres fotos en dos columnas dejan a la última sola, con un hueco al
+ * lado del mismo tamaño que ella: justo el agujero que estamos tratando
+ * de sacar de los formularios. Estirada queda apaisada, que para un
+ * plato servido es la foto que mejor queda, y la fila se completa.
+ */
+.employee-form .product-photos__grid .product-photo:last-child {
+  grid-column: 1 / -1;
+}
+
+/*
+ * LAS SECCIONES QUE OCUPAN EL ALTO.
+ *
+ * Van acá y no en la hoja global por lo mismo que el listado de
+ * personas: `.view-content > *` le pone `flex: 0 0 auto` a todos los
+ * hijos, y con la encapsulación de Angular ese selector pesa más que
+ * una regla global. Escritas allá, no se aplicaban.
+ */
+.view-content > .entrada,
+.view-content > .carrito,
+.view-content > .section-block:has(> .menu-grid),
+.view-content > .section-block:has(> .chat-card) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* Y adentro, el tramo que se reparte el aire de cada una. */
+.entrada > .anonymous-entry,
+.entrada > .anonymous-form,
+.section-block > .chat-card {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * EL MENÚ: UNA FICHA POR PANTALLA, COMPLETA.
+ *
+ * La carta pagina de a un producto, así que la ficha puede ocupar todo
+ * el alto en vez de quedar arriba con una banda de fondo debajo. Lo que
+ * crece es la foto, que es lo que el cliente mira para decidir, y de
+ * paso le da aire al carrusel de la corrección P1.
+ */
+.section-block > .menu-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+}
+
+.menu-grid > .product-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.product-card > .product-card__image {
+  flex: 1;
+  min-height: 150px;
+}
+
+/*
+ * EL TRAMO 1 DE LA ENTRADA: EL QR, GRANDE.
+ *
+ * La fila de «QR chiquito al lado del texto» alcanzaba cuando esta
+ * pantalla tenía además el formulario y la tarjeta de la mesa. Ahora
+ * que el tramo es solo esto, se acomoda en columna y el código se
+ * queda con el alto que sobra: es lo único que hay que hacer acá y es
+ * lo que la persona tiene que poder apuntar con la cámara.
+ *
+ * El `overflow: hidden` no es decorativo: la imagen del QR mide más de
+ * lo que entra y sin eso se derrama por encima de la tira de pasos.
+ */
+.entrada > .anonymous-entry {
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+}
+
+.entrada > .anonymous-entry > .qr-preview {
+  flex: 1;
+  align-self: stretch;
+  width: auto;
+  min-width: 0;
+  min-height: 120px;
+  height: auto;
+  overflow: hidden;
+}
+
+.entrada > .anonymous-entry > .qr-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.entrada > .anonymous-entry > div:last-child {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.entrada > .anonymous-entry ion-button {
+  margin-top: 10px;
 }

@@ -12,7 +12,7 @@ import { eyeOffOutline, eyeOutline, logInOutline } from 'ionicons/icons';
 import { AccesoRapido } from '../../core/models/usuario';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { ErroresService } from '../../core/services/errores.service';
-import { Espera } from '../../shared/components/espera/espera.component';
+import { EsperaGlobal } from '../../core/ui/espera-global.service';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
 import { conLimite, correoValido, sinEspaciosSolos } from '../../core/validacion/validadores';
@@ -25,7 +25,6 @@ import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-
     IonIcon,
     IonInput,
     IonNote,
-    Espera,
     FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
@@ -38,6 +37,7 @@ export class Ingreso {
   private readonly formularioBuilder = inject(FormBuilder);
   private readonly autenticacion = inject(AUTENTICACION);
   private readonly router = inject(Router);
+  private readonly esperaGlobal = inject(EsperaGlobal);
   private readonly errores = inject(ErroresService);
 
   protected readonly formulario = this.formularioBuilder.nonNullable.group({
@@ -127,11 +127,18 @@ export class Ingreso {
     this.enviando.set(true);
 
     try {
-      await this.autenticacion.ingresar(
-        this.formulario.controls.correo.value,
-        this.formulario.controls.clave.value,
-      );
-      await this.router.navigate(['/operacion']);
+      /*
+       * La espera la muestra `EsperaPantalla`, no el botón. `enviando`
+       * se mantiene porque sigue haciendo falta para deshabilitar el
+       * control, que es otra cosa: una avisa, la otra impide.
+       */
+      await this.esperaGlobal.durante('Ingresando', async () => {
+        await this.autenticacion.ingresar(
+          this.formulario.controls.correo.value,
+          this.formulario.controls.clave.value,
+        );
+        await this.router.navigate(['/operacion']);
+      });
     } catch (error: unknown) {
       // R9: todo error pasa por ErroresService, que además vibra.
       this.errorMensaje.set(await this.errores.desdeExcepcion(error, 'No se pudo iniciar sesión.'));

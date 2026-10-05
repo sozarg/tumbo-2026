@@ -84,7 +84,9 @@ h2 {
   display: grid;
   grid-template-columns: repeat(var(--access-count), minmax(0, 1fr));
   grid-auto-rows: minmax(0, 1fr);
-  align-items: center;
+  /* `stretch` y no `center`: con `center` la teja se quedaba en su
+     altura mínima y dejaba aire arriba y abajo de la fila. */
+  align-items: stretch;
   gap: var(--access-gap);
 }
 /* Dos accesos conservan el ancho de una columna de la grilla de tres,
@@ -96,8 +98,10 @@ h2 {
 }
 .dashboard-action {
   min-width: 0;
-  min-height: 44px;
-  height: min(100%, clamp(48px, 9dvh, 104px));
+  /* Sin tope de altura: la teja llena la celda que le dio la grilla.
+     Antes el `min()` la frenaba en 104px aunque sobrara pantalla. */
+  min-height: clamp(64px, 11dvh, 120px);
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -108,7 +112,7 @@ h2 {
   background: var(--tumbo-azul-brillante);
   box-shadow: 0 2px 6px rgb(0 53 146 / 7%);
   text-align: center;
-  font-size: 12px;
+  font-size: clamp(13px, 1.9dvh, 17px);
   line-height: 1.3;
 }
 .dashboard-action__icon,
@@ -116,8 +120,8 @@ h2 {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: clamp(24px, 4.5dvh, 40px);
-  height: clamp(24px, 4.5dvh, 40px);
+  width: clamp(32px, 6dvh, 52px);
+  height: clamp(32px, 6dvh, 52px);
   border-radius: 10px;
   background: var(--tumbo-azul-texto-10);
 }
@@ -134,21 +138,23 @@ h2 {
 }
 .dashboard-action__text strong {
   font-weight: 700;
+  font-size: clamp(14px, 2.1dvh, 19px);
 }
 .dashboard-action__text small {
   color: #526582;
-  font-size: 11px;
+  font-size: clamp(11px, 1.5dvh, 14px);
   line-height: 1.5;
 }
 
 .dashboard--comfortable .dashboard-action {
-  height: min(100%, clamp(60px, 16dvh, 136px));
+  height: 100%;
+  min-height: clamp(84px, 16dvh, 170px);
   gap: 12px;
-  font-size: 14px;
+  font-size: clamp(15px, 2.2dvh, 19px);
 }
 .dashboard--comfortable .dashboard-action__icon {
-  width: clamp(32px, 6dvh, 48px);
-  height: clamp(32px, 6dvh, 48px);
+  width: clamp(40px, 7.5dvh, 62px);
+  height: clamp(40px, 7.5dvh, 62px);
 }
 
 /* Pocas categorías: heredan las superficies y filas flexibles del dashboard.
@@ -207,7 +213,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 76px;
+  min-height: clamp(88px, 13dvh, 132px);
   padding: clamp(12px, 3dvh, 24px) 18px;
   border-radius: 18px;
   background: color-mix(in srgb, var(--tumbo-azul-accion) 9%, var(--tumbo-azul-brillante));
@@ -239,7 +245,7 @@ h2 {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 48px;
+  min-height: clamp(60px, 9dvh, 92px);
   gap: 12px;
   padding: 10px 14px;
   border-radius: 12px;

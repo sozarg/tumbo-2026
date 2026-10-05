@@ -45,161 +45,215 @@
             } @else {
               <form [formGroup]="formulario" (ngSubmit)="registrarse()" novalidate>
                 <!--
+                  EN DOS PASOS, POR LA MISMA RAZÓN QUE LAS ALTAS DE ADENTRO.
+
+                  Los siete campos más la foto no entran en un teléfono:
+                  la pantalla pedía scroll y el profesor marcó eso como
+                  error. El corte es el mismo que en el alta de cliente
+                  —quién es con su foto, y después cómo se lo ubica y
+                  cómo entra— así que las dos pantallas que dan de alta a
+                  un cliente se recorren igual.
+                -->
+                @if (paso() === 0) {
+                  <!--
                   El lector de QR del DNI, que el punto 5 pide: «Brindar
                   la posibilidad de contar con un lector de código QR
                   para el DNI, que cargará la información disponible en
                   los campos correspondientes».
+
+                  Va en el primer paso aunque complete campos del
+                  segundo: leer el documento es lo primero que conviene
+                  hacer, y lo que carga aparece ya escrito al avanzar.
                 -->
-                <ion-button
-                  class="registro-dni"
-                  fill="outline"
-                  expand="block"
-                  type="button"
-                  (click)="leerDni()"
-                >
-                  <ion-icon slot="start" name="qr-code-outline" aria-hidden="true" />
-                  {{ lectorReal ? 'Leer el código del DNI' : 'Lector disponible en Android' }}
-                </ion-button>
+                  <ion-button
+                    class="registro-dni"
+                    fill="outline"
+                    expand="block"
+                    type="button"
+                    (click)="leerDni()"
+                  >
+                    <ion-icon slot="start" name="qr-code-outline" aria-hidden="true" />
+                    {{ lectorReal ? 'Leer el código del DNI' : 'Lector disponible en Android' }}
+                  </ion-button>
 
-                <!-- La foto primero: en el teléfono es lo primero que se hace. -->
-                <div class="registro-foto">
-                  @if (foto(); as tomada) {
-                    <img class="registro-foto__vista" [src]="tomada.previewUrl" alt="Tu foto" />
-                    <div class="registro-foto__acciones">
-                      <ion-button fill="outline" size="small" type="button" (click)="sacarFoto()">
-                        <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                        Repetir
-                      </ion-button>
-                      <ion-button fill="clear" size="small" type="button" (click)="quitarFoto()">
-                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
-                        Quitar
-                      </ion-button>
-                    </div>
-                    @if (tomada.simulada) {
-                      <p class="registro-foto__nota">
-                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
-                      </p>
-                    }
-                  } @else {
-                    <ion-button
-                      class="registro-foto__tomar"
-                      fill="outline"
-                      type="button"
-                      (click)="sacarFoto()"
-                    >
-                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                      {{ camaraReal ? 'Sacar tu foto' : 'Tomar foto en Android' }}
-                    </ion-button>
-                    @if (campoInvalido('foto')) {
-                      <p class="field-error" role="alert">
-                        {{ mensajeCampo('foto', 'foto personal') }}
-                      </p>
+                  <!-- La foto primero: en el teléfono es lo primero que se hace. -->
+                  <div class="registro-foto">
+                    @if (foto(); as tomada) {
+                      <img class="registro-foto__vista" [src]="tomada.previewUrl" alt="Tu foto" />
+                      <div class="registro-foto__acciones">
+                        <ion-button fill="outline" size="small" type="button" (click)="sacarFoto()">
+                          <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                          Repetir
+                        </ion-button>
+                        <ion-button fill="clear" size="small" type="button" (click)="quitarFoto()">
+                          <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                          Quitar
+                        </ion-button>
+                      </div>
+                      @if (tomada.simulada) {
+                        <p class="registro-foto__nota">
+                          Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                        </p>
+                      }
                     } @else {
-                      <p class="registro-foto__nota">La foto personal es obligatoria.</p>
+                      <ion-button
+                        class="registro-foto__tomar"
+                        fill="outline"
+                        type="button"
+                        (click)="sacarFoto()"
+                      >
+                        <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                        {{ camaraReal ? 'Sacar tu foto' : 'Tomar foto en Android' }}
+                      </ion-button>
+                      @if (campoInvalido('foto')) {
+                        <p class="field-error" role="alert">
+                          {{ mensajeCampo('foto', 'foto personal') }}
+                        </p>
+                      } @else {
+                        <p class="registro-foto__nota">La foto personal es obligatoria.</p>
+                      }
                     }
-                  }
-                </div>
+                  </div>
 
-                <div class="field" [class.field--invalid]="campoInvalido('nombres')">
-                  <label for="nombres">Nombres</label>
-                  <ion-input
-                    id="nombres"
-                    formControlName="nombres"
-                    fill="outline"
-                    autocomplete="given-name"
-                    [maxlength]="limites.nombres.max"
-                  />
-                  @if (campoInvalido('nombres')) {
-                    <p class="field-error" role="alert">{{ mensajeCampo('nombres', 'nombre') }}</p>
-                  }
-                </div>
+                  <div class="field" [class.field--invalid]="campoInvalido('nombres')">
+                    <label for="nombres">Nombres</label>
+                    <ion-input
+                      id="nombres"
+                      formControlName="nombres"
+                      fill="outline"
+                      autocomplete="given-name"
+                      [maxlength]="limites.nombres.max"
+                    />
+                    @if (campoInvalido('nombres')) {
+                      <p class="field-error" role="alert">
+                        {{ mensajeCampo('nombres', 'nombre') }}
+                      </p>
+                    }
+                  </div>
 
-                <div class="field" [class.field--invalid]="campoInvalido('apellidos')">
-                  <label for="apellidos">Apellidos</label>
-                  <ion-input
-                    id="apellidos"
-                    formControlName="apellidos"
-                    fill="outline"
-                    autocomplete="family-name"
-                    [maxlength]="limites.apellidos.max"
-                  />
-                  @if (campoInvalido('apellidos')) {
-                    <p class="field-error" role="alert">
-                      {{ mensajeCampo('apellidos', 'apellido') }}
-                    </p>
-                  }
-                </div>
-
-                <div class="field" [class.field--invalid]="campoInvalido('dni')">
-                  <label for="dni">DNI</label>
-                  <ion-input id="dni" formControlName="dni" fill="outline" inputmode="numeric" />
-                  @if (campoInvalido('dni')) {
-                    <p class="field-error" role="alert">{{ mensajeCampo('dni', 'DNI') }}</p>
-                  }
-                </div>
-
-                <div class="field" [class.field--invalid]="campoInvalido('correo')">
-                  <label for="correo">Correo electrónico</label>
-                  <ion-input
-                    id="correo"
-                    formControlName="correo"
-                    fill="outline"
-                    type="email"
-                    inputmode="email"
-                    autocomplete="email"
-                    [maxlength]="limites.correo.max"
-                  />
-                  @if (campoInvalido('correo')) {
-                    <p class="field-error" role="alert">{{ mensajeCampo('correo', 'correo') }}</p>
-                  }
-                </div>
-
-                <div class="field" [class.field--invalid]="campoInvalido('clave')">
-                  <label for="clave">Clave</label>
-                  <ion-input
-                    id="clave"
-                    formControlName="clave"
-                    fill="outline"
-                    type="password"
-                    autocomplete="new-password"
-                    [maxlength]="limites.clave.max"
-                  />
-                  @if (campoInvalido('clave')) {
-                    <p class="field-error" role="alert">{{ mensajeCampo('clave', 'clave') }}</p>
-                  }
-                </div>
-
-                <div class="field" [class.field--invalid]="clavesDistintas">
-                  <label for="repetirClave">Repetir clave</label>
-                  <ion-input
-                    id="repetirClave"
-                    formControlName="repetirClave"
-                    fill="outline"
-                    type="password"
-                    autocomplete="new-password"
-                    [maxlength]="limites.clave.max"
-                  />
-                  @if (clavesDistintas) {
-                    <p class="field-error" role="alert">Las dos claves tienen que ser iguales.</p>
-                  }
-                </div>
-
-                @if (errorMensaje()) {
-                  <p class="login-error" role="alert">{{ errorMensaje() }}</p>
+                  <div class="field" [class.field--invalid]="campoInvalido('apellidos')">
+                    <label for="apellidos">Apellidos</label>
+                    <ion-input
+                      id="apellidos"
+                      formControlName="apellidos"
+                      fill="outline"
+                      autocomplete="family-name"
+                      [maxlength]="limites.apellidos.max"
+                    />
+                    @if (campoInvalido('apellidos')) {
+                      <p class="field-error" role="alert">
+                        {{ mensajeCampo('apellidos', 'apellido') }}
+                      </p>
+                    }
+                  </div>
                 }
 
-                @if (enviando()) {
-                  <tumbo-espera etiqueta="Creando tu cuenta" />
-                } @else {
-                  <ion-button class="login-submit" expand="block" type="submit">
+                @if (paso() === 1) {
+                  <!--
+                    Tu foto y tu nombre siguen a la vista mientras cargás
+                    el resto: confirman que el alta es la tuya y llenan el
+                    tramo, que si no son cuatro campos cortos sueltos en
+                    media pantalla. Ver `ResumenAlta`.
+                  -->
+                  <tumbo-resumen-alta
+                    [foto]="foto()?.previewUrl ?? null"
+                    [nombre]="nombreCompleto()"
+                    nota="Falta completar tus datos y tu clave."
+                  />
+                  <div class="field" [class.field--invalid]="campoInvalido('dni')">
+                    <label for="dni">DNI</label>
+                    <ion-input id="dni" formControlName="dni" fill="outline" inputmode="numeric" />
+                    @if (campoInvalido('dni')) {
+                      <p class="field-error" role="alert">{{ mensajeCampo('dni', 'DNI') }}</p>
+                    }
+                  </div>
+
+                  <div class="field" [class.field--invalid]="campoInvalido('correo')">
+                    <label for="correo">Correo electrónico</label>
+                    <ion-input
+                      id="correo"
+                      formControlName="correo"
+                      fill="outline"
+                      type="email"
+                      inputmode="email"
+                      autocomplete="email"
+                      [maxlength]="limites.correo.max"
+                    />
+                    @if (campoInvalido('correo')) {
+                      <p class="field-error" role="alert">{{ mensajeCampo('correo', 'correo') }}</p>
+                    }
+                  </div>
+
+                  <div class="field" [class.field--invalid]="campoInvalido('clave')">
+                    <label for="clave">Clave</label>
+                    <tumbo-campo-clave
+                      idCampo="clave"
+                      control="clave"
+                      [invalido]="campoInvalido('clave')"
+                    />
+                    @if (campoInvalido('clave')) {
+                      <p class="field-error" role="alert">{{ mensajeCampo('clave', 'clave') }}</p>
+                    }
+                  </div>
+
+                  <div class="field" [class.field--invalid]="clavesDistintas">
+                    <label for="repetirClave">Repetir clave</label>
+                    <tumbo-campo-clave
+                      idCampo="repetirClave"
+                      control="repetirClave"
+                      [invalido]="clavesDistintas"
+                    />
+                    @if (clavesDistintas) {
+                      <p class="field-error" role="alert">Las dos claves tienen que ser iguales.</p>
+                    }
+                  </div>
+
+                  @if (errorMensaje()) {
+                    <p class="login-error" role="alert">{{ errorMensaje() }}</p>
+                  }
+
+                  <ion-button
+                    class="login-submit"
+                    expand="block"
+                    type="submit"
+                    [disabled]="enviando()"
+                  >
                     <ion-icon slot="start" name="person-add-outline" aria-hidden="true" />
                     Crear mi cuenta
                   </ion-button>
                 }
 
+                <!--
+                  LA SALIDA AL INGRESO VA AFUERA DE LOS DOS TRAMOS.
+
+                  Estaba adentro del segundo paso, así que quien entraba
+                  desde «¿No tenés cuenta? Registrate» y se arrepentía en
+                  el primero no tenía cómo volver: ni botón, ni atrás del
+                  navegador en el teléfono. Acá se ve en los dos tramos y
+                  queda siempre a mano.
+                -->
                 <ion-button fill="clear" expand="block" type="button" (click)="volverAlIngreso()">
+                  <ion-icon slot="start" name="arrow-back-outline" aria-hidden="true" />
                   Ya tengo cuenta: ingresar
                 </ion-button>
+
+                <div class="pasos">
+                  <p class="pasos__cuenta">Paso {{ paso() + 1 }} de 2</p>
+                  <div class="pasos__botones">
+                    @if (paso() > 0) {
+                      <ion-button fill="outline" type="button" (click)="retroceder()">
+                        <ion-icon aria-hidden="true" slot="start" name="arrow-back-outline" />
+                        Atrás
+                      </ion-button>
+                    }
+                    @if (paso() === 0) {
+                      <ion-button type="button" (click)="avanzar()">
+                        Siguiente
+                        <ion-icon aria-hidden="true" slot="end" name="arrow-forward-outline" />
+                      </ion-button>
+                    }
+                  </div>
+                </div>
               </form>
             }
           </div>
