@@ -85,13 +85,9 @@
                 type="submit"
                 [disabled]="enviando()"
               >
-                @if (enviando()) {
-                  <tumbo-espera etiqueta="Ingresando" /><span>Ingresando...</span>
-                } @else {
-                  <ion-icon aria-hidden="true" slot="start" name="log-in-outline" /><span
-                    >Ingresar</span
-                  >
-                }
+                <ion-icon aria-hidden="true" slot="start" name="log-in-outline" /><span
+                  >Ingresar</span
+                >
               </ion-button>
 
               <!--

@@ -55,6 +55,21 @@
 }
 
 :root {
+  /*
+   * ALTO MÍNIMO DE UNA TARJETA DE LISTADO.
+   *
+   * De la preentrega del 3 de octubre: el profesor quiere ver una o dos
+   * fichas por pantalla, no cuatro apretadas. En vez de fijar «2» en el
+   * código —que se rompe en cuanto cambie la tarjeta o el teléfono— se
+   * le da a la tarjeta un piso relativo al alto de la pantalla.
+   * `medirCuantasEntran` mide la tarjeta YA DIBUJADA y saca la cuenta
+   * sola: con este valor entran dos enteras y nunca una tercera cortada.
+   *
+   * Lo comparten personal, productos y mesas para que los tres listados
+   * se vean igual y se ajusten en un solo lugar.
+   */
+  --tumbo-tarjeta-listado: clamp(190px, 30dvh, 280px);
+
   --tumbo-amarillo-marca: #fbb103;
   // Tokens de identidad y derivados para la superficie glass del ingreso.
   --tumbo-naranja-marca: #dc5b02;

@@ -47,6 +47,18 @@ describe('Productos: una imagen visible y contrato de fotos compatible', () => {
     component['abrir']('productos');
     component['alternarFormulario']();
     await fixture.whenStable();
+    // Las tres fotos viven en el segundo paso del alta: para verlas hay
+    // que completar el primero y avanzar, igual que en el teléfono.
+    component['productoForm'].patchValue({
+      nombre: 'Producto prueba',
+      descripcion: 'Descripción del producto de prueba',
+      minutos: 10,
+      precio: 2500,
+      tipo: 'plato',
+    });
+    component['avanzar'](component['productoForm'], component['pasosDeProducto']);
+    await fixture.whenStable();
+    expect(component['paso']()).toBe(1);
   });
   it('exige tres fotos, conserva posiciones y reemplaza una sin perder las otras', async () => {
     const first = photo('primera');

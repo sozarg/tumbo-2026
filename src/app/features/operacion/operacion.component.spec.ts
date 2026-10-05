@@ -9,6 +9,7 @@ import { AutenticacionMockService } from '../../core/services/autenticacion-mock
 import { ErroresService } from '../../core/services/errores.service';
 import { OperacionService } from '../../core/services/operacion.service';
 import { SesionService } from '../../core/services/sesion.service';
+import { EsperaGlobal } from '../../core/ui/espera-global.service';
 import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
 import { Operacion } from './operacion.component';
 
@@ -83,7 +84,14 @@ describe('Pedidos del cliente: confirmar recepción', () => {
     fixture.detectChanges();
     expect(confirmar).toHaveBeenCalledTimes(1);
     expect(boton().disabled()).toBe(true);
-    expect(fixture.debugElement.query(By.css('tumbo-espera'))).not.toBeNull();
+    /*
+     * El indicador de espera ya no vive adentro del botón: el profesor
+     * pidió que tape la pantalla y sea independiente de los controles,
+     * así que lo dibuja `EsperaPantalla` desde la raíz de la aplicación.
+     * Lo que se comprueba acá es lo que esta pantalla sí controla:
+     * haber prendido la espera global mientras guarda.
+     */
+    expect(TestBed.inject(EsperaGlobal).esperando()).toBe(true);
     expect(fixture.componentInstance['mensaje']()).toBe('');
 
     resolver({ ok: false, error: 'No se pudo guardar la recepción.' });
@@ -92,7 +100,7 @@ describe('Pedidos del cliente: confirmar recepción', () => {
     expect(fixture.componentInstance['error']()).toBe('No se pudo guardar la recepción.');
     expect(fixture.componentInstance['mensaje']()).toBe('');
     expect(boton().disabled()).toBe(false);
-    expect(fixture.debugElement.query(By.css('tumbo-espera'))).toBeNull();
+    expect(TestBed.inject(EsperaGlobal).esperando()).toBe(false);
 
     boton().confirmado.emit();
     await fixture.whenStable();

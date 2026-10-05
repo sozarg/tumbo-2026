@@ -1,11 +1,28 @@
+/*
+ * LA CUENTA ENTRA EN LA PANTALLA, SIN SCROLL DE PÁGINA.
+ *
+ * El profesor marcó esta pantalla en la corrección T2: si hay que
+ * deslizar, el formulario se parte. Acá no hay nada que partir —el
+ * total, el detalle y el botón son una sola cosa—, pero sí hay un
+ * listado que crece con el pedido, y para eso dio una salida explícita
+ * en T4: el scroll puede estar adentro del listado, nunca en la
+ * pantalla entera.
+ *
+ * Entonces: el total arriba y los botones al pie siempre visibles, y el
+ * detalle se queda con el alto que sobre y desliza por su cuenta.
+ */
 :host {
-  display: block;
-  margin-top: clamp(1rem, 4vw, 2rem);
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .cuenta {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 0.9rem;
+  min-height: 0;
 }
 
 h2 {
@@ -46,17 +63,32 @@ h3 {
 }
 
 .detalle {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   border-radius: 1rem;
   padding: 1rem;
   background: var(--tumbo-crema-brillante);
   box-shadow: 0 0.5rem 1.3rem rgb(0 53 146 / 8%);
 }
 
+/*
+ * El que desliza es el listado, no la pantalla. `overscroll-behavior`
+ * para que al llegar al final no siga arrastrando lo de atrás, que es
+ * lo que hace que en el teléfono uno crea que se movió la página.
+ */
 .detalle ul {
   display: grid;
+  flex: 1;
+  align-content: start;
+  min-height: 0;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
+  scrollbar-width: thin;
 }
 
 .detalle li {
@@ -154,4 +186,40 @@ ion-button.principal {
 ion-button.secundario {
   --color: var(--tumbo-azul-sombra);
   --border-color: var(--tumbo-azul-sombra);
+}
+
+/*
+ * LOS ESTADOS SIN DETALLE, CON COMPOSICIÓN PROPIA.
+ *
+ * Mientras la cuenta no está lista —falta confirmar el pedido, falta
+ * escanear la propina, se está esperando al mozo— la pantalla tiene un
+ * aviso y poco más. Dejarlo arriba con la tarjeta abierta hasta el pie
+ * es justo lo que el enunciado marca como error:
+ *
+ *   «Las pantallas de espera, error y contenido vacío deben ocupar el
+ *    espacio disponible con una composición intencional.»
+ *
+ * Así que en esos estados el aviso se queda con el alto, centrado, y
+ * el botón de la acción baja al pie.
+ */
+.cuenta:not(:has(.detalle)) > .aviso {
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.cuenta:not(:has(.detalle)) > .aviso > ion-icon {
+  font-size: 3rem;
+}
+
+.cuenta:not(:has(.detalle)) > .aviso strong {
+  font-size: 1.05rem;
+}
+
+.cuenta:not(:has(.detalle)) > .aviso p {
+  max-width: 24rem;
 }
