@@ -224,6 +224,7 @@ class FrutiCatScene extends Phaser.Scene {
     });
 
     this.scoreText = this.add.text(60, 40, 'Puntuación: 0', {
+      fontFamily: 'Poppins, sans-serif',
       fontSize: '26px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -232,6 +233,7 @@ class FrutiCatScene extends Phaser.Scene {
     });
     this.scoreText.setDepth(100); // <-- ACÁ LO MANDAR AL FRENTE
     this.timerText = this.add.text(60, 80, 'Tiempo: 10s', {
+      fontFamily: 'Poppins, sans-serif',
       fontSize: '26px',
       color: '#ff4d4d',
       fontStyle: 'bold',
