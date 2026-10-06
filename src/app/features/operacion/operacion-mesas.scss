@@ -49,16 +49,27 @@
  * usa en ninguna parte del proyecto.
  */
 
+/*
+ * Los datos, compactos y en dos renglones.
+ *
+ * Repartirlos a lo alto fue un error: son cuatro textos cortos y
+ * estirarlos abría tres huecos en vez de uno. Juntos ocupan lo justo y
+ * el alto que sobra se lo lleva la foto, que es lo que hay para mirar.
+ */
 .mesa-teja {
-  display: flex;
+  display: grid;
   width: 100%;
   min-width: 0;
-  flex-direction: column;
-  gap: 6px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px 10px;
   text-align: left;
 }
 
 .mesa-teja__cabecera {
+  /* Ocupa el renglón entero: debajo van el tipo y los comensales, uno
+     al lado del otro. */
+  grid-column: 1 / -1;
   display: flex;
   width: 100%;
   align-items: baseline;
@@ -106,6 +117,7 @@
 }
 
 .mesa-teja__meta {
+  justify-self: start;
   color: #526582;
   font-size: 11px;
   white-space: nowrap;
@@ -121,11 +133,16 @@
 .mesa-tarjeta {
   display: flex;
   /*
-   * Sin `min-height`: el contenido la define. El 142 de antes era para
-   * una tarjeta sin acciones; ahora sobra y solo estorba. Medido: con
-   * 166 px por tarjeta, tres pedían 519 px y el contenedor da 503, así
-   * que la tercera quedaba cortada 16 px.
+   * El `min-height` había sido sacado a propósito: con 166 px por
+   * tarjeta, tres pedían 519 px contra los 503 del contenedor y la
+   * tercera quedaba cortada. Ese razonamiento sigue valiendo y por eso
+   * el piso no es un número fijo sino el token compartido, que es
+   * relativo al alto de la pantalla. Vuelve ahora porque el profesor
+   * pidió ver dos fichas por vez en todos los listados, y porque la
+   * medición de `medirCuantasEntran` sigue siendo la que decide cuántas
+   * se muestran: nunca va a cortar una.
    */
+  min-height: var(--tumbo-tarjeta-listado);
   flex-direction: column;
   justify-content: space-between;
   gap: 8px;
@@ -357,17 +374,37 @@ button.mesa-accion:disabled {
  * foto en grande —«contenedor individual, buen tamaño, centrada»— se ve
  * en el formulario, que es donde se carga.
  */
+/*
+ * LA FOTO VUELVE ARRIBA, COMO BANDA.
+ *
+ * Estaba al costado por una razón buena: con la foto arriba, la tarjeta
+ * con imagen medía 238 px contra 158 la que no tenía, la grilla quedaba
+ * despareja y dejaban de entrar tres sin cortarse.
+ *
+ * Esa razón ya no corre. Desde que todas las tarjetas arrancan del
+ * mismo piso —`--tumbo-tarjeta-listado`— miden lo mismo tengan foto o
+ * no, así que la grilla no se despareja.
+ *
+ * Y al costado no servía acá: la mesa tiene cuatro datos cortos, el
+ * texto no llena el alto y la foto quedaba como una tira angosta con
+ * blanco alrededor. De banda, la foto se queda con el alto sobrante y
+ * se ve como pide el punto 4, «con buen tamaño y centrada».
+ */
 .mesa-tarjeta__cuerpo {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  gap: 12px;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
 }
 
 .mesa-tarjeta__foto {
-  width: 68px;
-  height: 68px;
-  flex: 0 0 68px;
+  width: 100%;
+  /* `1 1 0` y `min-height: 0`: la banda se queda con todo el alto que
+     sobre después del texto y de la fila de botones, sin empujarlos. */
+  flex: 1 1 0;
+  min-height: 72px;
   border-radius: 12px;
   object-fit: cover;
   object-position: center;

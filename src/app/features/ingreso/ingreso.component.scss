@@ -59,7 +59,8 @@
   font-size: 0.8125rem;
   font-weight: 500;
 }
-.field ion-input {
+.field ion-input,
+.field tumbo-campo-clave {
   --background: var(--tumbo-azul-brillante);
   --color: var(--tumbo-azul-sombra);
   --border-color: #7386a2;
@@ -71,13 +72,19 @@
   min-height: 52px;
   font-size: 0.9375rem;
 }
-.field ion-input:focus-within {
+.field ion-input:focus-within,
+.field tumbo-campo-clave:focus-within {
   outline: 2px solid var(--tumbo-azul-sombra);
   outline-offset: 3px;
   border-radius: 10px;
 }
 .field--invalid ion-input {
   --border-color: var(--tumbo-naranja-profundo);
+}
+/* El campo de clave traduce las variables de Ionic a las suyas: ver
+   `CampoClave`. */
+.field--invalid tumbo-campo-clave {
+  --tumbo-campo-borde: var(--tumbo-naranja-profundo);
 }
 .field__feedback {
   padding-top: 0.375rem;
@@ -229,7 +236,8 @@
   .field label {
     margin-bottom: 0.375rem;
   }
-  .field ion-input {
+  .field ion-input,
+  .field tumbo-campo-clave {
     min-height: 48px;
   }
   .password-field__toggle {

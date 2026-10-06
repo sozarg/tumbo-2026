@@ -1,3 +1,9 @@
 <ion-app>
   <ion-router-outlet />
+  <!--
+    Fuera del router-outlet a propósito: así sobrevive a los cambios de
+    pantalla y una espera que arranca en una y termina en otra no se
+    corta por el medio.
+  -->
+  <tumbo-espera-pantalla />
 </ion-app>

@@ -547,3 +547,239 @@
     grid-template-columns: 1fr;
   }
 }
+
+/*
+ * EL BOTÓN QUE CONFIRMA EL ALTA SE VA AL PIE DEL PASO.
+ *
+ * `margin-top: auto` se queda con el alto que sobra, pero recién
+ * DESPUÉS de que los elementos flexibles crecieron: en los pasos que
+ * tienen foto o descripción no le toca nada y el botón queda pegado al
+ * campo anterior. En los que no tienen nada que estirar —el paso 2 del
+ * cliente, por ejemplo— baja al pie y arrastra con él a la barra de
+ * pasos. Así el aire sobrante queda en un solo bloque, siempre en el
+ * mismo lugar, en vez de repartirse en bandas entre los campos.
+ *
+ * Va en la hoja global y no en la del componente porque el `ion-button`
+ * nace adentro de `tumbo-boton-confirmacion`: lleva el atributo de
+ * encapsulación de ESE componente, no el de la pantalla de operación, y
+ * una regla escrita allá no lo alcanzaría.
+ */
+.employee-form > tumbo-boton-confirmacion > ion-button {
+  margin-top: auto;
+}
+
+/*
+ * LA DESCRIPCIÓN SE QUEDA CON EL ALTO QUE SOBRA.
+ *
+ * El paso 1 del producto son cuatro campos cortos. Estirar los huecos
+ * entre ellos abría bandas vacías; el campo que SÍ gana algo con ser
+ * más grande es la descripción, así que el sobrante va ahí.
+ *
+ * `ion-textarea` no es una caja sola: la altura hay que pasarla a mano
+ * por toda la cadena —envoltorio, control, caja nativa y el `<textarea>`
+ * de adentro—, porque cada uno mide por su contenido. Si se estira solo
+ * el de afuera, el marco crece y el campo escribible queda chico
+ * adentro, que es peor que no hacer nada.
+ *
+ * Va en la hoja global por la misma razón que el botón de confirmar:
+ * estos elementos los crea Ionic y no llevan el atributo de
+ * encapsulación de la pantalla de operación.
+ */
+.employee-form ion-textarea[formcontrolname='descripcion'] .textarea-wrapper,
+.employee-form ion-textarea[formcontrolname='descripcion'] .textarea-control,
+.employee-form ion-textarea[formcontrolname='descripcion'] .native-wrapper,
+.employee-form ion-textarea[formcontrolname='descripcion'] .native-textarea {
+  height: 100%;
+}
+
+/*
+ * LOS TRES TRAMOS DE LA ENTRADA.
+ *
+ * Una tira con el número y el nombre de cada tramo, el actual marcado y
+ * los ya pasados en gris. No son botones a propósito: acá no se navega,
+ * se avanza cuando pasa algo. La tira está para que la persona sepa
+ * dónde está y cuánto falta, no para moverse.
+ */
+.entrada-pasos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entrada-paso {
+  display: flex;
+  flex: 1 1 7rem;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgb(0 53 146 / 14%);
+  border-radius: 999px;
+  padding: 6px 12px 6px 6px;
+  background: var(--tumbo-azul-brillante);
+  color: #526582;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.entrada-paso__numero {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #d4dbe6;
+  color: var(--tumbo-azul-sombra);
+  font-size: 12px;
+}
+
+.entrada-paso__texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.entrada-paso--actual {
+  border-color: var(--tumbo-azul-accion);
+  background: var(--tumbo-azul-accion);
+  color: var(--tumbo-azul-brillante);
+}
+
+.entrada-paso--actual .entrada-paso__numero {
+  background: var(--tumbo-azul-brillante);
+  color: var(--tumbo-azul-accion);
+}
+
+.entrada-paso--hecho .entrada-paso__numero {
+  background: var(--tumbo-amarillo-marca);
+}
+
+/*
+ * LA PANTALLA DE CARRITO (corrección P3).
+ *
+ * Tres bloques: el detalle, que desliza por su cuenta porque es un
+ * listado que crece con el pedido; el total, fijo, que es lo que el
+ * punto 12 pide tener siempre a la vista; y las dos salidas al pie.
+ */
+/*
+ * El detalle mide lo que mide el pedido y no más: con dos líneas no
+ * abre un hueco, y con doce desliza por su cuenta sin empujar el total
+ * ni los botones fuera de la pantalla.
+ */
+.carrito-lista {
+  display: grid;
+  flex: 0 1 auto;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.carrito-item {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  border: 1px solid rgb(0 53 146 / 14%);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--tumbo-azul-brillante);
+  color: var(--tumbo-azul-sombra);
+}
+
+.carrito-item__datos {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.carrito-item__datos strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.carrito-item__datos small {
+  color: #526582;
+  font-size: 11px;
+}
+
+.carrito-item__cantidad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.carrito-item__importe {
+  grid-column: 2;
+  font-size: 15px;
+  text-align: end;
+}
+
+.carrito-vacio {
+  border: 1px dashed #bac5d3;
+  border-radius: 12px;
+  padding: 18px 12px;
+  color: #526582;
+  text-align: center;
+}
+
+/*
+ * El total se queda con el alto que sobre.
+ *
+ * Es lo que el punto 12 pide tener siempre visible «y con buen
+ * tamaño», así que es el candidato natural a crecer: con un pedido
+ * corto ocupa media pantalla y se lee desde lejos; con uno largo se
+ * achica hasta su mínimo y el lugar se lo lleva el detalle.
+ */
+.carrito-total {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  min-height: 92px;
+  border-radius: 12px;
+  padding: 16px 14px;
+  background: var(--tumbo-azul-accion);
+  color: var(--tumbo-azul-brillante);
+  text-align: center;
+}
+
+.carrito-total > div {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.carrito-total span {
+  font-size: 13px;
+}
+
+.carrito-total strong {
+  font-size: clamp(1.8rem, 9vw, 2.6rem);
+  line-height: 1.05;
+}
+
+.carrito-total small {
+  font-size: 12px;
+}
+
+.carrito-acciones {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.carrito-acciones ion-button,
+.carrito-acciones tumbo-boton-confirmacion ion-button {
+  margin: 0;
+  min-height: 52px;
+  --border-radius: 10px;
+}

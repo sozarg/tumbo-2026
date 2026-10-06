@@ -9,6 +9,7 @@ import { IonInput } from '@ionic/angular/ion-input';
 import { addIcons } from 'ionicons';
 import {
   arrowBackOutline,
+  arrowForwardOutline,
   cameraOutline,
   personAddOutline,
   qrCodeOutline,
@@ -18,6 +19,7 @@ import { Camara, FotoTomada } from '../../core/dispositivo/camara.service';
 import { LectorDeDni, ResultadoDeLectura } from '../../core/dispositivo/lector-de-dni.service';
 import { AltaClienteDemo } from '../../core/models/demo-restaurante';
 import { ErroresService } from '../../core/services/errores.service';
+import { EsperaGlobal } from '../../core/ui/espera-global.service';
 import { RegistroClienteService } from '../../core/services/registro-cliente.service';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
@@ -31,7 +33,8 @@ import {
   sinEspaciosSolos,
   validadoresDeNombre,
 } from '../../core/validacion/validadores';
-import { Espera } from '../../shared/components/espera/espera.component';
+import { CampoClave } from '../../shared/components/campo-clave/campo-clave.component';
+import { ResumenAlta } from '../../shared/components/resumen-alta/resumen-alta.component';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
 
 /**
@@ -67,7 +70,8 @@ import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-
     IonContent,
     IonIcon,
     IonInput,
-    Espera,
+    CampoClave,
+    ResumenAlta,
     FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
@@ -103,7 +107,37 @@ export class Registro {
   );
 
   protected readonly limites = LIMITES;
+
+  /**
+   * A quién se está registrando, para el resumen del segundo paso.
+   *
+   * Método y no `computed`: el valor vive en un formulario reactivo,
+   * que no es una señal. Se recalcula cuando la pantalla se vuelve a
+   * dibujar, y al segundo paso solo se llega tocando «Siguiente», que
+   * ya dispara ese dibujado.
+   */
+  protected nombreCompleto(): string {
+    const nombres = this.formulario.controls.nombres.value.trim();
+    const apellidos = this.formulario.controls.apellidos.value.trim();
+    return [nombres, apellidos].filter(Boolean).join(' ');
+  }
+
+  /**
+   * En qué tramo del formulario está la persona.
+   *
+   * Los campos de cada paso se declaran acá y no en la plantilla
+   * porque son dos cosas a la vez: lo que se dibuja y lo que hay que
+   * validar antes de dejar avanzar. Separados, se desincronizan.
+   */
+  protected readonly paso = signal(0);
+  private readonly camposPorPaso: readonly (readonly (keyof typeof this.formulario.controls)[])[] =
+    [
+      ['foto', 'nombres', 'apellidos'],
+      ['dni', 'correo', 'clave', 'repetirClave'],
+    ];
+
   protected readonly enviando = signal(false);
+  private readonly esperaGlobal = inject(EsperaGlobal);
   protected readonly enviado = signal(false);
   protected readonly errorMensaje = signal('');
   /** Cuando termina bien, la pantalla deja de ser un formulario. */
@@ -115,19 +149,57 @@ export class Registro {
   protected readonly lectorReal = this.lector.esReal;
 
   constructor() {
-    addIcons({ arrowBackOutline, cameraOutline, personAddOutline, qrCodeOutline, trashOutline });
+    addIcons({
+      arrowBackOutline,
+      arrowForwardOutline,
+      cameraOutline,
+      personAddOutline,
+      qrCodeOutline,
+      trashOutline,
+    });
   }
 
   /** Mismo criterio que en `Ingreso`: la pantalla no se destruye al navegar. */
   ionViewWillEnter(): void {
     this.formulario.reset();
     this.cambiarFoto(null);
+    this.paso.set(0);
     this.enviado.set(false);
     this.enviando.set(false);
     this.registrado.set(false);
     this.avisoFinal.set('');
     this.errorMensaje.set('');
     this.errores.limpiar();
+  }
+
+  /**
+   * Pasa al tramo siguiente, pero solo si lo que ya se escribió está
+   * bien. Dejar avanzar con errores atrás significa que al confirmar
+   * aparezca un error en una pantalla que ya no se está mirando.
+   */
+  protected avanzar(): void {
+    const campos = this.camposPorPaso[this.paso()] ?? [];
+    if (campos.some((campo) => this.formulario.controls[campo].invalid)) {
+      campos.forEach((campo) => this.formulario.controls[campo].markAsTouched());
+      this.errorMensaje.set('Revisá los campos marcados antes de seguir.');
+      return;
+    }
+
+    this.errorMensaje.set('');
+    this.paso.update((paso) => Math.min(paso + 1, this.camposPorPaso.length - 1));
+  }
+
+  protected retroceder(): void {
+    this.errorMensaje.set('');
+    this.paso.update((paso) => Math.max(paso - 1, 0));
+  }
+
+  /** El primer tramo que tenga algo mal, para no esconder el error. */
+  private pasoDelPrimerError(): number {
+    const encontrado = this.camposPorPaso.findIndex((campos) =>
+      campos.some((campo) => this.formulario.controls[campo].invalid),
+    );
+    return encontrado < 0 ? this.paso() : encontrado;
   }
 
   protected campoInvalido(nombre: keyof typeof this.formulario.controls): boolean {
@@ -236,17 +308,22 @@ export class Registro {
 
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      // Si lo que falta quedó en el primer tramo, se vuelve a mostrar.
+      this.paso.set(this.pasoDelPrimerError());
       return;
     }
 
     this.enviando.set(true);
 
     try {
-      const { foto, repetirClave: _repetir, ...datos } = this.formulario.getRawValue();
-      const resultado = await this.registro.registrar({
-        ...datos,
-        foto: foto ?? undefined,
-      } as AltaClienteDemo);
+      // La espera tapa la pantalla; el botón solo queda deshabilitado.
+      const resultado = await this.esperaGlobal.durante('Creando tu cuenta', async () => {
+        const { foto, repetirClave: _repetir, ...datos } = this.formulario.getRawValue();
+        return this.registro.registrar({
+          ...datos,
+          foto: foto ?? undefined,
+        } as AltaClienteDemo);
+      });
 
       if (!resultado.ok) {
         this.errorMensaje.set(

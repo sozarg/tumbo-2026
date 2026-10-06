@@ -167,225 +167,282 @@
                   hace: se saca la foto con la persona delante, y recién
                   después se tipean los datos.
                 -->
-                <div class="employee-photo">
-                  <!-- La señal y no el control: ver `fotoDelEmpleado`. -->
-                  @if (fotoDelEmpleado(); as foto) {
-                    <img
-                      class="employee-photo__preview"
-                      [src]="foto.previewUrl"
-                      alt="Foto del empleado"
-                    />
-                    <div class="employee-photo__actions">
+                @if (paso() === 0) {
+                  <div class="employee-photo">
+                    <!-- La señal y no el control: ver `fotoDelEmpleado`. -->
+                    @if (fotoDelEmpleado(); as foto) {
+                      <img
+                        class="employee-photo__preview"
+                        [src]="foto.previewUrl"
+                        alt="Foto del empleado"
+                      />
+                      <div class="employee-photo__actions">
+                        <ion-button
+                          fill="outline"
+                          size="small"
+                          type="button"
+                          (click)="sacarFotoEmpleado()"
+                        >
+                          <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                          Repetir
+                        </ion-button>
+                        <ion-button
+                          fill="clear"
+                          size="small"
+                          type="button"
+                          (click)="quitarFotoEmpleado()"
+                        >
+                          <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                          Quitar
+                        </ion-button>
+                      </div>
+                      @if (foto.simulada) {
+                        <p class="employee-photo__note">
+                          Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                        </p>
+                      }
+                    } @else {
                       <ion-button
+                        class="employee-photo__take"
                         fill="outline"
-                        size="small"
                         type="button"
                         (click)="sacarFotoEmpleado()"
                       >
                         <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                        Repetir
+                        {{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}
                       </ion-button>
-                      <ion-button
-                        fill="clear"
-                        size="small"
-                        type="button"
-                        (click)="quitarFotoEmpleado()"
-                      >
-                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
-                        Quitar
-                      </ion-button>
+                      @if (campoInvalido(empleadoForm.controls.foto)) {
+                        <p class="employee-photo__error" role="alert">
+                          {{ mensajeCampo(empleadoForm.controls.foto, 'foto personal') }}
+                        </p>
+                      } @else {
+                        <p class="employee-photo__note">La foto personal es obligatoria.</p>
+                      }
+                    }
+                  </div>
+                  <div class="employee-form__row">
+                    <div class="employee-form__field">
+                      <ion-input
+                        label="Nombres"
+                        label-placement="stacked"
+                        formControlName="nombres"
+                        fill="outline"
+                        [maxlength]="limites.nombres.max"
+                        autocomplete="given-name"
+                      />
+                      @if (campoInvalido(empleadoForm.controls.nombres)) {
+                        <small>{{ mensajeCampo(empleadoForm.controls.nombres, 'nombre') }}</small>
+                      }
                     </div>
-                    @if (foto.simulada) {
-                      <p class="employee-photo__note">
-                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
-                      </p>
-                    }
-                  } @else {
-                    <ion-button
-                      class="employee-photo__take"
-                      fill="outline"
-                      type="button"
-                      (click)="sacarFotoEmpleado()"
-                    >
-                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                      {{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}
-                    </ion-button>
-                    @if (campoInvalido(empleadoForm.controls.foto)) {
-                      <p class="employee-photo__error" role="alert">
-                        {{ mensajeCampo(empleadoForm.controls.foto, 'foto personal') }}
-                      </p>
-                    } @else {
-                      <p class="employee-photo__note">La foto personal es obligatoria.</p>
-                    }
+                    <div class="employee-form__field">
+                      <ion-input
+                        label="Apellidos"
+                        label-placement="stacked"
+                        formControlName="apellidos"
+                        fill="outline"
+                        [maxlength]="limites.apellidos.max"
+                        autocomplete="family-name"
+                      />
+                      @if (campoInvalido(empleadoForm.controls.apellidos)) {
+                        <small>{{
+                          mensajeCampo(empleadoForm.controls.apellidos, 'apellido')
+                        }}</small>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (paso() === 1) {
+                  <!--
+                    A quién se está dando de alta. Confirma de un vistazo
+                    que los datos que siguen son de la persona correcta y
+                    se queda con el alto que sobra en el tramo. Ver
+                    `ResumenAlta`.
+                  -->
+                  <tumbo-resumen-alta
+                    [foto]="fotoDelEmpleado()?.previewUrl ?? null"
+                    [nombre]="nombreEnElAlta(empleadoForm)"
+                    nota="Faltan sus datos y la contraseña con la que va a entrar."
+                  />
+                  <!-- Dos números cortos de rótulo corto: entran al lado. -->
+                  <div class="employee-form__row employee-form__row--angosto">
+                    <div class="employee-form__field">
+                      <ion-input
+                        label="DNI"
+                        label-placement="stacked"
+                        formControlName="dni"
+                        fill="outline"
+                        inputmode="numeric"
+                        [maxlength]="10"
+                        (ionInput)="filtrarTipeo(empleadoForm.controls.dni, $event, sobraEnDni)"
+                      />
+                      @if (campoInvalido(empleadoForm.controls.dni)) {
+                        <small>{{ mensajeCampo(empleadoForm.controls.dni, 'DNI') }}</small>
+                      }
+                    </div>
+                    <div class="employee-form__field">
+                      <ion-input
+                        label="CUIL"
+                        label-placement="stacked"
+                        formControlName="cuil"
+                        fill="outline"
+                        inputmode="numeric"
+                        [maxlength]="limites.cuil.max"
+                        (ionInput)="filtrarTipeo(empleadoForm.controls.cuil, $event, sobraEnCuil)"
+                      />
+                      @if (campoInvalido(empleadoForm.controls.cuil)) {
+                        <small>{{ mensajeCampo(empleadoForm.controls.cuil, 'CUIL') }}</small>
+                      }
+                    </div>
+                  </div>
+                  <ion-input
+                    label="Correo"
+                    label-placement="stacked"
+                    formControlName="correo"
+                    fill="outline"
+                    type="email"
+                    [maxlength]="limites.correo.max"
+                    autocomplete="email"
+                  />
+                  @if (campoInvalido(empleadoForm.controls.correo)) {
+                    <small>{{ mensajeCampo(empleadoForm.controls.correo, 'correo') }}</small>
                   }
-                </div>
+                  <ion-select
+                    label="Perfil"
+                    label-placement="stacked"
+                    formControlName="perfil"
+                    fill="outline"
+                  >
+                    <ion-select-option value="metre">Metre</ion-select-option>
+                    <ion-select-option value="mozo">Mozo</ion-select-option>
+                    <ion-select-option value="cocinero">Cocinero</ion-select-option>
+                    <ion-select-option value="cantinero">Cantinero</ion-select-option>
+                  </ion-select>
+                  <tumbo-campo-clave
+                    etiqueta="Contraseña"
+                    control="clave"
+                    [invalido]="campoInvalido(empleadoForm.controls.clave)"
+                  />
+                  @if (campoInvalido(empleadoForm.controls.clave)) {
+                    <small>{{ mensajeCampo(empleadoForm.controls.clave, 'contraseña') }}</small>
+                  }
 
-                <div class="employee-form__row">
-                  <div class="employee-form__field">
-                    <ion-input
-                      label="Nombres"
-                      label-placement="stacked"
-                      formControlName="nombres"
-                      fill="outline"
-                      [maxlength]="limites.nombres.max"
-                      autocomplete="given-name"
-                    />
-                    @if (campoInvalido(empleadoForm.controls.nombres)) {
-                      <small>{{ mensajeCampo(empleadoForm.controls.nombres, 'nombre') }}</small>
-                    }
-                  </div>
-                  <div class="employee-form__field">
-                    <ion-input
-                      label="Apellidos"
-                      label-placement="stacked"
-                      formControlName="apellidos"
-                      fill="outline"
-                      [maxlength]="limites.apellidos.max"
-                      autocomplete="family-name"
-                    />
-                    @if (campoInvalido(empleadoForm.controls.apellidos)) {
-                      <small>{{ mensajeCampo(empleadoForm.controls.apellidos, 'apellido') }}</small>
-                    }
-                  </div>
-                </div>
-                <div class="employee-form__row">
-                  <div class="employee-form__field">
-                    <ion-input
-                      label="DNI"
-                      label-placement="stacked"
-                      formControlName="dni"
-                      fill="outline"
-                      inputmode="numeric"
-                      [maxlength]="10"
-                      (ionInput)="filtrarTipeo(empleadoForm.controls.dni, $event, sobraEnDni)"
-                    />
-                    @if (campoInvalido(empleadoForm.controls.dni)) {
-                      <small>{{ mensajeCampo(empleadoForm.controls.dni, 'DNI') }}</small>
-                    }
-                  </div>
-                  <div class="employee-form__field">
-                    <ion-input
-                      label="CUIL"
-                      label-placement="stacked"
-                      formControlName="cuil"
-                      fill="outline"
-                      inputmode="numeric"
-                      [maxlength]="limites.cuil.max"
-                      (ionInput)="filtrarTipeo(empleadoForm.controls.cuil, $event, sobraEnCuil)"
-                    />
-                    @if (campoInvalido(empleadoForm.controls.cuil)) {
-                      <small>{{ mensajeCampo(empleadoForm.controls.cuil, 'CUIL') }}</small>
-                    }
-                  </div>
-                </div>
-                <ion-input
-                  label="Correo"
-                  label-placement="stacked"
-                  formControlName="correo"
-                  fill="outline"
-                  type="email"
-                  [maxlength]="limites.correo.max"
-                  autocomplete="email"
-                />
-                @if (campoInvalido(empleadoForm.controls.correo)) {
-                  <small>{{ mensajeCampo(empleadoForm.controls.correo, 'correo') }}</small>
-                }
-
-                <ion-select
-                  label="Perfil"
-                  label-placement="stacked"
-                  formControlName="perfil"
-                  fill="outline"
-                >
-                  <ion-select-option value="metre">Metre</ion-select-option>
-                  <ion-select-option value="mozo">Mozo</ion-select-option>
-                  <ion-select-option value="cocinero">Cocinero</ion-select-option>
-                  <ion-select-option value="cantinero">Cantinero</ion-select-option>
-                </ion-select>
-
-                <ion-input
-                  label="Contraseña"
-                  label-placement="stacked"
-                  formControlName="clave"
-                  fill="outline"
-                  type="password"
-                  [maxlength]="limites.clave.max"
-                  autocomplete="new-password"
-                />
-                @if (campoInvalido(empleadoForm.controls.clave)) {
-                  <small>{{ mensajeCampo(empleadoForm.controls.clave, 'contraseña') }}</small>
-                }
-
-                <ion-input
-                  label="Repetir contraseña"
-                  label-placement="stacked"
-                  formControlName="repetirClave"
-                  fill="outline"
-                  type="password"
-                  autocomplete="new-password"
-                  [maxlength]="limites.clave.max"
-                />
-                @if (
-                  empleadoForm.controls.repetirClave.touched &&
-                  (empleadoForm.hasError('clavesDistintas') ||
-                    empleadoForm.controls.repetirClave.hasError('required'))
-                ) {
-                  <p class="field-error" role="alert">
-                    {{
-                      empleadoForm.controls.repetirClave.hasError('required')
-                        ? 'Repetí la contraseña.'
-                        : 'Las contraseñas no coinciden.'
-                    }}
-                  </p>
-                }
-                <tumbo-boton-confirmacion
-                  buttonClass="primary-action"
-                  expand="block"
-                  [disabled]="enviando()"
-                  [puedeConfirmar]="empleadoEsValido"
-                  title="Confirmar alta de empleado"
-                  message="Vas a registrar este empleado y habilitar su acceso al sistema. ¿Querés continuar?"
-                  (confirmado)="registrarEmpleado()"
-                >
-                  @if (enviando()) {
-                    <tumbo-espera etiqueta="Registrando al empleado" />
-                  } @else {
+                  <tumbo-campo-clave etiqueta="Repetir contraseña" control="repetirClave" />
+                  @if (
+                    empleadoForm.controls.repetirClave.touched &&
+                    (empleadoForm.hasError('clavesDistintas') ||
+                      empleadoForm.controls.repetirClave.hasError('required'))
+                  ) {
+                    <p class="field-error" role="alert">
+                      {{
+                        empleadoForm.controls.repetirClave.hasError('required')
+                          ? 'Repetí la contraseña.'
+                          : 'Las contraseñas no coinciden.'
+                      }}
+                    </p>
+                  }
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
+                    expand="block"
+                    [disabled]="enviando()"
+                    [puedeConfirmar]="empleadoEsValido"
+                    title="Confirmar alta de empleado"
+                    message="Vas a registrar este empleado y habilitar su acceso al sistema. ¿Querés continuar?"
+                    (confirmado)="registrarEmpleado()"
+                  >
                     <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
                     empleado
-                  }
-                </tumbo-boton-confirmacion>
+                  </tumbo-boton-confirmacion>
+                }
+                <!--
+                  LA BARRA DE PASOS.
+                
+                  El formulario es uno solo: los campos siguen todos en
+                  `empleadoForm` y el alta sigue leyendo `getRawValue()`. Lo
+                  único que cambia es cuántos se ven a la vez.
+                
+                  Se hizo así porque el profesor marcó que ningún formulario
+                  puede pedir scroll. Partirlo en formularios de verdad habría
+                  obligado a repartir la validación y a juntar los pedazos al
+                  guardar; mostrando de a dos campos no cambia nada de eso.
+                
+                  «Siguiente» valida SOLO los campos de este paso: marcar todo
+                  el formulario en el primer paso llenaría de rojo campos que
+                  la persona todavía no vio.
+                -->
+                <div class="pasos">
+                  <p class="pasos__cuenta" aria-live="polite">
+                    Paso {{ paso() + 1 }} de {{ pasosDeEmpleado.length }}
+                  </p>
+                  <div class="pasos__botones">
+                    @if (paso() > 0) {
+                      <ion-button fill="outline" type="button" (click)="retroceder()">
+                        <ion-icon aria-hidden="true" slot="start" name="arrow-back-outline" />Atrás
+                      </ion-button>
+                    }
+                    @if (paso() < pasosDeEmpleado.length - 1) {
+                      <ion-button type="button" (click)="avanzar(empleadoForm, pasosDeEmpleado)">
+                        Siguiente<ion-icon
+                          aria-hidden="true"
+                          slot="end"
+                          name="arrow-forward-outline"
+                        />
+                      </ion-button>
+                    }
+                  </div>
+                </div>
               </form>
             } @else {
               <section #listaPaginada class="person-list" aria-label="Lista de personal">
                 @for (empleado of paginar(demo.empleados(), porPagina()); track empleado.id) {
+                  <!--
+                    LA TARJETA MUESTRA TODO EL LEGAJO.
+
+                    En la preentrega del 3 de octubre el profesor marcó
+                    que el listado de personal mostraba solo nombre y
+                    apellido, y que las tarjetas se veían chicas. Acá
+                    van la foto, el perfil, el correo, el DNI y el CUIL.
+
+                    No hace falta tocar cuántas se muestran por pantalla:
+                    `medirCuantasEntran` mide la tarjeta real, así que al
+                    crecer entran menos y solas. Una tarjeta más alta es
+                    la forma de mostrar una o dos por vez.
+                  -->
                   <article class="person-card">
+                    <img
+                      class="person-card__foto"
+                      [src]="empleado.fotoUrl ?? 'imagenes/logo.png'"
+                      [alt]="'Foto de ' + empleado.nombres + ' ' + empleado.apellidos"
+                      width="96"
+                      height="96"
+                    />
                     <div class="person-card__details">
                       <h2>{{ empleado.nombres }} {{ empleado.apellidos }}</h2>
-                      <p>{{ empleado.etiquetaPerfil }}</p>
-                      <p class="person-card__email">{{ empleado.correo }}</p>
+                      <p class="person-card__perfil">{{ empleado.etiquetaPerfil }}</p>
+                      <dl class="person-card__datos">
+                        <dt>Correo</dt>
+                        <dd>{{ empleado.correo }}</dd>
+                        <dt>DNI</dt>
+                        <dd>{{ empleado.dni || 'Sin cargar' }}</dd>
+                        <dt>CUIL</dt>
+                        <dd>{{ empleado.cuil || 'Sin cargar' }}</dd>
+                      </dl>
                     </div>
-                    @if (dandoDeBaja() === empleado.id) {
-                      <div class="person-card__espera">
-                        <tumbo-espera [etiqueta]="'Dando de baja a ' + empleado.nombres" />
-                      </div>
-                    } @else {
-                      <tumbo-boton-confirmacion
-                        buttonClass="icon-danger"
-                        [disabled]="dandoDeBaja() !== null"
-                        [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
-                        title="Confirmar baja de personal"
-                        [message]="
-                          'Vas a quitar a ' +
-                          empleado.nombres +
-                          ' ' +
-                          empleado.apellidos +
-                          ' del personal activo. ¿Querés continuar?'
-                        "
-                        (confirmado)="eliminarEmpleado(empleado.id)"
-                      >
-                        <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                      </tumbo-boton-confirmacion>
-                    }
+                    <tumbo-boton-confirmacion
+                      buttonClass="icon-danger"
+                      [disabled]="dandoDeBaja() !== null"
+                      [ariaLabel]="'Eliminar a ' + empleado.nombres + ' ' + empleado.apellidos"
+                      title="Confirmar baja de personal"
+                      [message]="
+                        'Vas a quitar a ' +
+                        empleado.nombres +
+                        ' ' +
+                        empleado.apellidos +
+                        ' del personal activo. ¿Querés continuar?'
+                      "
+                      (confirmado)="eliminarEmpleado(empleado.id)"
+                    >
+                      <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                    </tumbo-boton-confirmacion>
                   </article>
                 } @empty {
                   <p class="empty-state">Todavía no hay empleados.</p>
@@ -407,160 +464,183 @@
                     <h2>{{ productoEditado() ? 'Editar producto' : 'Nuevo producto' }}</h2>
                   </div>
                 </div>
-                <ion-input
-                  label="Nombre"
-                  label-placement="stacked"
-                  formControlName="nombre"
-                  fill="outline"
-                  [maxlength]="limites.nombreProducto.max"
-                />
-                @if (campoInvalido(productoForm.controls.nombre)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(productoForm.controls.nombre, 'nombre') }}
-                  </p>
-                }
-                <ion-textarea
-                  label="Descripción"
-                  label-placement="stacked"
-                  formControlName="descripcion"
-                  fill="outline"
-                  auto-grow="true"
-                  [maxlength]="limites.descripcionProducto.max"
-                />
-                @if (campoInvalido(productoForm.controls.descripcion)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(productoForm.controls.descripcion, 'descripción') }}
-                  </p>
-                }
-                <div class="employee-form__row">
+                @if (paso() === 0) {
                   <ion-input
-                    label="Minutos"
+                    label="Nombre"
                     label-placement="stacked"
-                    formControlName="minutos"
+                    formControlName="nombre"
                     fill="outline"
-                    type="number"
-                    min="1"
+                    [maxlength]="limites.nombreProducto.max"
                   />
-                  <ion-input
-                    label="Precio"
+                  @if (campoInvalido(productoForm.controls.nombre)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(productoForm.controls.nombre, 'nombre') }}
+                    </p>
+                  }
+                  <ion-textarea
+                    label="Descripción"
                     label-placement="stacked"
-                    formControlName="precio"
+                    formControlName="descripcion"
                     fill="outline"
-                    type="number"
+                    auto-grow="true"
+                    [maxlength]="limites.descripcionProducto.max"
                   />
-                </div>
-                <fieldset class="product-photos">
-                  <legend class="product-photos__legend">Tres fotos del producto</legend>
+                  @if (campoInvalido(productoForm.controls.descripcion)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(productoForm.controls.descripcion, 'descripción') }}
+                    </p>
+                  }
+                  <!-- Dos números cortos: entran al lado en cualquier teléfono. -->
+                  <div class="employee-form__row employee-form__row--angosto">
+                    <ion-input
+                      label="Minutos"
+                      label-placement="stacked"
+                      formControlName="minutos"
+                      fill="outline"
+                      type="number"
+                      min="1"
+                    />
+                    <ion-input
+                      label="Precio"
+                      label-placement="stacked"
+                      formControlName="precio"
+                      fill="outline"
+                      type="number"
+                    />
+                  </div>
+                  @if (campoInvalido(productoForm.controls.minutos)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(productoForm.controls.minutos, 'tiempo') }}
+                    </p>
+                  }
+                  @if (campoInvalido(productoForm.controls.precio)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(productoForm.controls.precio, 'precio') }}
+                    </p>
+                  }
+                  <!-- El sector al que va el pedido: dato del producto, no foto. -->
+                  @if (!tipoDeSector()) {
+                    <ion-select
+                      label="Tipo"
+                      label-placement="stacked"
+                      formControlName="tipo"
+                      fill="outline"
+                    >
+                      <ion-select-option value="plato">Plato · cocina</ion-select-option>
+                      <ion-select-option value="bebida">Bebida · bar</ion-select-option>
+                    </ion-select>
+                  }
+                }
+                @if (paso() === 1) {
+                  <fieldset class="product-photos">
+                    <legend class="product-photos__legend">Tres fotos del producto</legend>
 
-                  <div class="product-photos__grid">
-                    @for (lugar of lugaresDeFoto; track lugar) {
-                      <div class="product-photo">
-                        <p class="product-photo__etiqueta" aria-live="polite">
-                          Foto {{ lugar + 1 }} de 3{{
-                            fotoEnCarga() === lugar ? ' · Cargando…' : ''
-                          }}
-                        </p>
-                        <!-- La señal y no el control: ver `fotosDelProducto`. -->
-                        @if (imagenActualDelProducto(lugar); as foto) {
-                          <button
-                            class="product-photo__slot product-photo__slot--llena"
-                            type="button"
-                            [attr.aria-label]="'Reemplazar foto ' + (lugar + 1)"
-                            [disabled]="fotoEnCarga() !== null"
-                            (click)="elegirFotoDeProducto(lugar)"
-                          >
-                            <img [src]="foto" [alt]="'Imagen del producto'" />
-                          </button>
-                          @if (fotosDelProducto()[lugar]) {
+                    <div class="product-photos__grid">
+                      @for (lugar of lugaresDeFoto; track lugar) {
+                        <div class="product-photo">
+                          <p class="product-photo__etiqueta" aria-live="polite">
+                            Foto {{ lugar + 1 }} de 3{{
+                              fotoEnCarga() === lugar ? ' · Cargando…' : ''
+                            }}
+                          </p>
+                          <!-- La señal y no el control: ver `fotosDelProducto`. -->
+                          @if (imagenActualDelProducto(lugar); as foto) {
                             <button
-                              class="product-photo__quitar"
+                              class="product-photo__slot product-photo__slot--llena"
                               type="button"
-                              [attr.aria-label]="'Descartar imagen seleccionada'"
+                              [attr.aria-label]="'Reemplazar foto ' + (lugar + 1)"
                               [disabled]="fotoEnCarga() !== null"
-                              (click)="quitarFotoDeProducto(lugar)"
+                              (click)="elegirFotoDeProducto(lugar)"
                             >
-                              <ion-icon name="trash-outline" aria-hidden="true" />
+                              <img [src]="foto" [alt]="'Imagen del producto'" />
+                            </button>
+                            @if (fotosDelProducto()[lugar]) {
+                              <button
+                                class="product-photo__quitar"
+                                type="button"
+                                [attr.aria-label]="'Descartar imagen seleccionada'"
+                                [disabled]="fotoEnCarga() !== null"
+                                (click)="quitarFotoDeProducto(lugar)"
+                              >
+                                <ion-icon name="trash-outline" aria-hidden="true" />
+                              </button>
+                            }
+                          } @else {
+                            <button
+                              class="product-photo__slot"
+                              type="button"
+                              [attr.aria-label]="'Elegir foto ' + (lugar + 1)"
+                              [disabled]="fotoEnCarga() !== null"
+                              (click)="elegirFotoDeProducto(lugar)"
+                            >
+                              <ion-icon name="camera-outline" aria-hidden="true" />
+                              <small>Elegir foto {{ lugar + 1 }} de 3</small>
                             </button>
                           }
-                        } @else {
-                          <button
-                            class="product-photo__slot"
-                            type="button"
-                            [attr.aria-label]="'Elegir foto ' + (lugar + 1)"
-                            [disabled]="fotoEnCarga() !== null"
-                            (click)="elegirFotoDeProducto(lugar)"
-                          >
-                            <ion-icon name="camera-outline" aria-hidden="true" />
-                            <small>Elegir foto {{ lugar + 1 }} de 3</small>
-                          </button>
-                        }
-                      </div>
+                        </div>
+                      }
+                    </div>
+
+                    @if (campoInvalido(productoForm.controls.fotos)) {
+                      <p class="field-error" role="alert">
+                        {{ mensajeCampo(productoForm.controls.fotos, 'foto') }}
+                      </p>
+                    } @else if (productoEditado()) {
+                      <small class="product-photos__nota">
+                        Cada posición sin reemplazo conserva su imagen actual.
+                      </small>
+                    } @else {
+                      <small class="product-photos__nota">
+                        {{
+                          camaraReal
+                            ? 'Se toma con la cámara o se elige de la galería.'
+                            : 'En el teléfono se toma con la cámara o se elige de la galería.'
+                        }}
+                      </small>
+                    }
+                    @if (errorImagen()) {
+                      <p class="field-error" role="alert">{{ errorImagen() }}</p>
+                    }
+                  </fieldset>
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
+                    expand="block"
+                    [disabled]="enviando()"
+                    [puedeConfirmar]="productoEsValido"
+                    [title]="
+                      productoEditado() ? 'Confirmar modificación' : 'Confirmar alta de producto'
+                    "
+                    [message]="
+                      productoEditado()
+                        ? 'Vas a guardar los cambios de este producto. ¿Querés continuar?'
+                        : 'Vas a agregar este producto al catálogo. ¿Querés continuar?'
+                    "
+                    (confirmado)="registrarProducto()"
+                  >
+                    {{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}
+                  </tumbo-boton-confirmacion>
+                }
+                <div class="pasos">
+                  <p class="pasos__cuenta" aria-live="polite">
+                    Paso {{ paso() + 1 }} de {{ pasosDeProducto.length }}
+                  </p>
+                  <div class="pasos__botones">
+                    @if (paso() > 0) {
+                      <ion-button fill="outline" type="button" (click)="retroceder()">
+                        <ion-icon aria-hidden="true" slot="start" name="arrow-back-outline" />Atrás
+                      </ion-button>
+                    }
+                    @if (paso() < pasosDeProducto.length - 1) {
+                      <ion-button type="button" (click)="avanzar(productoForm, pasosDeProducto)">
+                        Siguiente<ion-icon
+                          aria-hidden="true"
+                          slot="end"
+                          name="arrow-forward-outline"
+                        />
+                      </ion-button>
                     }
                   </div>
-
-                  @if (campoInvalido(productoForm.controls.fotos)) {
-                    <p class="field-error" role="alert">
-                      {{ mensajeCampo(productoForm.controls.fotos, 'foto') }}
-                    </p>
-                  } @else if (productoEditado()) {
-                    <small class="product-photos__nota">
-                      Cada posición sin reemplazo conserva su imagen actual.
-                    </small>
-                  } @else {
-                    <small class="product-photos__nota">
-                      {{
-                        camaraReal
-                          ? 'Se toma con la cámara o se elige de la galería.'
-                          : 'En el teléfono se toma con la cámara o se elige de la galería.'
-                      }}
-                    </small>
-                  }
-                  @if (errorImagen()) {
-                    <p class="field-error" role="alert">{{ errorImagen() }}</p>
-                  }
-                </fieldset>
-                @if (!tipoDeSector()) {
-                  <ion-select
-                    label="Tipo"
-                    label-placement="stacked"
-                    formControlName="tipo"
-                    fill="outline"
-                  >
-                    <ion-select-option value="plato">Plato · cocina</ion-select-option>
-                    <ion-select-option value="bebida">Bebida · bar</ion-select-option>
-                  </ion-select>
-                }
-                @if (campoInvalido(productoForm.controls.minutos)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(productoForm.controls.minutos, 'tiempo') }}
-                  </p>
-                }
-                @if (campoInvalido(productoForm.controls.precio)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(productoForm.controls.precio, 'precio') }}
-                  </p>
-                }
-                <tumbo-boton-confirmacion
-                  buttonClass="primary-action"
-                  expand="block"
-                  [disabled]="enviando()"
-                  [puedeConfirmar]="productoEsValido"
-                  [title]="
-                    productoEditado() ? 'Confirmar modificación' : 'Confirmar alta de producto'
-                  "
-                  [message]="
-                    productoEditado()
-                      ? 'Vas a guardar los cambios de este producto. ¿Querés continuar?'
-                      : 'Vas a agregar este producto al catálogo. ¿Querés continuar?'
-                  "
-                  (confirmado)="registrarProducto()"
-                >
-                  @if (enviando()) {
-                    <tumbo-espera etiqueta="Guardando el producto" />
-                  } @else {
-                    {{ productoEditado() ? 'Guardar cambios' : 'Agregar producto' }}
-                  }
-                </tumbo-boton-confirmacion>
+                </div>
               </form>
             } @else {
               <section
@@ -596,35 +676,27 @@
                         personal. Antes la pantalla no daba ninguna señal
                         de que estuviera pasando algo.
                       -->
-                      @if (dandoDeBaja() === producto.id) {
-                        <div class="catalog-item__espera">
-                          <tumbo-espera
-                            [etiqueta]="'Quitando ' + producto.nombre + ' de la carta'"
-                          />
-                        </div>
-                      } @else {
-                        <button
-                          class="catalog-item__edit"
-                          type="button"
-                          [disabled]="dandoDeBaja() !== null"
-                          [attr.aria-label]="'Editar ' + producto.nombre"
-                          (click)="editarProducto(producto)"
-                        >
-                          <ion-icon name="pencil-outline" aria-hidden="true" />
-                        </button>
-                        <tumbo-boton-confirmacion
-                          buttonClass="icon-danger"
-                          [disabled]="dandoDeBaja() !== null"
-                          [ariaLabel]="'Eliminar ' + producto.nombre"
-                          title="Confirmar baja de producto"
-                          [message]="
-                            'Vas a quitar ' + producto.nombre + ' del catálogo. ¿Querés continuar?'
-                          "
-                          (confirmado)="eliminarProducto(producto.id)"
-                        >
-                          <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                        </tumbo-boton-confirmacion>
-                      }
+                      <button
+                        class="catalog-item__edit"
+                        type="button"
+                        [disabled]="dandoDeBaja() !== null"
+                        [attr.aria-label]="'Editar ' + producto.nombre"
+                        (click)="editarProducto(producto)"
+                      >
+                        <ion-icon name="pencil-outline" aria-hidden="true" />
+                      </button>
+                      <tumbo-boton-confirmacion
+                        buttonClass="icon-danger"
+                        [disabled]="dandoDeBaja() !== null"
+                        [ariaLabel]="'Eliminar ' + producto.nombre"
+                        title="Confirmar baja de producto"
+                        [message]="
+                          'Vas a quitar ' + producto.nombre + ' del catálogo. ¿Querés continuar?'
+                        "
+                        (confirmado)="eliminarProducto(producto.id)"
+                      >
+                        <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                      </tumbo-boton-confirmacion>
                     </div>
                   </article>
                 } @empty {
@@ -768,13 +840,9 @@
                   "
                   (confirmado)="registrarMesa()"
                 >
-                  @if (enviando()) {
-                    <tumbo-espera [etiqueta]="mesaEditada() ? 'Guardando' : 'Creando la mesa'" />
-                  } @else {
-                    <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />{{
-                      mesaEditada() ? 'Guardar cambios' : 'Crear mesa'
-                    }}
-                  }
+                  <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />{{
+                    mesaEditada() ? 'Guardar cambios' : 'Crear mesa'
+                  }}
                 </tumbo-boton-confirmacion>
               </form>
             } @else {
@@ -859,78 +927,72 @@
                       </span>
 
                       @if (gestiona()) {
-                        @if (sacandoMesa() === mesa.id || cambiandoMesa() === mesa.numero) {
-                          <div class="mesa-tarjeta__espera">
-                            <tumbo-espera [etiqueta]="'Actualizando la mesa ' + mesa.numero" />
-                          </div>
-                        } @else {
-                          <div class="mesa-tarjeta__acciones">
-                            <tumbo-boton-confirmacion
-                              buttonClass="mesa-accion"
-                              [disabled]="sacandoMesa() !== null"
-                              [ariaLabel]="
-                                (mesa.disponible ? 'Ocupar' : 'Liberar') + ' la mesa ' + mesa.numero
-                              "
-                              [title]="
-                                mesa.disponible
-                                  ? 'Confirmar ocupación de mesa'
-                                  : 'Confirmar liberación de mesa'
-                              "
-                              [message]="
-                                mesa.disponible
-                                  ? 'Vas a marcar la mesa como ocupada. ¿Querés continuar?'
-                                  : 'Vas a liberar la mesa para recibir nuevos clientes. ¿Querés continuar?'
-                              "
-                              (confirmado)="cambiarDisponibilidadMesa(mesa.numero)"
-                            >
-                              {{ mesa.disponible ? 'Ocupar' : 'Liberar' }}
-                            </tumbo-boton-confirmacion>
+                        <div class="mesa-tarjeta__acciones">
+                          <tumbo-boton-confirmacion
+                            buttonClass="mesa-accion"
+                            [disabled]="sacandoMesa() !== null"
+                            [ariaLabel]="
+                              (mesa.disponible ? 'Ocupar' : 'Liberar') + ' la mesa ' + mesa.numero
+                            "
+                            [title]="
+                              mesa.disponible
+                                ? 'Confirmar ocupación de mesa'
+                                : 'Confirmar liberación de mesa'
+                            "
+                            [message]="
+                              mesa.disponible
+                                ? 'Vas a marcar la mesa como ocupada. ¿Querés continuar?'
+                                : 'Vas a liberar la mesa para recibir nuevos clientes. ¿Querés continuar?'
+                            "
+                            (confirmado)="cambiarDisponibilidadMesa(mesa.numero)"
+                          >
+                            {{ mesa.disponible ? 'Ocupar' : 'Liberar' }}
+                          </tumbo-boton-confirmacion>
 
-                            <!--
-                              EL QR DE LA MESA (punto 4).
+                          <!--
+                            EL QR DE LA MESA (punto 4).
 
-                              No abre confirmación porque no cambia
-                              nada: solo muestra el código que la mesa
-                              ya tiene. Los diálogos de «¿estás seguro?»
-                              se guardan para lo que no se puede
-                              deshacer.
-                            -->
-                            <button
-                              class="mesa-accion mesa-accion--icono"
-                              type="button"
-                              [disabled]="sacandoMesa() !== null"
-                              [attr.aria-label]="'Ver el código QR de la mesa ' + mesa.numero"
-                              (click)="verQrDeMesa(mesa)"
-                            >
-                              <ion-icon name="qr-code-outline" aria-hidden="true" />
-                            </button>
+                            No abre confirmación porque no cambia
+                            nada: solo muestra el código que la mesa
+                            ya tiene. Los diálogos de «¿estás seguro?»
+                            se guardan para lo que no se puede
+                            deshacer.
+                          -->
+                          <button
+                            class="mesa-accion mesa-accion--icono"
+                            type="button"
+                            [disabled]="sacandoMesa() !== null"
+                            [attr.aria-label]="'Ver el código QR de la mesa ' + mesa.numero"
+                            (click)="verQrDeMesa(mesa)"
+                          >
+                            <ion-icon name="qr-code-outline" aria-hidden="true" />
+                          </button>
 
-                            <button
-                              class="mesa-accion mesa-accion--icono"
-                              type="button"
-                              [disabled]="sacandoMesa() !== null"
-                              [attr.aria-label]="'Editar la mesa ' + mesa.numero"
-                              (click)="editarMesa(mesa)"
-                            >
-                              <ion-icon name="pencil-outline" aria-hidden="true" />
-                            </button>
+                          <button
+                            class="mesa-accion mesa-accion--icono"
+                            type="button"
+                            [disabled]="sacandoMesa() !== null"
+                            [attr.aria-label]="'Editar la mesa ' + mesa.numero"
+                            (click)="editarMesa(mesa)"
+                          >
+                            <ion-icon name="pencil-outline" aria-hidden="true" />
+                          </button>
 
-                            <tumbo-boton-confirmacion
-                              buttonClass="mesa-accion mesa-accion--icono mesa-accion--peligro"
-                              [disabled]="sacandoMesa() !== null"
-                              [ariaLabel]="'Sacar del salón la mesa ' + mesa.numero"
-                              title="Confirmar baja de mesa"
-                              [message]="
-                                'Vas a sacar la mesa ' +
-                                mesa.numero +
-                                ' del salón. Si tiene pedidos asociados no se va a poder. ¿Querés continuar?'
-                              "
-                              (confirmado)="eliminarMesa(mesa)"
-                            >
-                              <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
-                            </tumbo-boton-confirmacion>
-                          </div>
-                        }
+                          <tumbo-boton-confirmacion
+                            buttonClass="mesa-accion mesa-accion--icono mesa-accion--peligro"
+                            [disabled]="sacandoMesa() !== null"
+                            [ariaLabel]="'Sacar del salón la mesa ' + mesa.numero"
+                            title="Confirmar baja de mesa"
+                            [message]="
+                              'Vas a sacar la mesa ' +
+                              mesa.numero +
+                              ' del salón. Si tiene pedidos asociados no se va a poder. ¿Querés continuar?'
+                            "
+                            (confirmado)="eliminarMesa(mesa)"
+                          >
+                            <ion-icon aria-hidden="true" slot="icon-only" name="trash-outline" />
+                          </tumbo-boton-confirmacion>
+                        </div>
                       }
                     </article>
                   }
@@ -982,8 +1044,6 @@
                           <p class="mesa-qr__error" role="alert">
                             No se pudo dibujar el código. Cerrá y volvé a intentar.
                           </p>
-                        } @else {
-                          <tumbo-espera etiqueta="Generando el código QR" />
                         }
                       </div>
 
@@ -1040,151 +1100,172 @@
                   mismo que la del empleado: en el teléfono es lo primero
                   que se hace, con la persona delante.
                 -->
-                <div class="employee-photo">
-                  @if (fotoDelCliente(); as foto) {
-                    <img
-                      class="employee-photo__preview"
-                      [src]="foto.previewUrl"
-                      alt="Foto del cliente"
-                    />
-                    <div class="employee-photo__actions">
+                @if (paso() === 0) {
+                  <div class="employee-photo">
+                    @if (fotoDelCliente(); as foto) {
+                      <img
+                        class="employee-photo__preview"
+                        [src]="foto.previewUrl"
+                        alt="Foto del cliente"
+                      />
+                      <div class="employee-photo__actions">
+                        <ion-button
+                          fill="outline"
+                          size="small"
+                          type="button"
+                          (click)="sacarFotoCliente()"
+                        >
+                          <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
+                          Repetir
+                        </ion-button>
+                        <ion-button
+                          fill="clear"
+                          size="small"
+                          type="button"
+                          (click)="quitarFotoCliente()"
+                        >
+                          <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
+                          Quitar
+                        </ion-button>
+                      </div>
+                      @if (foto.simulada) {
+                        <p class="employee-photo__note">
+                          Imagen elegida de un archivo. En el teléfono se toma con la cámara.
+                        </p>
+                      }
+                    } @else {
                       <ion-button
+                        class="employee-photo__take"
                         fill="outline"
-                        size="small"
                         type="button"
                         (click)="sacarFotoCliente()"
                       >
                         <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                        Repetir
+                        {{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}
                       </ion-button>
-                      <ion-button
-                        fill="clear"
-                        size="small"
-                        type="button"
-                        (click)="quitarFotoCliente()"
-                      >
-                        <ion-icon slot="start" name="trash-outline" aria-hidden="true" />
-                        Quitar
-                      </ion-button>
-                    </div>
-                    @if (foto.simulada) {
-                      <p class="employee-photo__note">
-                        Imagen elegida de un archivo. En el teléfono se toma con la cámara.
-                      </p>
+                      @if (campoInvalido(clienteForm.controls.foto)) {
+                        <p class="employee-photo__error" role="alert">
+                          {{ mensajeCampo(clienteForm.controls.foto, 'foto personal') }}
+                        </p>
+                      } @else {
+                        <p class="employee-photo__note">La foto personal es obligatoria.</p>
+                      }
                     }
-                  } @else {
-                    <ion-button
-                      class="employee-photo__take"
-                      fill="outline"
-                      type="button"
-                      (click)="sacarFotoCliente()"
-                    >
-                      <ion-icon slot="start" name="camera-outline" aria-hidden="true" />
-                      {{ camaraReal ? 'Sacar la foto' : 'Tomar foto en Android' }}
-                    </ion-button>
-                    @if (campoInvalido(clienteForm.controls.foto)) {
-                      <p class="employee-photo__error" role="alert">
-                        {{ mensajeCampo(clienteForm.controls.foto, 'foto personal') }}
-                      </p>
-                    } @else {
-                      <p class="employee-photo__note">La foto personal es obligatoria.</p>
-                    }
-                  }
-                </div>
+                  </div>
 
-                <div class="employee-form__row">
-                  <ion-input
-                    label="Nombres"
-                    label-placement="stacked"
-                    formControlName="nombres"
-                    fill="outline"
-                    [maxlength]="limites.nombres.max"
+                  <div class="employee-form__row">
+                    <ion-input
+                      label="Nombres"
+                      label-placement="stacked"
+                      formControlName="nombres"
+                      fill="outline"
+                      [maxlength]="limites.nombres.max"
+                    />
+                    <ion-input
+                      label="Apellidos"
+                      label-placement="stacked"
+                      formControlName="apellidos"
+                      fill="outline"
+                      [maxlength]="limites.apellidos.max"
+                    />
+                  </div>
+                  @if (campoInvalido(clienteForm.controls.nombres)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(clienteForm.controls.nombres, 'nombre') }}
+                    </p>
+                  }
+                  @if (campoInvalido(clienteForm.controls.apellidos)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(clienteForm.controls.apellidos, 'apellido') }}
+                    </p>
+                  }
+                }
+                @if (paso() === 1) {
+                  <!-- Mismo criterio que en el alta de empleado. -->
+                  <tumbo-resumen-alta
+                    [foto]="fotoDelCliente()?.previewUrl ?? null"
+                    [nombre]="nombreEnElAlta(clienteForm)"
+                    nota="Queda pendiente de aprobación."
                   />
                   <ion-input
-                    label="Apellidos"
+                    label="DNI"
                     label-placement="stacked"
-                    formControlName="apellidos"
+                    formControlName="dni"
                     fill="outline"
-                    [maxlength]="limites.apellidos.max"
+                    inputmode="numeric"
                   />
+                  @if (campoInvalido(clienteForm.controls.dni)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(clienteForm.controls.dni, 'DNI') }}
+                    </p>
+                  }
+                  <ion-input
+                    label="Correo"
+                    label-placement="stacked"
+                    formControlName="correo"
+                    fill="outline"
+                    type="email"
+                    [maxlength]="limites.correo.max"
+                  />
+                  @if (campoInvalido(clienteForm.controls.correo)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(clienteForm.controls.correo, 'correo') }}
+                    </p>
+                  }
+                  <div class="employee-form__row">
+                    <tumbo-campo-clave
+                      etiqueta="Contraseña"
+                      control="clave"
+                      [invalido]="campoInvalido(clienteForm.controls.clave)"
+                    />
+                    <tumbo-campo-clave etiqueta="Repetir contraseña" control="repetirClave" />
+                  </div>
+                  @if (campoInvalido(clienteForm.controls.clave)) {
+                    <p class="field-error" role="alert">
+                      {{ mensajeCampo(clienteForm.controls.clave, 'contraseña') }}
+                    </p>
+                  }
+                  @if (
+                    clienteForm.hasError('clavesDistintas') &&
+                    clienteForm.controls.repetirClave.touched
+                  ) {
+                    <p class="field-error" role="alert">
+                      Las dos contraseñas tienen que ser iguales.
+                    </p>
+                  }
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
+                    expand="block"
+                    [puedeConfirmar]="clienteEsValido"
+                    title="Confirmar alta de cliente"
+                    message="Vas a registrar este cliente para que quede pendiente de aprobación. ¿Querés continuar?"
+                    (confirmado)="registrarCliente()"
+                  >
+                    <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
+                    cliente
+                  </tumbo-boton-confirmacion>
+                }
+                <div class="pasos">
+                  <p class="pasos__cuenta" aria-live="polite">
+                    Paso {{ paso() + 1 }} de {{ pasosDeCliente.length }}
+                  </p>
+                  <div class="pasos__botones">
+                    @if (paso() > 0) {
+                      <ion-button fill="outline" type="button" (click)="retroceder()">
+                        <ion-icon aria-hidden="true" slot="start" name="arrow-back-outline" />Atrás
+                      </ion-button>
+                    }
+                    @if (paso() < pasosDeCliente.length - 1) {
+                      <ion-button type="button" (click)="avanzar(clienteForm, pasosDeCliente)">
+                        Siguiente<ion-icon
+                          aria-hidden="true"
+                          slot="end"
+                          name="arrow-forward-outline"
+                        />
+                      </ion-button>
+                    }
+                  </div>
                 </div>
-                @if (campoInvalido(clienteForm.controls.nombres)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(clienteForm.controls.nombres, 'nombre') }}
-                  </p>
-                }
-                @if (campoInvalido(clienteForm.controls.apellidos)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(clienteForm.controls.apellidos, 'apellido') }}
-                  </p>
-                }
-                <ion-input
-                  label="DNI"
-                  label-placement="stacked"
-                  formControlName="dni"
-                  fill="outline"
-                  inputmode="numeric"
-                />
-                @if (campoInvalido(clienteForm.controls.dni)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(clienteForm.controls.dni, 'DNI') }}
-                  </p>
-                }
-                <ion-input
-                  label="Correo"
-                  label-placement="stacked"
-                  formControlName="correo"
-                  fill="outline"
-                  type="email"
-                  [maxlength]="limites.correo.max"
-                />
-                @if (campoInvalido(clienteForm.controls.correo)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(clienteForm.controls.correo, 'correo') }}
-                  </p>
-                }
-                <div class="employee-form__row">
-                  <ion-input
-                    label="Contraseña"
-                    label-placement="stacked"
-                    formControlName="clave"
-                    fill="outline"
-                    type="password"
-                    [maxlength]="limites.clave.max"
-                  />
-                  <ion-input
-                    label="Repetir contraseña"
-                    label-placement="stacked"
-                    formControlName="repetirClave"
-                    fill="outline"
-                    type="password"
-                    [maxlength]="limites.clave.max"
-                  />
-                </div>
-                @if (campoInvalido(clienteForm.controls.clave)) {
-                  <p class="field-error" role="alert">
-                    {{ mensajeCampo(clienteForm.controls.clave, 'contraseña') }}
-                  </p>
-                }
-                @if (
-                  clienteForm.hasError('clavesDistintas') &&
-                  clienteForm.controls.repetirClave.touched
-                ) {
-                  <p class="field-error" role="alert">
-                    Las dos contraseñas tienen que ser iguales.
-                  </p>
-                }
-                <tumbo-boton-confirmacion
-                  buttonClass="primary-action"
-                  expand="block"
-                  [puedeConfirmar]="clienteEsValido"
-                  title="Confirmar alta de cliente"
-                  message="Vas a registrar este cliente para que quede pendiente de aprobación. ¿Querés continuar?"
-                  (confirmado)="registrarCliente()"
-                >
-                  <ion-icon aria-hidden="true" slot="start" name="add-circle-outline" />Registrar
-                  cliente
-                </tumbo-boton-confirmacion>
               </form>
             } @else {
               <section class="clients-panel">
@@ -1218,11 +1299,7 @@
                         </div>
                       </div>
                       @if (gestiona()) {
-                        @if (resolviendoCliente() === cliente.id) {
-                          <tumbo-espera
-                            [etiqueta]="'Resolviendo el registro de ' + cliente.nombres"
-                          />
-                        } @else if (clienteARechazar() === cliente.id) {
+                        @if (clienteARechazar() === cliente.id) {
                           <div class="client-entry__rechazo">
                             <label [for]="'motivo-' + cliente.id">Motivo del rechazo</label>
                             <ion-textarea
@@ -1431,11 +1508,7 @@
                 message="Vas a confirmar que recibiste el pedido. ¿Querés continuar?"
                 (confirmado)="recibirPedido()"
               >
-                @if (confirmandoRecepcion()) {
-                  <tumbo-espera etiqueta="Confirmando recepción" />
-                } @else {
-                  Confirmar recepción
-                }
+                Confirmar recepción
               </tumbo-boton-confirmacion>
             } @else {
               <section class="section-block">
@@ -1451,100 +1524,243 @@
           }
 
           @if (seccion() === 'entrada') {
-            <section class="section-block">
+            <!--
+              LA ENTRADA, EN TRES TRAMOS (corrección T2).
+
+              Antes era una sola pantalla con el QR, el formulario y la
+              tarjeta de la mesa, todo junto: no entraba y había que
+              deslizar, que es lo que el profesor marcó.
+
+              Los tramos no tienen botón de «Siguiente» y es a propósito:
+              acá no se avanza porque uno lo decida, se avanza porque
+              pasó algo —se validó el QR, se confirmó la anotación, el
+              metre asignó una mesa—. Un botón de siguiente daría a
+              entender que se puede volver, y no se puede: el QR ya está
+              escaneado.
+            -->
+            <section class="section-block entrada">
               <div class="section-heading">
                 <div><h2>Entrada al restaurante</h2></div>
               </div>
-              <div class="anonymous-entry">
-                <div class="qr-preview">
-                  @if (qrImagen('entrada'); as qr) {
-                    <img [src]="qr" alt="" />
-                  } @else {
-                    <span>QR</span>
-                  }
-                  <small>tumbo://ingreso</small>
-                </div>
-                <div>
-                  <h2>Escaneá el QR de ingreso</h2>
-                  <p>
-                    Registrate con tu nombre, accedé a la espera y consultá las encuestas previas.
-                  </p>
-                  <ion-button fill="outline" (click)="escanearIngreso()">
-                    <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
-                    Escanear QR de ingreso
-                  </ion-button>
-                </div>
-              </div>
-              <div class="anonymous-form">
-                @if (ingresoEscaneado()) {
-                  <p class="form-hint">QR validado. Completá tus datos para anotarte.</p>
-                  <ion-button fill="outline" (click)="abrir('reportes')">
-                    <ion-icon name="bar-chart-outline" slot="start" aria-hidden="true" />
-                    Ver resultados de encuestas
-                  </ion-button>
+
+              <ol class="entrada-pasos" aria-label="Pasos de la entrada">
+                @for (etapa of etapasDeEntrada; track etapa.numero) {
+                  <li
+                    class="entrada-paso"
+                    [class.entrada-paso--actual]="etapaDeEntrada() === etapa.numero"
+                    [class.entrada-paso--hecho]="etapaDeEntrada() > etapa.numero"
+                    [attr.aria-current]="etapaDeEntrada() === etapa.numero ? 'step' : null"
+                  >
+                    <span class="entrada-paso__numero" aria-hidden="true">{{ etapa.numero }}</span>
+                    <span class="entrada-paso__texto">{{ etapa.texto }}</span>
+                  </li>
                 }
-                <ion-input
-                  label="Nombre para la lista de espera"
-                  label-placement="stacked"
-                  fill="outline"
-                  [value]="nombreAnonimo()"
-                  (ionInput)="actualizarNombreAnonimo($event)"
-                />
-                <div class="photo-control">
-                  @if (fotoAnonima(); as foto) {
-                    <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
-                    <ion-button fill="clear" (click)="quitarFotoAnonima()">Quitar foto</ion-button>
-                  } @else {
-                    <ion-button fill="outline" (click)="elegirFotoAnonima()">
-                      <ion-icon name="camera-outline" slot="start" aria-hidden="true" />
-                      Agregar foto
-                    </ion-button>
-                  }
-                </div>
-                @if (ingresoEscaneado() && !fotoAnonima() && !usuario()) {
-                  <p class="form-hint" role="status">
-                    La foto es obligatoria para registrarte como cliente anónimo.
-                  </p>
-                }
-                <tumbo-boton-confirmacion
-                  buttonClass="primary-action"
-                  title="Confirmar ingreso a la lista"
-                  message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
-                  [disabled]="!ingresoEscaneado() || (!usuario() && !fotoAnonima())"
-                  (confirmado)="anotarCliente()"
-                  >Anotarme</tumbo-boton-confirmacion
-                >
-                <ion-button fill="clear" (click)="verResultadosEncuestas()">
-                  Ver resultados de encuestas previas
-                </ion-button>
-              </div>
-              @if (demo.mesaAsignada(); as mesaAsignada) {
-                <div class="table-link-card" aria-live="polite">
-                  <div>
-                    <strong>Mesa asignada: {{ mesaAsignada }}</strong>
-                    <p>Escaneá el QR de esa mesa para vincular tu estadía.</p>
+              </ol>
+
+              @if (etapaDeEntrada() === 1) {
+                <div class="anonymous-entry">
+                  <div class="qr-preview">
+                    @if (qrImagen('entrada'); as qr) {
+                      <img [src]="qr" alt="" />
+                    } @else {
+                      <span>QR</span>
+                    }
+                    <small>tumbo://ingreso</small>
                   </div>
-                  <ion-button fill="outline" (click)="escanearMesaAsignada()">
-                    <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
-                    Escanear QR de mi mesa
-                  </ion-button>
-                  @if (estadoQrMesa() === 'correcto') {
-                    <p class="qr-link-status qr-link-status--ok" role="status">
-                      Mesa vinculada correctamente.
+                  <div>
+                    <h2>Escaneá el QR de ingreso</h2>
+                    <p>
+                      Está en la puerta del local. Con eso te anotás en la espera y podés ver las
+                      encuestas de quienes vinieron antes.
                     </p>
-                  } @else if (estadoQrMesa() === 'incorrecto') {
-                    <p class="qr-link-status qr-link-status--error" role="alert">
-                      QR rechazado. Solo podés vincular la mesa {{ mesaAsignada }}.
+                    <ion-button fill="outline" (click)="escanearIngreso()">
+                      <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
+                      Escanear QR de ingreso
+                    </ion-button>
+                  </div>
+                </div>
+              }
+
+              @if (etapaDeEntrada() === 2) {
+                <div class="anonymous-form">
+                  <p class="form-hint">QR validado. Completá tus datos para anotarte.</p>
+                  <ion-input
+                    label="Nombre para la lista de espera"
+                    label-placement="stacked"
+                    fill="outline"
+                    [value]="nombreAnonimo()"
+                    (ionInput)="actualizarNombreAnonimo($event)"
+                  />
+                  <div class="photo-control">
+                    @if (fotoAnonima(); as foto) {
+                      <img [src]="foto.previewUrl" alt="Vista previa de tu foto" />
+                      <ion-button fill="clear" (click)="quitarFotoAnonima()"
+                        >Quitar foto</ion-button
+                      >
+                    } @else {
+                      <ion-button fill="outline" (click)="elegirFotoAnonima()">
+                        <ion-icon name="camera-outline" slot="start" aria-hidden="true" />
+                        Agregar foto
+                      </ion-button>
+                    }
+                  </div>
+                  @if (!fotoAnonima() && !usuario()) {
+                    <p class="form-hint" role="status">
+                      La foto es obligatoria: el metre la usa para encontrarte.
                     </p>
                   }
+                  <tumbo-boton-confirmacion
+                    buttonClass="primary-action"
+                    title="Confirmar ingreso a la lista"
+                    message="Vas a anotarte en la lista de espera del restaurante. ¿Querés continuar?"
+                    [disabled]="!usuario() && !fotoAnonima()"
+                    (confirmado)="anotarCliente()"
+                    >Anotarme</tumbo-boton-confirmacion
+                  >
+                  <!--
+                    El punto 9 pone las dos cosas detrás del mismo QR:
+                    anotarse y mirar las encuestas. Por eso el acceso a
+                    los resultados aparece recién acá y no antes.
+                  -->
+                  <ion-button fill="clear" (click)="verResultadosEncuestas()">
+                    <ion-icon name="bar-chart-outline" slot="start" aria-hidden="true" />
+                    Ver resultados de encuestas previas
+                  </ion-button>
                 </div>
-              } @else if (demo.mesaVinculada() === null) {
-                <p class="form-hint">Esperá la asignación del maître para vincular una mesa.</p>
+              }
+
+              @if (etapaDeEntrada() === 3) {
+                <div class="anonymous-form">
+                  @if (demo.mesaAsignada(); as mesaAsignada) {
+                    <div class="table-link-card" aria-live="polite">
+                      <div>
+                        <strong>Mesa asignada: {{ mesaAsignada }}</strong>
+                        <p>Escaneá el QR de esa mesa para vincular tu estadía.</p>
+                      </div>
+                      <ion-button fill="outline" (click)="escanearMesaAsignada()">
+                        <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
+                        Escanear QR de mi mesa
+                      </ion-button>
+                      @if (estadoQrMesa() === 'correcto') {
+                        <p class="qr-link-status qr-link-status--ok" role="status">
+                          Mesa vinculada correctamente.
+                        </p>
+                      } @else if (estadoQrMesa() === 'incorrecto') {
+                        <p class="qr-link-status qr-link-status--error" role="alert">
+                          QR rechazado. Solo podés vincular la mesa {{ mesaAsignada }}.
+                        </p>
+                      }
+                    </div>
+                  } @else {
+                    <div class="table-link-card" role="status">
+                      <div>
+                        <strong>Estás en la lista de espera</strong>
+                        <p>
+                          Cuando el metre te asigne una mesa, esta pantalla te lo avisa sola. No
+                          hace falta que la mires.
+                        </p>
+                      </div>
+                    </div>
+                  }
+                  <ion-button fill="clear" (click)="verResultadosEncuestas()">
+                    <ion-icon name="bar-chart-outline" slot="start" aria-hidden="true" />
+                    Ver resultados de encuestas previas
+                  </ion-button>
+                </div>
               }
             </section>
           }
 
-          @if (seccion() === 'menu') {
+          <!--
+            LA PANTALLA DE CARRITO (corrección P3).
+
+            El profesor la pidió con el argumento del cliente que se
+            olvidó qué pidió: entre elegir y mandar tiene que haber una
+            pantalla donde se vea todo junto. Así que «Hacer pedido» ya
+            no envía: muestra el detalle, y recién el botón de ahí
+            manda. Desde esa pantalla también se corrigen cantidades,
+            que es para lo que uno la mira.
+
+            Es un tramo de la sección del menú y no una sección nueva:
+            agregarla al menú de abajo sumaría un botón más a un home
+            donde el profesor pidió botones grandes.
+          -->
+          @if (seccion() === 'menu' && revisandoPedido()) {
+            <section class="section-block carrito">
+              <div class="section-heading">
+                <div><h2>Tu pedido</h2></div>
+                <ion-chip class="table-chip"
+                  >Mesa {{ demo.mesaVinculada() ?? 'Sin vincular' }}</ion-chip
+                >
+              </div>
+
+              <ul class="carrito-lista">
+                @for (item of demo.carrito(); track item.productoId) {
+                  <li class="carrito-item">
+                    <div class="carrito-item__datos">
+                      <strong>{{ item.nombre }}</strong>
+                      <small>{{ formatearPrecio(item.precio) }} c/u · {{ item.minutos }} min</small>
+                    </div>
+                    <div class="carrito-item__cantidad">
+                      @if (productoDelCarrito(item.productoId); as producto) {
+                        <ion-button
+                          class="quantity-button"
+                          fill="outline"
+                          [attr.aria-label]="'Quitar una unidad de ' + item.nombre"
+                          (click)="quitar(producto)"
+                          >−</ion-button
+                        >
+                        <strong>{{ item.cantidad }}</strong>
+                        <ion-button
+                          class="quantity-button"
+                          fill="outline"
+                          [attr.aria-label]="'Agregar una unidad de ' + item.nombre"
+                          (click)="agregar(producto)"
+                          >+</ion-button
+                        >
+                      } @else {
+                        <strong>{{ item.cantidad }}</strong>
+                      }
+                    </div>
+                    <strong class="carrito-item__importe">{{
+                      formatearPrecio(item.precio * item.cantidad)
+                    }}</strong>
+                  </li>
+                } @empty {
+                  <li class="carrito-vacio" role="status">
+                    No queda nada en el pedido. Volvé a la carta y elegí algo.
+                  </li>
+                }
+              </ul>
+
+              <!-- Punto 12: el importe y el tiempo, siempre a la vista. -->
+              <div class="carrito-total">
+                <div>
+                  <span>Importe acumulado</span>
+                  <strong>{{ formatearPrecio(demo.totalCarrito()) }}</strong>
+                </div>
+                <small>Tiempo estimado: {{ demo.tiempoCarrito() }} minutos</small>
+              </div>
+
+              <div class="carrito-acciones">
+                <ion-button fill="outline" (click)="revisandoPedido.set(false)">
+                  <ion-icon aria-hidden="true" slot="start" name="arrow-back-outline" />
+                  Seguir pidiendo
+                </ion-button>
+                <tumbo-boton-confirmacion
+                  buttonClass="primary-action"
+                  [disabled]="demo.carrito().length === 0"
+                  title="Confirmar envío del pedido"
+                  message="Vas a enviar el pedido al mozo para que lo prepare. ¿Querés continuar?"
+                  (confirmado)="enviarPedido()"
+                  ><ion-icon aria-hidden="true" slot="start" name="send-outline" />Confirmar
+                  pedido</tumbo-boton-confirmacion
+                >
+              </div>
+            </section>
+          }
+
+          @if (seccion() === 'menu' && !revisandoPedido()) {
             <section class="section-block">
               <div class="section-heading">
                 <div><h2>Menú Tumbito</h2></div>
@@ -1595,11 +1811,74 @@
               <div class="menu-grid">
                 @for (producto of paginar(productosDelMenu()); track producto.id) {
                   <article class="product-card">
-                    <div class="product-card__image">
-                      <img [ngSrc]="imagenActual(producto)" width="220" height="150" alt="" />
-                      <button aria-label="Ver siguiente imagen" (click)="alternarImagen(producto)">
-                        <ion-icon aria-hidden="true" name="arrow-forward-outline" />
-                      </button>
+                    <!--
+                      EL CARRUSEL DE FOTOS (corrección P1).
+
+                      Antes era una foto sola con una flecha azul abajo a
+                      la derecha: no se entendía que hubiera más, y el
+                      profesor pidió que se pueda arrastrar como en
+                      Instagram.
+
+                      La pista es un scroll horizontal de verdad con
+                      ajuste por foto: en el teléfono se pasa con el
+                      dedo y los puntos dicen cuántas hay. Las flechas
+                      que habíamos puesto encima se sacaron porque al
+                      profesor no le gustaron; Instagram tampoco las
+                      tiene en el teléfono.
+
+                      Sin flechas hay que dejar otra forma de moverlo
+                      sin dedo: la pista es foco del teclado, así que se
+                      pasa con las flechas del teclado, y el aviso de
+                      abajo le dice al lector de pantalla en cuál está.
+                    -->
+                    <div class="product-card__image carrusel">
+                      <div
+                        class="carrusel__pista"
+                        #pista
+                        [attr.tabindex]="producto.fotos.length > 1 ? 0 : null"
+                        [attr.role]="producto.fotos.length > 1 ? 'group' : null"
+                        [attr.aria-label]="
+                          producto.fotos.length > 1
+                            ? 'Fotos de ' + producto.nombre + '. Usá las flechas del teclado.'
+                            : null
+                        "
+                        (scroll)="seguirCarrusel(pista, producto)"
+                      >
+                        @for (foto of producto.fotos; track $index) {
+                          <img
+                            [ngSrc]="foto"
+                            width="220"
+                            height="150"
+                            [alt]="
+                              'Foto ' +
+                              ($index + 1) +
+                              ' de ' +
+                              producto.fotos.length +
+                              ' de ' +
+                              producto.nombre
+                            "
+                          />
+                        }
+                      </div>
+                      @if (producto.fotos.length > 1) {
+                        <!--
+                          Los puntos dicen cuántas fotos hay y en cuál se
+                          está. Sin flechas son la única pista de que hay
+                          más de una, así que van sobre una barra que se
+                          lee tanto en una foto clara como en una oscura.
+                        -->
+                        <div class="carrusel__puntos" aria-hidden="true">
+                          @for (foto of producto.fotos; track $index) {
+                            <span
+                              class="carrusel__punto"
+                              [class.carrusel__punto--actual]="indiceDeFoto(producto) === $index"
+                            ></span>
+                          }
+                        </div>
+                        <p class="solo-lectores" aria-live="polite">
+                          Foto {{ indiceDeFoto(producto) + 1 }} de {{ producto.fotos.length }}
+                        </p>
+                      }
                     </div>
                     <div class="product-card__body">
                       <div class="product-card__meta">
@@ -1650,15 +1929,14 @@
                 ><strong>{{ formatearPrecio(demo.totalCarrito()) }}</strong
                 ><small>Tiempo estimado: {{ demo.tiempoCarrito() }} minutos</small>
               </div>
-              <tumbo-boton-confirmacion
-                buttonClass="primary-action"
+              <ion-button
+                class="primary-action"
                 [disabled]="demo.carrito().length === 0"
-                title="Confirmar envío del pedido"
-                message="Vas a enviar el pedido al mozo para que lo prepare. ¿Querés continuar?"
-                (confirmado)="enviarPedido()"
-                ><ion-icon aria-hidden="true" slot="start" name="send-outline" />Enviar
-                pedido</tumbo-boton-confirmacion
+                (click)="revisandoPedido.set(true)"
               >
+                <ion-icon aria-hidden="true" slot="start" name="receipt-outline" />
+                Hacer pedido
+              </ion-button>
             </section>
           }
 
@@ -1815,14 +2093,20 @@
                       <p class="chat-vacio" role="status">Todavía no hay consultas de las mesas.</p>
                     }
                   }
-                  <div class="chat-messages" aria-live="polite">
-                    @for (mensajeChat of paginaDeChat(); track mensajeChat.id) {
+                  <!--
+                    LA CONVERSACIÓN ENTERA, CON SCROLL PROPIO (P2).
+
+                    Hasta acá el chat se leía de a cuatro mensajes con un
+                    paginador. El profesor pidió lo contrario: que se
+                    deslice como WhatsApp, con el último mensaje abajo.
+                    Es la única pantalla donde pidió scroll, y tiene
+                    sentido: una conversación se lee hacia atrás, no de a
+                    páginas.
+                  -->
+                  <div class="chat-messages" #conversacion aria-live="polite">
+                    @for (mensajeChat of mensajesVisibles(); track mensajeChat.id) {
                       <div class="chat-message" [class.chat-message--own]="mensajeChat.esPropio">
-                        <span
-                          >{{ mensajeChat.autor
-                          }}{{ mensajeChat.mesa ? ' · Mesa ' + mensajeChat.mesa : '' }} ·
-                          {{ mensajeChat.fecha }}</span
-                        >
+                        <span>{{ firmaDelMensaje(mensajeChat) }} · {{ mensajeChat.fecha }}</span>
                         <p>{{ mensajeChat.texto }}</p>
                       </div>
                     } @empty {
@@ -1883,7 +2167,7 @@
             }
           }
         </div>
-        @if (!creando() && totalPaginas() > 1) {
+        @if (!creando() && !revisandoPedido() && totalPaginas() > 1) {
           <nav class="page-controls" aria-label="Paginación">
             <ion-button
               fill="outline"

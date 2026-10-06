@@ -2,10 +2,11 @@ import { Component, inject, OnInit } from '@angular/core';
 import { IonApp } from '@ionic/angular/ion-app';
 import { IonRouterOutlet } from '@ionic/angular/ion-router-outlet';
 import { NotificacionesPush } from './core/dispositivo/notificaciones-push.service';
+import { EsperaPantalla } from './shared/components/espera/espera-pantalla.component';
 import { AppAudio } from './services/app-audio.service';
 
 @Component({
-  imports: [IonApp, IonRouterOutlet],
+  imports: [IonApp, IonRouterOutlet, EsperaPantalla],
   selector: 'tumbo-root',
   styleUrl: './app.component.scss',
   templateUrl: './app.component.html',

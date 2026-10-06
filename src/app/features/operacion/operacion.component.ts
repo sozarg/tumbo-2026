@@ -48,8 +48,9 @@ import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToast } from '@ionic/angular/ion-toast';
 import { addIcons } from 'ionicons';
 import { Paginador } from '../../shared/components/paginador/paginador.component';
-import { Espera } from '../../shared/components/espera/espera.component';
 import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
+import { CampoClave } from '../../shared/components/campo-clave/campo-clave.component';
+import { ResumenAlta } from '../../shared/components/resumen-alta/resumen-alta.component';
 import { JuegoAdivinanza } from '../juegos/adivinanza/juego-adivinanza.component';
 import { JuegoPiedraPapelTijera } from '../juegos/piedra-papel-tijera/juego-piedra-papel-tijera.component';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
@@ -92,6 +93,7 @@ import {
   ETIQUETA_DE_TIPO_PRODUCTO,
   EstadoPedido,
   MesaDemo,
+  MensajeDemo,
   ProductoDemo,
   SectorProducto,
   TipoMesa,
@@ -137,9 +139,9 @@ import {
   puedeAcceder,
 } from '../../core/navegacion/secciones';
 import { SeccionPedida } from '../../core/navegacion/seccion-pedida';
+import { EsperaGlobal } from '../../core/ui/espera-global.service';
 
 /** Cuántos mensajes de la consulta entran en una página (punto 11). */
-const MENSAJES_POR_PAGINA = 4;
 
 @Component({
   imports: [
@@ -166,9 +168,10 @@ const MENSAJES_POR_PAGINA = 4;
     IonSelectOption,
     IonTextarea,
     IonToast,
-    Espera,
     Paginador,
     BotonConfirmacion,
+    CampoClave,
+    ResumenAlta,
     FondoDecorativo,
     NgOptimizedImage,
     ReactiveFormsModule,
@@ -233,6 +236,14 @@ export class Operacion implements OnInit {
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
   private readonly seccionPedida = inject(SeccionPedida);
+  /*
+   * El indicador de espera ya no vive en los botones (preentrega del 3
+   * de octubre). Las señales de abajo —`enviando`, `dandoDeBaja`,
+   * `sacandoMesa`…— siguen existiendo, pero ahora solo deshabilitan
+   * controles y cortan los envíos repetidos. Mostrar la espera es tarea
+   * de `EsperaGlobal`, que tapa la pantalla entera.
+   */
+  private readonly esperaGlobal = inject(EsperaGlobal);
   private readonly sesion = inject(SesionService);
   private readonly autenticacion = inject(AUTENTICACION);
   protected readonly demo = inject(OperacionService);
@@ -254,6 +265,63 @@ export class Operacion implements OnInit {
   protected readonly pagina = signal(0);
   protected readonly anteriorPaso = (paso: number): number => Math.max(0, paso - 1);
   protected readonly paso = signal(0);
+
+  /*
+   * LOS CAMPOS DE CADA PASO DEL ALTA DE EMPLEADO.
+   *
+   * El profesor marcó que ningún formulario puede pedir scroll. El
+   * formulario sigue siendo UNO —`empleadoForm` entero, y el alta sigue
+   * leyendo `getRawValue()`—; esta lista solo dice qué se ve en cada
+   * tramo y qué hay que validar antes de dejar pasar al siguiente.
+   *
+   * Dos tramos. Se probaron cinco y tres antes de llegar acá: con
+   * cinco, cada paso tenía uno o dos campos y el trámite se volvía
+   * largo; con tres todavía sobraba una pantalla.
+   *
+   * Dos entra, pero **justo**. Medido a 412 px de ancho con los seis
+   * campos llenos y sin ningún mensaje de error: el contenido pide
+   * 607 px de alto útil. Entra en un teléfono de 780 px para arriba y
+   * desborda en uno de 740. Cada mensaje de validación suma unos 20 px.
+   *
+   * O sea que si alguien agrega un campo acá, el scroll vuelve. Si pasa,
+   * la salida es partir el segundo tramo en dos, no achicar la letra.
+   *
+   * La foto va primera porque en el mostrador es lo primero que se
+   * hace, y porque el botón de leer el DNI —que vive en el encabezado y
+   * se ve en los dos pasos— completa nombres, apellidos y documento.
+   */
+  protected readonly pasosDeEmpleado: readonly (readonly string[])[] = [
+    ['foto', 'nombres', 'apellidos'],
+    ['dni', 'cuil', 'correo', 'perfil', 'clave', 'repetirClave'],
+  ];
+
+  /**
+   * El alta de producto (punto 2), en dos tramos.
+   *
+   * Primero lo que se escribe, después lo que se mira. Las tres fotos
+   * van juntas y solas porque son una grilla de tres huecos; mezcladas
+   * con campos de texto no entraba ninguna de las dos cosas.
+   *
+   * El tipo se escribe con el resto y no con las fotos: es un dato del
+   * producto, no una imagen, y además equilibra los dos tramos. Con el
+   * tipo del otro lado el primer paso quedaban cuatro campos cortos
+   * flotando y el segundo apretaba la grilla.
+   */
+  protected readonly pasosDeProducto: readonly (readonly string[])[] = [
+    ['nombre', 'descripcion', 'tipo', 'minutos', 'precio'],
+    ['fotos'],
+  ];
+
+  /**
+   * El alta de cliente (punto 5), en dos tramos.
+   *
+   * Mismo corte que el de empleado, porque es casi el mismo formulario:
+   * quién es con su foto, y después cómo se lo ubica y cómo entra.
+   */
+  protected readonly pasosDeCliente: readonly (readonly string[])[] = [
+    ['foto', 'nombres', 'apellidos'],
+    ['dni', 'correo', 'clave', 'repetirClave'],
+  ];
   protected readonly paginaItems = signal(0);
   protected readonly mesasDisponibles = computed(() =>
     this.demo
@@ -496,7 +564,39 @@ export class Operacion implements OnInit {
   protected readonly imagenes = signal<Record<string, number>>({});
   protected readonly nombreAnonimo = signal('');
   protected readonly fotoAnonima = signal<FotoTomada | null>(null);
+  /**
+   * Si el cliente está mirando el detalle antes de mandar (P3).
+   *
+   * Vive acá y no en la navegación a propósito: no es una sección más
+   * del menú de abajo, es un tramo del camino de pedir. Se apaga sola
+   * cuando el pedido sale, para que volver al menú no muestre el
+   * detalle de un pedido que ya se envió.
+   */
+  protected readonly revisandoPedido = signal(false);
+
   protected readonly ingresoEscaneado = signal(false);
+
+  /** Se prende cuando la anotación en la lista salió bien. */
+  protected readonly anotadoEnEspera = signal(false);
+
+  /**
+   * En qué tramo de la entrada está el cliente (corrección T2).
+   *
+   * Lo decide el estado y no un botón: 1 mientras no haya un QR válido,
+   * 2 mientras falte anotarse, 3 cuando ya está en la lista o el metre
+   * asignó una mesa. Así la pantalla «va llevando sola», que es como el
+   * profesor resumió toda la corrección del recorrido del cliente.
+   */
+  protected readonly etapaDeEntrada = computed(() => {
+    if (this.anotadoEnEspera() || this.demo.mesaAsignada() !== null) return 3;
+    return this.ingresoEscaneado() ? 2 : 1;
+  });
+
+  protected readonly etapasDeEntrada = [
+    { numero: 1, texto: 'Escaneá el QR' },
+    { numero: 2, texto: 'Tus datos' },
+    { numero: 3, texto: 'Esperá tu mesa' },
+  ] as const;
   protected readonly qrSeleccionado = signal<number | null>(null);
   protected readonly estadoQrMesa = signal<'correcto' | 'incorrecto' | 'error' | null>(null);
 
@@ -760,16 +860,33 @@ export class Operacion implements OnInit {
       : this.demo.mensajes().filter((m) => m.sesionId === this.mesaDeRespuesta()),
   );
   /**
-   * La página del chat. Una conversación no se lee de a un mensaje: la
-   * primera página muestra los últimos cuatro, en orden, y el paginador
-   * lleva a los anteriores. Así la respuesta del mozo aparece a la vista
-   * apenas llega, sin tener que buscarla.
+   * Cómo se firma cada mensaje en pantalla (corrección P2).
+   *
+   * El profesor pidió sacar la palabra «cliente» de lo que ve el mozo.
+   * En su lugar va la mesa, que además es el dato que necesita: atiende
+   * mesas, no nombres. Del lado del cliente la firma del otro es el
+   * nombre del mozo, que lo resuelve `OperacionService`.
    */
-  protected readonly paginaDeChat = computed(() => {
-    const todos = this.mensajesVisibles();
-    const fin = Math.max(0, todos.length - this.pagina() * MENSAJES_POR_PAGINA);
-    return todos.slice(Math.max(0, fin - MENSAJES_POR_PAGINA), fin);
-  });
+  protected firmaDelMensaje(mensaje: MensajeDemo): string {
+    /*
+     * La mesa se queda: el punto 11 pide autor, mesa, fecha y hora, y
+     * hay una prueba que lo verifica. Lo que se va es la palabra
+     * «Cliente» cuando el mensaje viene de la mesa: ahí la mesa ES el
+     * autor, y repetir las dos cosas era lo que el profesor marcó.
+     */
+    const quien = mensaje.esPropio ? 'Vos' : mensaje.deCliente ? '' : mensaje.autor;
+    const mesa = mensaje.mesa ? `Mesa ${mensaje.mesa}` : '';
+    return [quien, mesa].filter(Boolean).join(' · ') || 'La mesa';
+  }
+
+  /**
+   * La conversación arranca abajo, en lo último que se dijo.
+   *
+   * Es el único lugar donde movemos el scroll a mano, y es la excepción
+   * documentada que pide `AGENTS.md`: un chat que abre arriba obliga a
+   * deslizar hasta el final para leer la respuesta que acaba de llegar.
+   */
+  private readonly conversacion = viewChild<ElementRef<HTMLElement>>('conversacion');
 
   protected readonly mensajeForm = this.formularioBuilder.nonNullable.group({
     texto: ['', [Validators.required, Validators.maxLength(180)]],
@@ -787,6 +904,21 @@ export class Operacion implements OnInit {
       if (texto) temporizadorDeAviso = setTimeout(() => this.mensaje.set(''), 3200);
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(temporizadorDeAviso));
+
+    /*
+     * El chat se queda en el último mensaje (P2).
+     *
+     * Corre cada vez que cambia la conversación visible: al abrir la
+     * sección, al enviar y al llegar una respuesta. El `untracked` es
+     * para que leer el elemento no vuelva a disparar el efecto.
+     */
+    effect(() => {
+      this.mensajesVisibles();
+      untracked(() => {
+        const caja = this.conversacion()?.nativeElement;
+        if (caja) caja.scrollTop = caja.scrollHeight;
+      });
+    });
     effect(() => {
       this.usuario();
       untracked(() => {
@@ -936,6 +1068,19 @@ export class Operacion implements OnInit {
     this.error.set('');
 
     if (this.creando()) {
+      /*
+       * Desde un formulario por pasos, la flecha deshace EL PASO, no el
+       * formulario entero. Es el mismo criterio que ya tenía: deshacer
+       * exactamente lo último que hiciste. Salir con media alta cargada
+       * por tocar atrás una vez sería perder el trabajo de varios
+       * tramos de golpe.
+       */
+      if (this.paso() > 0) {
+        this.retroceder();
+        this.enfocarEncabezado();
+        return;
+      }
+
       this.salirDelFormulario();
       this.enfocarEncabezado();
       return;
@@ -1061,7 +1206,40 @@ export class Operacion implements OnInit {
     this.quitarFotoCliente();
     this.empleadoForm.reset({ perfil: 'cocinero' });
     this.clienteForm.reset();
-    void this.demo.cargar();
+    void this.demo.cargar().then(() => this.aterrizar());
+  }
+
+  /**
+   * Dónde queda parado el cliente al entrar a la aplicación (F1).
+   *
+   * El profesor fue textual: «al entrar no se ve el home, tiene que
+   * aterrizar en la pantalla de escanear el QR de ingreso al local, y
+   * nada más que eso». Mientras no tenga mesa, el home son ocho botones
+   * de los que siete no sirven todavía.
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ DESPUÉS DE `cargar()` Y NO EN EL MISMO `ionViewWillEnter`
+   *
+   * La decisión depende de si ya tiene una mesa vinculada, y ese dato
+   * viene de la base. Decidido antes de que llegue, un cliente ya
+   * sentado aterrizaría en la pantalla del QR pidiéndole que escanee
+   * otra vez algo que ya escaneó.
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ SOLO SI SIGUE EN EL HOME
+   *
+   * `cargar()` tarda, y en ese rato la persona pudo tocar una sección.
+   * Moverla de pantalla después de que eligió a dónde ir es peor que no
+   * hacer nada: el `seccion() === null` es la forma de preguntar «¿sigue
+   * donde la dejamos?» antes de mandarla a otro lado.
+   */
+  private aterrizar(): void {
+    if (!this.perfilEsCliente()) return;
+    if (this.demo.mesaVinculada() !== null) return;
+    if (this.seccion() !== null) return;
+
+    this.seccion.set('entrada');
+    this.enfocarEncabezado();
   }
 
   protected paginar<T>(elementos: readonly T[], cantidad = 1): readonly T[] {
@@ -1084,8 +1262,13 @@ export class Operacion implements OnInit {
         return 1;
       case 'espera':
         return this.demo.espera().length;
+      /*
+       * El chat no pagina más (P2): la conversación entera está en la
+       * tarjeta y desliza por su cuenta, así que el paginador de abajo
+       * no tiene nada que hacer acá.
+       */
       case 'consulta':
-        return Math.ceil(this.mensajesVisibles().length / MENSAJES_POR_PAGINA);
+        return 1;
       case 'juegos':
         return 3;
       default:
@@ -1105,6 +1288,50 @@ export class Operacion implements OnInit {
 
   protected campoInvalido(control: AbstractControl): boolean {
     return control.invalid && control.touched;
+  }
+
+  /**
+   * Pasa al tramo siguiente del formulario, si el actual está completo.
+   *
+   * Valida SOLO los campos de este paso. Marcar el formulario entero
+   * acá dejaría en rojo campos que la persona todavía no vio, que es la
+   * forma más rápida de que alguien abandone un alta.
+   *
+   * El formulario se recibe por su forma y no como `FormGroup` tipado
+   * para que los cuatro formularios de la pantalla puedan usar esto sin
+   * que haya que escribir una versión para cada uno.
+   */
+  /**
+   * El nombre completo tal como se escribió en el primer paso, para
+   * mostrarlo en el segundo. Sirve para los dos formularios de alta
+   * porque los dos tienen los mismos dos campos.
+   */
+  protected nombreEnElAlta(formulario: { get(campo: string): AbstractControl | null }): string {
+    const nombres = String(formulario.get('nombres')?.value ?? '').trim();
+    const apellidos = String(formulario.get('apellidos')?.value ?? '').trim();
+    return [nombres, apellidos].filter(Boolean).join(' ');
+  }
+
+  protected avanzar(
+    formulario: { get(campo: string): AbstractControl | null },
+    pasos: readonly (readonly string[])[],
+  ): void {
+    const campos = pasos[this.paso()] ?? [];
+
+    if (campos.some((campo) => formulario.get(campo)?.invalid === true)) {
+      campos.forEach((campo) => formulario.get(campo)?.markAsTouched());
+      this.error.set('Revisá los campos marcados antes de seguir.');
+      return;
+    }
+
+    this.error.set('');
+    if (this.paso() < pasos.length - 1) this.paso.update((paso) => paso + 1);
+  }
+
+  /** Vuelve al tramo anterior sin perder nada de lo ya escrito. */
+  protected retroceder(): void {
+    this.error.set('');
+    this.paso.update(this.anteriorPaso);
   }
 
   /** El texto que va abajo del campo cuando está mal. */
@@ -1217,10 +1444,12 @@ export class Operacion implements OnInit {
     this.enviando.set(true);
     let resultado;
     try {
-      resultado = await this.demo.registrarEmpleado({
-        ...empleado,
-        foto: foto ?? undefined,
-      } as AltaEmpleadoDemo);
+      resultado = await this.esperaGlobal.durante('Registrando al empleado', () =>
+        this.demo.registrarEmpleado({
+          ...empleado,
+          foto: foto ?? undefined,
+        } as AltaEmpleadoDemo),
+      );
     } finally {
       // En el `finally` y no después del `await`: si la llamada tira, el
       // botón tiene que volver a habilitarse igual. Si no, la pantalla
@@ -1259,7 +1488,9 @@ export class Operacion implements OnInit {
     this.dandoDeBaja.set(id);
     let resultado;
     try {
-      resultado = await this.demo.eliminarEmpleado(id);
+      resultado = await this.esperaGlobal.durante('Dando de baja al empleado', () =>
+        this.demo.eliminarEmpleado(id),
+      );
     } finally {
       // En el `finally`: si la llamada tira, la fila tiene que volver a
       // su estado normal igual, o queda girando para siempre.
@@ -1353,9 +1584,9 @@ export class Operacion implements OnInit {
     this.enviando.set(true);
     let resultado;
     try {
-      resultado = id
-        ? await this.demo.actualizarProducto(id, datos)
-        : await this.demo.registrarProducto(datos);
+      resultado = await this.esperaGlobal.durante('Guardando el producto', () =>
+        id ? this.demo.actualizarProducto(id, datos) : this.demo.registrarProducto(datos),
+      );
     } finally {
       // En el `finally`: si la llamada tira, el botón tiene que volver a
       // habilitarse igual o la pantalla queda trabada.
@@ -1404,7 +1635,9 @@ export class Operacion implements OnInit {
     this.dandoDeBaja.set(id);
     let resultado;
     try {
-      resultado = await this.demo.eliminarProducto(id);
+      resultado = await this.esperaGlobal.durante('Quitando el producto de la carta', () =>
+        this.demo.eliminarProducto(id),
+      );
     } finally {
       this.dandoDeBaja.set(null);
     }
@@ -1566,9 +1799,9 @@ export class Operacion implements OnInit {
     this.enviando.set(true);
     let resultado;
     try {
-      resultado = id
-        ? await this.demo.actualizarMesa(id, datos)
-        : await this.demo.registrarMesa(datos);
+      resultado = await this.esperaGlobal.durante('Guardando la mesa', () =>
+        id ? this.demo.actualizarMesa(id, datos) : this.demo.registrarMesa(datos),
+      );
     } finally {
       this.enviando.set(false);
     }
@@ -1627,7 +1860,9 @@ export class Operacion implements OnInit {
     });
 
     try {
-      const png = await this.qr.comoPng(this.qr.contenidoDeMesa(mesa.qrToken));
+      const png = await this.esperaGlobal.durante('Generando el código QR', () =>
+        this.qr.comoPng(this.qr.contenidoDeMesa(mesa.qrToken)),
+      );
       if (this.mesaDelQr()?.id !== mesa.id) return;
       this.aplicarYRedibujar(() => this.qrDeLaMesa.set(png));
     } catch (falla) {
@@ -1716,7 +1951,9 @@ export class Operacion implements OnInit {
     this.sacandoMesa.set(mesa.id);
     let resultado;
     try {
-      resultado = await this.demo.eliminarMesa(mesa.id);
+      resultado = await this.esperaGlobal.durante('Sacando la mesa', () =>
+        this.demo.eliminarMesa(mesa.id),
+      );
     } finally {
       this.sacandoMesa.set(null);
     }
@@ -1781,10 +2018,12 @@ export class Operacion implements OnInit {
     this.enviando.set(true);
     let resultado;
     try {
-      resultado = await this.demo.registrarCliente({
-        ...cliente,
-        foto: foto ?? undefined,
-      } as AltaClienteDemo);
+      resultado = await this.esperaGlobal.durante('Registrando al cliente', () =>
+        this.demo.registrarCliente({
+          ...cliente,
+          foto: foto ?? undefined,
+        } as AltaClienteDemo),
+      );
     } finally {
       this.enviando.set(false);
     }
@@ -1850,7 +2089,9 @@ export class Operacion implements OnInit {
     this.resolviendoCliente.set(id);
     let resultado;
     try {
-      resultado = await this.demo.resolverCliente(id, estado, motivo);
+      resultado = await this.esperaGlobal.durante('Resolviendo el registro', () =>
+        this.demo.resolverCliente(id, estado, motivo),
+      );
     } finally {
       this.resolviendoCliente.set(null);
     }
@@ -1906,6 +2147,7 @@ export class Operacion implements OnInit {
     }
     this.nombreAnonimo.set('');
     this.quitarFotoAnonima();
+    this.anotadoEnEspera.set(true);
     this.mensaje.set('Te anotamos en la lista de espera.');
   }
 
@@ -1966,7 +2208,17 @@ export class Operacion implements OnInit {
     const resultado = await this.demo.vincularMesaPorQr(token);
     if (resultado.ok) {
       this.estadoQrMesa.set('correcto');
-      this.mensaje.set(`Vinculación exitosa. Ya estás en la mesa ${asignada}.`);
+      this.mensaje.set(`Mesa ${asignada} vinculada. Ya podés pedir.`);
+      /*
+       * Y acá termina el recorrido: al home (F5).
+       *
+       * Antes quedaba el cartel de «vinculación exitosa» en la pantalla
+       * de la entrada y había que tocar atrás a mano. El profesor lo
+       * resumió en que la pantalla tiene que ir llevando sola: escanear
+       * la mesa es el último paso de entrar, y lo que sigue es pedir.
+       */
+      this.seccion.set(null);
+      this.enfocarEncabezado();
       return;
     }
 
@@ -2189,11 +2441,28 @@ export class Operacion implements OnInit {
     }
   }
 
-  protected alternarImagen(producto: ProductoDemo): void {
-    this.imagenes.update((imagenes) => ({
-      ...imagenes,
-      [producto.id]: ((imagenes[producto.id] ?? 0) + 1) % producto.fotos.length,
-    }));
+  /** En qué foto está parado el carrusel de este producto (P1). */
+  protected indiceDeFoto(producto: ProductoDemo): number {
+    return this.imagenes()[producto.id] ?? 0;
+  }
+
+  /**
+   * La persona arrastró con el dedo —o movió la pista con el teclado— y
+   * la señal se entera.
+   *
+   * Toca el DOM solo para leerlo, y es la excepción documentada que
+   * pide `AGENTS.md`: la posición de un contenedor con scroll no existe
+   * en ningún otro lado. Sin esto, los puntos quedarían diciendo que
+   * estamos en la primera foto mientras se mira la tercera.
+   */
+  protected seguirCarrusel(pista: HTMLElement, producto: ProductoDemo): void {
+    const ancho = pista.clientWidth || 1;
+    const visible = Math.round(pista.scrollLeft / ancho);
+    if (visible !== this.indiceDeFoto(producto)) this.fijarFoto(producto, visible);
+  }
+
+  private fijarFoto(producto: ProductoDemo, indice: number): void {
+    this.imagenes.update((imagenes) => ({ ...imagenes, [producto.id]: indice }));
   }
 
   protected imagenActual(producto: ProductoDemo): string {
@@ -2221,7 +2490,9 @@ export class Operacion implements OnInit {
     this.cambiandoMesa.set(numero);
     let resultado;
     try {
-      resultado = await this.demo.cambiarDisponibilidadMesa(numero);
+      resultado = await this.esperaGlobal.durante('Actualizando la mesa', () =>
+        this.demo.cambiarDisponibilidadMesa(numero),
+      );
     } finally {
       this.cambiandoMesa.set(null);
     }
@@ -2247,8 +2518,23 @@ export class Operacion implements OnInit {
   /** Punto 12: el pedido va al mozo; si la base lo rechaza, se dice por qué. */
   protected async enviarPedido(): Promise<void> {
     const resultado = await this.demo.enviarPedido();
-    if (resultado.ok) this.avisarExito('Pedido enviado al mozo. Esperá su confirmación.');
-    else await this.avisarError(resultado.error ?? 'No se pudo enviar el pedido.');
+    if (resultado.ok) {
+      this.revisandoPedido.set(false);
+      this.avisarExito('Pedido enviado al mozo. Esperá su confirmación.');
+    } else await this.avisarError(resultado.error ?? 'No se pudo enviar el pedido.');
+  }
+
+  /**
+   * El producto de la carta que hay detrás de una línea del carrito.
+   *
+   * El carrito guarda una copia de los datos que necesita —nombre,
+   * precio, minutos— y no el producto entero, así que para subir o
+   * bajar la cantidad desde el detalle hay que ir a buscarlo. Si ya no
+   * está en la carta devuelve `undefined` y la línea se muestra sin los
+   * botones, en vez de romperse.
+   */
+  protected productoDelCarrito(productoId: string): ProductoDemo | undefined {
+    return this.demo.productos().find((producto) => producto.id === productoId);
   }
 
   /** Punto 13: el mozo rechaza ESE pedido para que el cliente lo modifique. */
@@ -2263,6 +2549,7 @@ export class Operacion implements OnInit {
   /** Punto 13: el cliente retoma el pedido rechazado en el carrito y lo corrige. */
   protected retomarPedido(): void {
     if (this.demo.retomarPedidoRechazado()) {
+      this.revisandoPedido.set(false);
       this.abrir('menu');
       this.avisarExito('Tu pedido volvió al carrito: modificalo y envialo de nuevo.');
     } else {
@@ -2423,7 +2710,9 @@ export class Operacion implements OnInit {
 
     this.confirmandoRecepcion.set(true);
     try {
-      const resultado = await this.demo.confirmarRecepcion();
+      const resultado = await this.esperaGlobal.durante('Confirmando la recepción', () =>
+        this.demo.confirmarRecepcion(),
+      );
       if (!resultado.ok) {
         await this.avisarError(resultado.error ?? 'No se pudo confirmar la recepción.');
         return;
