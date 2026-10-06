@@ -149,13 +149,13 @@ class FrutiCatScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('background', '/assets/juego-recoleccion-assets/fondo.png');
-    this.load.image('tumbito', '/assets/juego-recoleccion-assets/tumbito-avatar.png');
-    this.load.image('tortita', '/assets/juego-recoleccion-assets/tortita.png');
-    this.load.image('brocoli', '/assets/juego-recoleccion-assets/brocoli.png');
-    this.load.image('pollo', '/assets/juego-recoleccion-assets/pollo.png');
-    this.load.image('sopa', '/assets/juego-recoleccion-assets/sopa.png');
-    this.load.image('pizza', '/assets/juego-recoleccion-assets/pizza.png');
+    this.load.image('background', 'assets/juego-recoleccion-assets/fondo.png');
+    this.load.image('tumbito', 'assets/juego-recoleccion-assets/tumbito-avatar.png');
+    this.load.image('tortita', 'assets/juego-recoleccion-assets/tortita.png');
+    this.load.image('brocoli', 'assets/juego-recoleccion-assets/brocoli.png');
+    this.load.image('pollo', 'assets/juego-recoleccion-assets/pollo.png');
+    this.load.image('sopa', 'assets/juego-recoleccion-assets/sopa.png');
+    this.load.image('pizza', 'assets/juego-recoleccion-assets/pizza.png');
   }
 
   create() {
@@ -230,7 +230,7 @@ class FrutiCatScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 2,
     });
-
+    this.scoreText.setDepth(100); // <-- ACÁ LO MANDAR AL FRENTE
     this.timerText = this.add.text(60, 80, 'Tiempo: 10s', {
       fontSize: '26px',
       color: '#ff4d4d',
@@ -238,6 +238,7 @@ class FrutiCatScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 2,
     });
+    this.timerText.setDepth(100); // <-- ACÁ LO MANDAR AL FRENTE
 
     this.gameTimer = this.time.addEvent({
       delay: 1000,
