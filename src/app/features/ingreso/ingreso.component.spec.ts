@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideIonicAngular } from '@ionic/angular';
 import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
 import { AutenticacionMockService } from '../../core/services/autenticacion-mock.service';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
+import { SesionService } from '../../core/services/sesion.service';
 import { Ingreso } from './ingreso.component';
 
 describe('Ingreso', () => {
@@ -61,5 +63,44 @@ describe('Ingreso', () => {
     expect(componenteInterno.formulario.value).toEqual({ correo: '', clave: '' });
     expect(componenteInterno.mostrarClave()).toBe(false);
     expect(componenteInterno.errorMensaje()).toBe('');
+  });
+
+  /**
+   * La vuelta del cliente anónimo.
+   *
+   * Se llega a esta pantalla con la sesión viva más seguido de lo que
+   * parece —el botón de atrás de Android, por ejemplo—. El empleado
+   * vuelve a entrar con su correo, pero el anónimo no tiene
+   * credenciales: su identidad es el token guardado. Sin este botón, lo
+   * que pierde no es «la sesión», es la visita entera.
+   */
+  it('ofrece volver a la sesión que quedó abierta', async () => {
+    TestBed.inject(SesionService).iniciar({
+      id: 'anonimo-1',
+      nombres: 'Martín',
+      apellidos: '',
+      correo: '',
+      perfil: 'cliente_anonimo',
+      etiquetaPerfil: 'Cliente sin cuenta',
+      estado: 'aprobado',
+      fotoUrl: null,
+    });
+
+    (component as unknown as { ionViewWillEnter(): void }).ionViewWillEnter();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const boton = fixture.debugElement.query(By.css('.login-card__sesion ion-button'));
+
+    expect(boton).not.toBeNull();
+    expect((boton.nativeElement as HTMLElement).textContent).toContain('Seguir como Martín');
+  });
+
+  it('sin sesión abierta no ofrece nada', async () => {
+    (component as unknown as { ionViewWillEnter(): void }).ionViewWillEnter();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.css('.login-card__sesion'))).toBeNull();
   });
 });

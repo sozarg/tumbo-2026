@@ -172,6 +172,8 @@ export interface Database {
           mesa_id: string | null;
           creado_en: string;
           asignado_en: string | null;
+          /** Solo las visitas anónimas lo llevan; ver `20261017180000_codigo_de_visita`. */
+          codigo_visita: string | null;
         };
         Insert: {
           id?: string;
@@ -180,6 +182,7 @@ export interface Database {
           mesa_id?: string | null;
           creado_en?: string;
           asignado_en?: string | null;
+          codigo_visita?: string | null;
         };
         Update: {
           id?: string;
@@ -188,6 +191,7 @@ export interface Database {
           mesa_id?: string | null;
           creado_en?: string;
           asignado_en?: string | null;
+          codigo_visita?: string | null;
         };
       };
       mensajes: {
@@ -667,6 +671,21 @@ export interface Database {
       confirmar_recepcion: {
         Args: { p_pedido_id: string };
         Returns: string;
+      };
+      /** Le pasa una visita anónima abierta a quien escribe su código. */
+      reclamar_visita: {
+        Args: { p_codigo: string };
+        Returns: string;
+      };
+      /** 'ok' | 'correo' | 'dni': qué dato del alta ya está tomado. */
+      alta_cliente_disponible: {
+        Args: { p_correo: string; p_dni: string };
+        Returns: string;
+      };
+      /** Quiénes escribieron en el chat de las estadías de quien llama. */
+      nombres_en_mi_chat: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: string; nombre: string }[];
       };
       estadia_con_pedido_recibido: {
         Args: { p_sesion: string };

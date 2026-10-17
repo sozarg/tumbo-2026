@@ -3,7 +3,9 @@ import { IonButton } from '@ionic/angular/ion-button';
 import { IonIcon } from '@ionic/angular/ion-icon';
 import { addIcons } from 'ionicons';
 import {
+  barChartOutline,
   checkmarkDoneOutline,
+  logOutOutline,
   qrCodeOutline,
   receiptOutline,
   timeOutline,
@@ -89,41 +91,58 @@ import { Espera } from '../../shared/components/espera/espera.component';
             <small>Mesa {{ c.mesa }}</small>
           </div>
 
-          <div class="detalle">
-            <h3>Detalle</h3>
-            <ul>
-              @for (linea of lineas(); track linea.productoId + linea.precioUnitario) {
+          <!--
+            EL DETALLE NO VA EN EL CIERRE.
+
+            Medido en Chromium: con el detalle puesto, el cierre —total,
+            cartel y tres botones— desbordaba 51 px en 360×640 y 118 px
+            en 320×568, y la lista quedaba en 0 px visibles. O sea que
+            el detalle no se veía igual, pero empujaba los botones fuera
+            de la pantalla.
+
+            Y acá ya cumplió su función: la persona lo leyó antes de
+            pagar, que es donde el punto 21 lo pide. Terminada la
+            visita, lo que importa es cuánto pagó y a dónde ir. Sin él,
+            la regla de más abajo deja el cartel ocupando el alto
+            —«composición intencional»— y los botones al pie.
+          -->
+          @if (c.estado !== 'confirmada') {
+            <div class="detalle">
+              <h3>Detalle</h3>
+              <ul>
+                @for (linea of lineas(); track linea.productoId + linea.precioUnitario) {
+                  <li>
+                    <span class="detalle__producto">
+                      {{ linea.cantidad }} × {{ linea.nombre }}
+                      <small>{{ pesos(linea.precioUnitario) }} c/u</small>
+                    </span>
+                    <strong>{{ pesos(linea.importe) }}</strong>
+                  </li>
+                }
+                <li class="detalle__subtotal">
+                  <span>Subtotal</span><strong>{{ pesos(c.subtotal) }}</strong>
+                </li>
+                @if (c.descuento > 0) {
+                  <li class="detalle__descuento">
+                    <span>
+                      Descuento por juego
+                      <small>{{ c.porcentajeDescuento }} % ganado en tu primera partida</small>
+                    </span>
+                    <strong>−{{ pesos(c.descuento) }}</strong>
+                  </li>
+                }
                 <li>
-                  <span class="detalle__producto">
-                    {{ linea.cantidad }} × {{ linea.nombre }}
-                    <small>{{ pesos(linea.precioUnitario) }} c/u</small>
-                  </span>
-                  <strong>{{ pesos(linea.importe) }}</strong>
-                </li>
-              }
-              <li class="detalle__subtotal">
-                <span>Subtotal</span><strong>{{ pesos(c.subtotal) }}</strong>
-              </li>
-              @if (c.descuento > 0) {
-                <li class="detalle__descuento">
                   <span>
-                    Descuento por juego
-                    <small>{{ c.porcentajeDescuento }} % ganado en el primer intento</small>
+                    Propina
+                    <small
+                      >{{ c.porcentajePropina }} % · {{ satisfaccion(c.porcentajePropina) }}</small
+                    >
                   </span>
-                  <strong>−{{ pesos(c.descuento) }}</strong>
+                  <strong>{{ pesos(c.propina) }}</strong>
                 </li>
-              }
-              <li>
-                <span>
-                  Propina
-                  <small
-                    >{{ c.porcentajePropina }} % · {{ satisfaccion(c.porcentajePropina) }}</small
-                  >
-                </span>
-                <strong>{{ pesos(c.propina) }}</strong>
-              </li>
-            </ul>
-          </div>
+              </ul>
+            </div>
+          }
 
           @switch (c.estado) {
             @case ('pendiente_pago') {
@@ -157,6 +176,22 @@ import { Espera } from '../../shared/components/espera/espera.component';
               </div>
             }
             @case ('confirmada') {
+              <!--
+                EL CIERRE DE LA VISITA, CON PUERTA DE SALIDA.
+
+                Acá terminaba todo: el cartel de «gracias por venir» y
+                nada más. La visita estaba cerrada pero la aplicación no
+                lo decía ni ofrecía a dónde ir, así que la persona
+                quedaba mirando una pantalla terminada sin salida.
+
+                No se cierra la sesión sola. Quien confirma el pago es
+                el mozo, desde OTRO teléfono: una aplicación que te
+                manda al login sin que hayas tocado nada se lee como
+                que se colgó. Y el punto 22 pide justamente que después
+                de liberarse la mesa el cliente siga pudiendo verificar
+                el QR y consultar los resultados de las encuestas. Así
+                que las tres puertas están, y la persona elige.
+              -->
               <div class="aviso aviso--listo" role="status">
                 <ion-icon aria-hidden="true" name="checkmark-done-outline" />
                 <div>
@@ -176,6 +211,26 @@ import { Espera } from '../../shared/components/espera/espera.component';
               @if (verificacion()) {
                 <p class="verificacion" role="status">{{ verificacion() }}</p>
               }
+              <ion-button
+                fill="outline"
+                class="secundario"
+                expand="block"
+                (click)="verResultados.emit()"
+              >
+                <ion-icon slot="start" name="bar-chart-outline" aria-hidden="true" />
+                Ver resultados de encuestas
+              </ion-button>
+              <!--
+                Sin diálogo de confirmación, al revés que «Pagar». Acá
+                no hay nada que perder: la visita ya está cerrada, el
+                registrado vuelve con su correo y el código del anónimo
+                murió con la mesa. Un «¿estás seguro?» sería un paso de
+                más para salir de una pantalla que ya terminó.
+              -->
+              <ion-button class="principal" expand="block" (click)="salir.emit()">
+                <ion-icon slot="start" name="log-out-outline" aria-hidden="true" />
+                Salir
+              </ion-button>
             }
           }
         }
@@ -197,6 +252,9 @@ export class CuentaCliente {
   readonly escanearPropina = output<void>();
   readonly pagar = output<void>();
   readonly verificarMesa = output<void>();
+  /** Las dos salidas del cierre de la visita (punto 22). */
+  readonly verResultados = output<void>();
+  readonly salir = output<void>();
 
   private readonly formato = new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -218,6 +276,14 @@ export class CuentaCliente {
   }
 
   constructor() {
-    addIcons({ checkmarkDoneOutline, qrCodeOutline, receiptOutline, timeOutline, walletOutline });
+    addIcons({
+      barChartOutline,
+      checkmarkDoneOutline,
+      logOutOutline,
+      qrCodeOutline,
+      receiptOutline,
+      timeOutline,
+      walletOutline,
+    });
   }
 }

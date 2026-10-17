@@ -197,10 +197,16 @@ describe('La consulta al mozo es por mesa (punto 11)', () => {
     expect(fixture.nativeElement.querySelector('.chat-form')).toBeNull();
   });
 
-  it('el cliente ve autor, mesa, fecha y hora de cada mensaje', async () => {
+  /**
+   * La firma lleva el NOMBRE de pila del mozo, no la palabra «Mozo»
+   * (corrección P2). El patrón es exacto a propósito: con «Mozo» a
+   * secas falla, y con el nombre completo también, que son las dos
+   * formas en que esto se rompió.
+   */
+  it('el cliente ve el nombre de quien le contesta, con mesa, fecha y hora', async () => {
     const fixture = await abrirComo('cliente_registrado', 'consulta');
     expect(texto(fixture, '.chat-message span')[0]).toMatch(
-      /^Mozo · Mesa 2 · \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
+      /^Matías · Mesa 2 · \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
     );
     expect(fixture.nativeElement.querySelector('.chat-mesa')).toBeNull();
   });

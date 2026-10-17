@@ -189,6 +189,23 @@ export class OperacionService {
   private pedidoReal: Pedido | null = null;
   private cuentaReal: Tablas<'cuentas'> | null = null;
   private readonly clientePorEspera = new Map<string, string>();
+  /** Nombre de quien le contesta al cliente, por id de autor. */
+  private readonly nombresDelChat = new Map<string, string>();
+
+  /**
+   * Si quien tiene la sesión abierta está anotado en la lista de espera.
+   *
+   * Mira la fila de ESTA persona y no «si la lista tiene algo»: el
+   * personal ve la lista entera, así que la segunda pregunta daría que
+   * sí para cualquiera. El mapa se llena junto con la lista, en
+   * `cargarEspera`, y el computed depende de la señal, así que se
+   * recalcula cuando cambia.
+   */
+  readonly anotadoEnLaEspera = computed(() => {
+    const usuario = this.sesion.usuario();
+    if (!usuario) return false;
+    return this.espera().some((persona) => this.clientePorEspera.get(persona.id) === usuario.id);
+  });
   private productosPorId = new Map<string, Producto>();
 
   readonly productos = this.cliente ? signal<ProductoDemo[]>([]) : this.mock.productos;
@@ -217,6 +234,15 @@ export class OperacionService {
   readonly intentosJuego = this.cliente
     ? signal<Record<string, number>>({})
     : this.mock.intentosJuego;
+  /**
+   * Partidas que lleva jugadas la visita, de cualquier juego (punto 15).
+   *
+   * La pantalla la necesita para decir la verdad: con 0 partidas la que
+   * viene define el descuento, y con 1 o más ya está decidido, se haya
+   * ganado o perdido. Se lee de la base en cada carga, así que cerrar y
+   * volver a abrir la aplicación no reinicia el beneficio.
+   */
+  readonly partidasJugadas = this.cliente ? signal(0) : this.mock.partidasJugadas;
   readonly encuestaRespondida = this.cliente ? signal(false) : this.mock.encuestaRespondida;
   readonly cuenta = this.cliente ? signal<CuentaDemo | null>(null) : this.mock.cuenta;
   private readonly cuentasEnCursoReal = signal<CuentaDemo[]>([]);
@@ -299,14 +325,24 @@ export class OperacionService {
           this.notificaciones.set([]);
           this.descuento.set(0);
           this.intentosJuego.set({});
+          this.partidasJugadas.set(0);
           this.encuestaRespondida.set(false);
           this.cuenta.set(null);
           this.pedidoActivo.set(this.pedidoVacio());
           this.mesaVinculada.set(null);
+          /*
+           * La espera también, y es la que más se notaba: al cerrar
+           * sesión un cliente anónimo y volver a entrar sin cuenta, la
+           * pantalla seguía mostrando «Mesa asignada: 1» —la mesa del
+           * anterior— porque `mesaAsignada()` sale de esta lista.
+           */
+          this.espera.set([]);
         });
         this.sesionActiva = null;
         this.pedidoReal = null;
         this.cuentaReal = null;
+        // Los nombres del chat son de la conversación del anterior.
+        this.nombresDelChat.clear();
       }
       if (usuario && this.cliente) void this.cargar();
     });
@@ -380,6 +416,7 @@ export class OperacionService {
         this.cargarPedidosEnCurso(usuario),
         this.cargarCuentasEnCurso(usuario),
         this.cargarEncuesta(usuario),
+        this.cargarPartidas(usuario),
       ]);
       if (mensajes.data) {
         // El cliente ve la conversación de su estadía actual; el personal,
@@ -387,6 +424,7 @@ export class OperacionService {
         const enCurso = new Map((sesiones.data ?? []).map((s) => [s.id, s]));
         const esCliente =
           usuario.perfil === 'cliente_registrado' || usuario.perfil === 'cliente_anonimo';
+        if (esCliente) await this.cargarNombresDelChat();
         this.mensajes.set(
           mensajes.data
             .filter((m) =>
@@ -1039,33 +1077,9 @@ export class OperacionService {
     }
     let id = this.sesion.usuario()?.id;
     if (!id) {
-      const { data, error } = await this.cliente.auth.signInAnonymously({
-        options: { data: { nombres: nombre } },
-      });
-      if (error || !data.user) {
-        // Auth responde en inglés y con detalles internos: a la persona
-        // le sirve saber qué hacer, no el mensaje del servidor.
-        if (error) this.registrarError('crear la identidad anónima', error);
-        return {
-          ok: false,
-          error: error?.message?.toLowerCase().includes('anonymous sign-ins are disabled')
-            ? 'El ingreso sin cuenta no está habilitado en este momento. Pedile ayuda al metre.'
-            : 'No pudimos anotarte. Revisá tu nombre e intentá de nuevo.',
-        };
-      }
-      id = data.user.id;
-      const { data: perfil, error: errorPerfil } = await this.cliente
-        .from('usuarios')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (errorPerfil || !perfil) {
-        return {
-          ok: false,
-          error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.',
-        };
-      }
-      this.sesion.iniciar(this.aUsuario(perfil));
+      const identidad = await this.crearIdentidadAnonima(nombre);
+      if (!identidad.ok || !identidad.id) return { ok: false, error: identidad.error };
+      id = identidad.id;
     }
 
     if (foto) {
@@ -1091,6 +1105,80 @@ export class OperacionService {
     // La push al metre la manda la base (trigger sobre lista_espera).
     return this.insertar('lista_espera', { cliente_id: id });
   }
+  /**
+   * Crea la identidad anónima de Supabase y deja la sesión abierta.
+   *
+   * Vive aparte porque la usan dos recorridos: anotarse en la espera y
+   * recuperar una visita con el código. En el segundo no hay nombre que
+   * poner —lo trae la visita que se reclama—, así que el trigger de la
+   * base lo completa con «Invitado» hasta que llega el verdadero.
+   */
+  private async crearIdentidadAnonima(
+    nombre?: string,
+  ): Promise<{ ok: boolean; id?: string; error?: string }> {
+    const { data, error } = await this.cliente!.auth.signInAnonymously(
+      nombre ? { options: { data: { nombres: nombre } } } : undefined,
+    );
+    if (error || !data.user) {
+      // Auth responde en inglés y con detalles internos: a la persona
+      // le sirve saber qué hacer, no el mensaje del servidor.
+      if (error) this.registrarError('crear la identidad anónima', error);
+      return {
+        ok: false,
+        error: error?.message?.toLowerCase().includes('anonymous sign-ins are disabled')
+          ? 'El ingreso sin cuenta no está habilitado en este momento. Pedile ayuda al metre.'
+          : 'No pudimos crear tu ingreso. Intentá de nuevo.',
+      };
+    }
+
+    const { data: perfil, error: errorPerfil } = await this.cliente!.from('usuarios')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (errorPerfil || !perfil) {
+      return {
+        ok: false,
+        error: 'La identidad anónima se creó, pero no se pudo cargar el perfil.',
+      };
+    }
+
+    this.sesion.iniciar(this.aUsuario(perfil));
+    return { ok: true, id: data.user.id };
+  }
+
+  /**
+   * Recupera una visita sin cuenta con el código que la persona anotó.
+   *
+   * Quien reclama tiene que estar autenticado, así que si todavía no
+   * hay sesión se crea una identidad anónima nueva ANTES de llamar a la
+   * base; es esa identidad la que se queda con la visita. El traspaso
+   * en sí lo hace `reclamar_visita`, que valida el código y mueve la
+   * espera, la estadía y la encuesta en una sola transacción.
+   */
+  async reclamarVisita(codigo: string): Promise<Resultado> {
+    const limpio = codigo.trim().toUpperCase();
+    if (!limpio) return { ok: false, error: 'Escribí el código de tu visita.' };
+
+    if (!this.cliente) {
+      return {
+        ok: false,
+        error:
+          'El código de visita necesita la base real: en modo demostración no hay sesión que perder.',
+      };
+    }
+
+    if (!this.sesion.usuario()) {
+      const identidad = await this.crearIdentidadAnonima();
+      if (!identidad.ok) return { ok: false, error: identidad.error };
+    }
+
+    const r = await this.cliente.rpc('reclamar_visita', { p_codigo: limpio });
+    if (r.error) return this.resultadoRpc('recuperar la visita', r.error);
+
+    await this.cargar();
+    return { ok: true };
+  }
+
   async eliminarDeEspera(id: string): Promise<Resultado> {
     if (!this.cliente) {
       this.mock.eliminarDeEspera(id);
@@ -1395,24 +1483,24 @@ export class OperacionService {
       .ilike('nombre', `%${id}%`)
       .maybeSingle();
     if (!juego) return { ok: false, intento: 0, descuento: 0 };
-    const { count } = await this.cliente
-      .from('partidas_juego')
-      .select('*', { count: 'exact', head: true })
-      .eq('sesion_mesa_id', this.sesionActiva.id)
-      .eq('juego_id', juego.id);
-    // Intento y descuento los decide la base (`validar_partida`): lo que
-    // se manda acá es solo una propuesta, y lo que vale es la fila guardada.
+    /*
+     * El número de intento y el descuento los decide `validar_partida`,
+     * que numera por VISITA y solo paga la primera partida (punto 15).
+     * Lo que se manda desde acá es un valor de relleno —la columna no
+     * admite nulo— y lo que vale es la fila que vuelve.
+     */
     const r = await this.insertarConFila('partidas_juego', {
       juego_id: juego.id,
       sesion_mesa_id: this.sesionActiva.id,
       cliente_id: this.sesion.usuario()!.id,
-      intento: (count ?? 0) + 1,
+      intento: 1,
       gano,
       descuento_otorgado: 0,
     });
     if (!r.ok || !r.fila) return { ok: false, intento: 0, descuento: this.descuento() };
     const otorgado = Number(r.fila.descuento_otorgado);
     if (otorgado > 0) this.descuento.set(otorgado);
+    this.partidasJugadas.set(r.fila.intento);
     return { ok: true, intento: r.fila.intento, descuento: this.descuento() };
   }
 
@@ -1681,6 +1769,36 @@ export class OperacionService {
   }
 
   /** Las preguntas activas y si el cliente ya respondió en esta estadía (punto 20). */
+  /**
+   * Las partidas de esta visita (punto 15).
+   *
+   * Dos cosas que antes vivían solo en memoria y se perdían al cerrar
+   * la aplicación: cuántas partidas van —la primera es la que define el
+   * descuento— y cuál fue el beneficio. El cartel «X % ganado» volvía a
+   * cero aunque la cuenta siguiera cobrando bien el descuento, porque
+   * la cuenta lo calcula la base.
+   *
+   * Solo para el cliente registrado: es el único que tiene partidas
+   * guardadas, y las políticas no le devuelven nada a nadie más.
+   */
+  private async cargarPartidas(usuario: Usuario | null): Promise<void> {
+    if (!this.cliente || !usuario || !this.sesionActiva) return;
+    if (usuario.perfil !== 'cliente_registrado') return;
+    const { data, error } = await this.cliente
+      .from('partidas_juego')
+      .select('descuento_otorgado')
+      .eq('sesion_mesa_id', this.sesionActiva.id);
+    if (error) {
+      this.registrarError('cargar las partidas de la visita', error);
+      return;
+    }
+    const filas = data ?? [];
+    this.partidasJugadas.set(filas.length);
+    this.descuento.set(
+      filas.reduce((mayor, fila) => Math.max(mayor, Number(fila.descuento_otorgado)), 0),
+    );
+  }
+
   private async cargarEncuesta(usuario: Usuario | null): Promise<void> {
     if (!this.cliente || !usuario) return;
     const preguntas = await this.cliente
@@ -1868,6 +1986,7 @@ export class OperacionService {
         foto: usuarios.get(f.cliente_id)?.foto_url ?? 'imagenes/logo.png',
         fecha: new Date(f.creado_en).toLocaleString('es-AR'),
         mesaAsignada: this.mesas().find((m) => m.id === f.mesa_id)?.numero,
+        codigo: f.codigo_visita,
       })),
     );
   }
@@ -1962,16 +2081,58 @@ export class OperacionService {
    * Cómo firma el mozo del otro lado del chat (corrección P2).
    *
    * El profesor pidió que el cliente vea el nombre del mozo y no la
-   * palabra «Mozo». Sale del listado de personal, que el cliente puede
-   * o no tener cargado según con qué perfil entró: si no está, queda
-   * «Mozo», que es lo que se mostraba hasta ahora. Preferimos un
-   * nombre genérico a inventar uno.
+   * palabra «Mozo».
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * POR QUÉ HAY DOS FUENTES Y NO UNA
+   *
+   * El listado de personal alcanza para el personal, que puede leer la
+   * tabla `usuarios` entera. Para el cliente no: `usuarios_ver_propio`
+   * le deja una sola fila, la suya, así que su listado de empleados
+   * está SIEMPRE vacío y acá se caía en la palabra «Mozo» para todos.
+   * En modo demostración no se notaba, porque ahí los empleados salen
+   * del mock.
+   *
+   * De ahí el segundo mapa, que llena `nombres_en_mi_chat`: devuelve
+   * solo el nombre de quien ya escribió en el chat de su estadía, sin
+   * abrirle el resto de la ficha del empleado.
+   *
+   * «Mozo» sigue siendo la última opción: preferimos un nombre genérico
+   * a inventar uno.
+   *
+   * ───────────────────────────────────────────────────────────────────
+   * SOLO EL PRIMER NOMBRE
+   *
+   * Firma «Matías» y no «Matías Gabriel Ferrari». Es un chat con quien
+   * te está atendiendo la mesa, no un listado de personal, y la firma
+   * comparte renglón con la mesa y la fecha: el nombre completo lo
+   * partía en dos líneas en los teléfonos angostos.
+   *
+   * Se corta por el primer espacio, así que un nombre compuesto queda
+   * en su primera mitad. Es lo buscado: «María José» firma «María».
    */
   private nombreDelMozo(autorId: string): string {
     const empleado = this.empleados().find((persona) => persona.id === autorId);
-    if (!empleado) return 'Mozo';
-    const nombre = `${empleado.nombres} ${empleado.apellidos}`.trim();
-    return nombre || 'Mozo';
+    const completo = empleado?.nombres?.trim() || this.nombresDelChat.get(autorId) || '';
+    return completo.trim().split(/\s+/)[0] || 'Mozo';
+  }
+
+  /**
+   * Quién le contesta al cliente, para firmar los mensajes.
+   *
+   * Un fallo acá no corta la carga: sin nombres el chat sigue
+   * funcionando y los mensajes quedan firmados «Mozo», que es
+   * exactamente lo que se mostraba antes. No vale romper la pantalla
+   * por una etiqueta.
+   */
+  private async cargarNombresDelChat(): Promise<void> {
+    if (!this.cliente) return;
+    const { data, error } = await this.cliente.rpc('nombres_en_mi_chat');
+    if (error) {
+      this.registrarError('cargar los nombres del chat', error);
+      return;
+    }
+    for (const fila of data ?? []) if (fila.nombre) this.nombresDelChat.set(fila.id, fila.nombre);
   }
 
   private aNotificacion = (n: Tablas<'notificaciones'>): NotificacionDemo => ({

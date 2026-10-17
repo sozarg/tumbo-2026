@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { LectorDeDni } from '../../core/dispositivo/lector-de-dni.service';
+import { SesionService } from '../../core/services/sesion.service';
 import { CodigoQrService } from '../../core/services/codigo-qr.service';
 import { OperacionService } from '../../core/services/operacion.service';
 import { abrirComo } from './operacion.testing';
@@ -84,6 +86,87 @@ describe('La entrada del cliente lleva sola', () => {
 
     expect(fixture.componentInstance['estadoQrMesa']()).toBe('correcto');
     expect(fixture.componentInstance['seccion']()).toBeNull();
+  });
+
+  /**
+   * Cerrar sesión deja el recorrido de entrada en cero.
+   *
+   * Estas señales son locales y la pantalla no se destruye al navegar,
+   * así que sobrevivían al cierre de sesión: quien tocaba «entrar sin
+   * cuenta» después de que se fuera un cliente anónimo caía directo en
+   * «escaneá el QR de tu mesa», con la mesa del anterior.
+   */
+  it('sin sesión, la entrada vuelve al primer tramo', async () => {
+    const fixture = await abrirComo('cliente_anonimo', 'entrada');
+    fixture.componentInstance['anotadoEnEspera'].set(true);
+    fixture.componentInstance['ingresoEscaneado'].set(true);
+    expect(fixture.componentInstance['etapaDeEntrada']()).toBe(3);
+
+    TestBed.inject(SesionService).cerrar();
+    fixture.componentInstance.ionViewWillEnter();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['anotadoEnEspera']()).toBe(false);
+    expect(fixture.componentInstance['ingresoEscaneado']()).toBe(false);
+    expect(fixture.componentInstance['etapaDeEntrada']()).toBe(1);
+  });
+
+  /**
+   * Recuperar la visita devuelve a donde estaba.
+   *
+   * Con la mesa ya vinculada, la entrada no es su pantalla: su pedido y
+   * su cuenta están en el home. Quedarse en el recorrido de entrada
+   * sería pedirle que rehaga un trámite que ya hizo.
+   */
+  it('recuperada la visita con mesa vinculada, vuelve al home', async () => {
+    const fixture = await abrirComo('cliente_anonimo', 'entrada');
+    const servicio = TestBed.inject(OperacionService);
+    servicio.mesaVinculada.set(3);
+    vi.spyOn(servicio, 'reclamarVisita').mockResolvedValue({ ok: true });
+    fixture.componentInstance['codigoReclamado'].set('GFC8H');
+
+    await fixture.componentInstance['recuperarVisita']();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['seccion']()).toBeNull();
+  });
+
+  it('recuperada sin mesa todavía, se queda en la entrada', async () => {
+    const fixture = await abrirComo('cliente_anonimo', 'entrada');
+    const servicio = TestBed.inject(OperacionService);
+    servicio.mesaVinculada.set(null);
+    vi.spyOn(servicio, 'reclamarVisita').mockResolvedValue({ ok: true });
+    fixture.componentInstance['codigoReclamado'].set('GFC8H');
+
+    await fixture.componentInstance['recuperarVisita']();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['seccion']()).toBe('entrada');
+    expect(fixture.componentInstance['etapaDeEntrada']()).toBe(3);
+  });
+
+  /**
+   * El formulario del código y el QR no conviven.
+   *
+   * La tarjeta de la entrada es una columna de alto acotado que
+   * heredaba `flex-wrap: wrap` de su versión en fila: al sumarle el
+   * formulario dejó de entrar y envolvió, que en una columna significa
+   * armar una SEGUNDA COLUMNA. El QR y el texto quedaban uno al lado
+   * del otro, saliéndose de la pantalla. Con `nowrap` eso no pasa, y
+   * mientras se escribe el código el QR se esconde para no quedar
+   * aplastado hasta ser ilegible.
+   */
+  it('al abrir el código de visita, la tarjeta cambia de modo', async () => {
+    const fixture = await abrirComo('cliente_anonimo', 'entrada');
+
+    fixture.componentInstance['alternarRecuperarVisita']();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const tarjeta = fixture.debugElement.query(By.css('.anonymous-entry'));
+
+    expect((tarjeta.nativeElement as HTMLElement).classList).toContain('anonymous-entry--codigo');
+    expect(fixture.debugElement.query(By.css('.codigo-visita__form'))).not.toBeNull();
   });
 
   it('F5: si el QR no es el de su mesa, se queda donde está', async () => {

@@ -72,11 +72,21 @@
 
   Está verificado con el navegador: mismo alta, antes y después.
 -->
+<!--
+  El error SÍ lleva `duration`, al revés que el aviso de abajo.
+
+  Es el único de los dos que no tiene temporizador propio en el
+  componente: se quedaba hasta que alguien tocara «Cerrar», y si la
+  persona navegaba antes, la vista se desataba y el cartel se quedaba
+  para siempre. Doce segundos alcanzan para leerlo, y el botón sigue
+  estando para bajarlo antes.
+-->
 <ion-toast
   [isOpen]="error() !== ''"
   [message]="error()"
   position="top"
   icon="alert-circle-outline"
+  [duration]="12000"
   [buttons]="[{ text: 'Cerrar', role: 'cancel' }]"
   (didDismiss)="error.set('')"
 />
@@ -106,7 +116,7 @@
       @if (!seccion() && usuario(); as usuarioActual) {
         <h1 #encabezado class="hub-title" tabindex="-1">Secciones del restaurante</h1>
         <tumbo-menu-operacion
-          [accesos]="accesos()"
+          [accesos]="menu()"
           [actividad]="actividad()"
           [pedidos]="demo.pedidosEnCurso()"
           [bloqueadas]="seccionesBloqueadas()"
@@ -1591,7 +1601,7 @@
               entender que se puede volver, y no se puede: el QR ya está
               escaneado.
             -->
-            <section class="section-block entrada">
+            <section class="section-block entrada" [class.entrada--codigo]="codigoVisitaAbierto()">
               <div class="section-heading">
                 <div><h2>Entrada al restaurante</h2></div>
               </div>
@@ -1611,7 +1621,10 @@
               </ol>
 
               @if (etapaDeEntrada() === 1) {
-                <div class="anonymous-entry">
+                <div
+                  class="anonymous-entry"
+                  [class.anonymous-entry--codigo]="codigoVisitaAbierto()"
+                >
                   <div class="qr-preview">
                     @if (qrImagen('entrada'); as qr) {
                       <img [src]="qr" alt="" />
@@ -1620,16 +1633,67 @@
                     }
                     <small>tumbo://ingreso</small>
                   </div>
+                  <!--
+                    DOS MODOS, NO UNA PANTALLA CON TODO.
+
+                    O escaneás el QR de la puerta, o escribís el código
+                    de una visita anterior. Mostrar las dos cosas juntas
+                    dejaba la tarjeta tan alta que, con el teclado
+                    abierto, no entraba ni el campo donde hay que
+                    escribir.
+                  -->
                   <div>
-                    <h2>Escaneá el QR de ingreso</h2>
-                    <p>
-                      Está en la puerta del local. Con eso te anotás en la espera y podés ver las
-                      encuestas de quienes vinieron antes.
-                    </p>
-                    <ion-button fill="outline" (click)="escanearIngreso()">
-                      <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
-                      Escanear QR de ingreso
-                    </ion-button>
+                    @if (codigoVisitaAbierto()) {
+                      <h2>Recuperá tu visita</h2>
+                      <p>
+                        Escribí el código que viste cuando te anotaste. Te devuelve tu mesa, tu
+                        pedido y tu cuenta.
+                      </p>
+                      <div class="codigo-visita__form">
+                        <ion-input
+                          label="Código de visita"
+                          label-placement="stacked"
+                          fill="outline"
+                          autocapitalize="characters"
+                          maxlength="5"
+                          placeholder="Ej.: 4F2KX"
+                          [value]="codigoReclamado()"
+                          (ionInput)="actualizarCodigoReclamado($event)"
+                        />
+                        <ion-button
+                          class="primary-action"
+                          [disabled]="reclamandoVisita() || codigoReclamado().length < 5"
+                          (click)="recuperarVisita()"
+                        >
+                          Recuperar mi visita
+                        </ion-button>
+                      </div>
+                      <ion-button fill="clear" (click)="alternarRecuperarVisita()">
+                        Volver al QR de ingreso
+                      </ion-button>
+                    } @else {
+                      <h2>Escaneá el QR de ingreso</h2>
+                      <p>
+                        Está en la puerta del local. Con eso te anotás en la espera y podés ver las
+                        encuestas de quienes vinieron antes.
+                      </p>
+                      <ion-button fill="outline" (click)="escanearIngreso()">
+                        <ion-icon name="qr-code-outline" slot="start" aria-hidden="true" />
+                        Escanear QR de ingreso
+                      </ion-button>
+                      <!--
+                        La vuelta de quien ya estaba adentro: el cliente
+                        sin cuenta no tiene correo ni clave, así que esto
+                        es lo único que lo devuelve a su mesa.
+                      -->
+                      <ion-button
+                        class="codigo-visita__abrir"
+                        fill="clear"
+                        (click)="alternarRecuperarVisita()"
+                      >
+                        Ya tenía una visita: tengo un código
+                      </ion-button>
+                    }
                   </div>
                 </div>
               }
@@ -1713,6 +1777,22 @@
                           hace falta que la mires.
                         </p>
                       </div>
+                    </div>
+                  }
+                  @if (miCodigoDeVisita(); as codigo) {
+                    <!--
+                      El código se muestra acá, cuando la visita ya
+                      existe: antes no hay nada que recuperar. Solo lo
+                      ve el cliente sin cuenta, que es el único que lo
+                      necesita.
+                    -->
+                    <div class="codigo-visita" role="note">
+                      <strong>Tu código de visita</strong>
+                      <p class="codigo-visita__valor">{{ codigo }}</p>
+                      <p class="codigo-visita__ayuda">
+                        Anotalo. Si cerrás sesión o cambiás de teléfono, con este código volvés a tu
+                        mesa, tu pedido y tu cuenta.
+                      </p>
                     </div>
                   }
                   <ion-button fill="clear" (click)="verResultadosEncuestas()">
@@ -1999,7 +2079,14 @@
                 <div><h2>Juegos y descuentos</h2></div>
                 <ion-chip class="discount-chip">{{ demo.descuento() }}% ganado</ion-chip>
               </div>
-              @if (usuario()?.perfil === 'cliente_registrado' && !demo.juegosHabilitados()) {
+              <!--
+                El candado es para LOS DOS clientes, registrado y
+                anónimo (corrección del profesor sobre el punto 14). La
+                puerta de los juegos es la confirmación del mozo; que la
+                partida pague o no descuento es otra cosa, y se explica
+                adentro.
+              -->
+              @if (perfilEsCliente() && !demo.juegosHabilitados()) {
                 <div class="locked-card" role="status">
                   <ion-icon aria-hidden="true" name="time-outline" />
                   <div>
@@ -2011,9 +2098,17 @@
                 @if (juegaSinDescuento()) {
                   <p class="games-regla">{{ avisoSinDescuento() }}</p>
                 } @else {
+                  <!--
+                    La regla, con el «primer intento» dicho sin vueltas:
+                    es la primera partida de LA VISITA, no la de cada
+                    juego. Escrito como estaba —«ganá en el primer
+                    intento»— se entendía que cada juego daba una
+                    oportunidad nueva, que además era lo que hacía.
+                  -->
                   <p class="games-regla">
-                    Ganá en el primer intento y llevate el descuento: 10, 15 o 20 %. Es uno solo por
-                    visita; después podés seguir jugando.
+                    Tu primera partida de la visita define el descuento: si la ganás, te llevás el
+                    10, 15 o 20 % de ese juego. Si la perdés, esta visita no suma. Después podés
+                    seguir jugando las veces que quieras.
                   </p>
                 }
                 <!--
@@ -2066,17 +2161,33 @@
                       paso dice lo único que acá importa saber: cuánto
                       paga este juego y cuánto se lleva ganado.
                     -->
+                    <!--
+                      EL ESTADO DICE SI ESTA PARTIDA TODAVÍA PAGA.
+
+                      La regla del punto 15, como la precisó el profesor:
+                      la PRIMERA partida de la visita decide. Ganándola
+                      se lleva el porcentaje de ese juego; perdiéndola,
+                      la visita se queda sin descuento aunque después se
+                      gane todo. Son tres estados distintos y antes se
+                      mostraban como dos, así que quien había perdido la
+                      primera leía «todavía no tenés descuento» y seguía
+                      jugando creyendo que podía conseguirlo.
+                    -->
                     <div class="game-board">
-                      <p class="game-board__intro">Si ganás en el primer intento</p>
+                      <p class="game-board__intro">Si ganás tu primera partida</p>
                       <strong class="game-board__premio">{{ juegoActual().porcentaje }} %</strong>
                       <p class="game-board__estado">
                         @if (juegaSinDescuento()) {
                           Esta partida no otorga descuento.
+                        } @else if (demo.partidasJugadas() === 0) {
+                          Esta es tu primera partida: si la ganás, te llevás el
+                          {{ juegoActual().porcentaje }} %.
                         } @else if (demo.descuento() > 0) {
                           Ya tenés {{ demo.descuento() }} % de descuento en la cuenta: no se
                           acumula.
                         } @else {
-                          Todavía no tenés descuento en esta visita.
+                          Tu primera partida ya pasó: podés seguir jugando, pero esta visita no suma
+                          descuento.
                         }
                       </p>
                     </div>
@@ -2125,16 +2236,34 @@
                   </div>
                 </div>
               } @else {
+                <!--
+                  LA ENCUESTA RESPONDIDA ES UNA PANTALLA, NO UN AVISO.
+
+                  Corrección del profesor sobre el punto 20: el botón
+                  suelto de «Reportes» se fue del menú del cliente y su
+                  lugar es este. Una vez respondida, la encuesta no
+                  tiene nada más que ofrecer, así que la pantalla entera
+                  pasa a decir dos cosas: que ya la hizo —en grande, que
+                  es lo que pidió— y por dónde se van a ver las
+                  anteriores.
+
+                  Dejó de ser un `locked-card`: ese cartel es para lo
+                  que está bloqueado y esperando, y acá no hay nada
+                  esperando.
+                -->
                 @if (demo.encuestaRespondida()) {
-                  <div class="locked-card" role="status">
+                  <div class="encuesta-hecha" role="status">
                     <ion-icon aria-hidden="true" name="checkmark-circle-outline" />
-                    <div>
-                      <strong>¡Gracias por responder!</strong>
-                      <p>
-                        Ya respondiste la encuesta de esta estadía. Los resultados están en
-                        Reportes.
-                      </p>
-                    </div>
+                    <strong>¡Gracias por responder!</strong>
+                    <p>Ya completaste la encuesta de esta visita. Es una sola por estadía.</p>
+                    <ion-button
+                      class="principal"
+                      expand="block"
+                      (click)="verResultadosDeEncuestas()"
+                    >
+                      <ion-icon slot="start" name="bar-chart-outline" aria-hidden="true" />
+                      Ver encuestas anteriores
+                    </ion-button>
                   </div>
                 } @else {
                   <tumbo-encuesta-form
@@ -2251,6 +2380,8 @@
                 (escanearPropina)="escanearPropina()"
                 (pagar)="pagarCuenta()"
                 (verificarMesa)="verificarMesa()"
+                (verResultados)="verResultadosDeEncuestas()"
+                (salir)="cerrarSesion()"
               />
             } @else {
               <tumbo-cobros

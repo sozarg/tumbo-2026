@@ -9,9 +9,10 @@ import { IonInput } from '@ionic/angular/ion-input';
 import { IonNote } from '@ionic/angular/ion-note';
 import { addIcons } from 'ionicons';
 import { eyeOffOutline, eyeOutline, logInOutline } from 'ionicons/icons';
-import { AccesoRapido } from '../../core/models/usuario';
+import { AccesoRapido, Usuario } from '../../core/models/usuario';
 import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { ErroresService } from '../../core/services/errores.service';
+import { SesionService } from '../../core/services/sesion.service';
 import { EsperaGlobal } from '../../core/ui/espera-global.service';
 import { LIMITES } from '../../core/validacion/limites';
 import { mensajeDeError } from '../../core/validacion/mensajes';
@@ -39,6 +40,18 @@ export class Ingreso {
   private readonly router = inject(Router);
   private readonly esperaGlobal = inject(EsperaGlobal);
   private readonly errores = inject(ErroresService);
+  private readonly sesion = inject(SesionService);
+
+  /**
+   * La sesión que ya estaba abierta al llegar a esta pantalla.
+   *
+   * Se llega acá con la sesión viva más seguido de lo que parece: el
+   * botón físico de atrás de Android, una navegación mal cerrada, o
+   * esta misma pantalla abierta de arranque. Al empleado no le molesta
+   * —vuelve a entrar con su correo—, pero el cliente anónimo no tiene
+   * credenciales: si no le ofrecemos volver, pierde la visita.
+   */
+  protected readonly sesionAbierta = signal<Usuario | null>(null);
 
   protected readonly formulario = this.formularioBuilder.nonNullable.group({
     correo: ['', [Validators.required, sinEspaciosSolos, correoValido, ...conLimite('correo')]],
@@ -100,6 +113,14 @@ export class Ingreso {
     this.enviando.set(false);
     this.errorMensaje.set('');
     this.errores.limpiar();
+    // Después de `listo`: si la sesión se está restaurando todavía,
+    // preguntar ahora daría «no hay nadie» y el botón no aparecería.
+    void this.autenticacion.listo.then(() => this.sesionAbierta.set(this.sesion.usuario()));
+  }
+
+  /** Vuelve a la sesión que ya estaba abierta, sin pedir credenciales. */
+  protected seguirEnLaSesion(): void {
+    void this.router.navigate(['/operacion']);
   }
 
   protected campoInvalido(nombre: 'correo' | 'clave'): boolean {

@@ -21,6 +21,17 @@ export interface AccesoSeccion {
   readonly titulo: string;
   readonly icono: string;
   readonly perfiles: readonly PerfilUsuario[];
+  /**
+   * Perfiles que PUEDEN entrar pero no ven la sección en el menú.
+   *
+   * No es lo mismo que sacarla de `perfiles`: la sección se sigue
+   * pudiendo abrir desde donde tenga sentido abrirla. El caso es
+   * `reportes` para el cliente (punto 20, corrección del profesor): el
+   * botón suelto en el menú se va, pero a los resultados se llega desde
+   * la encuesta respondida, desde el QR de ingreso (punto 9) y desde el
+   * cierre de la cuenta (punto 22).
+   */
+  readonly fueraDelMenu?: readonly PerfilUsuario[];
 }
 const gerencia: readonly PerfilUsuario[] = ['supervisor'];
 const clientes: readonly PerfilUsuario[] = ['cliente_registrado', 'cliente_anonimo'];
@@ -72,6 +83,7 @@ export const SECCIONES: readonly AccesoSeccion[] = [
     titulo: 'Reportes',
     icono: 'bar-chart-outline',
     perfiles: [...gerencia, ...clientes],
+    fueraDelMenu: clientes,
   },
   {
     id: 'consulta',
@@ -120,16 +132,40 @@ export function accesosDelPerfil(perfil: PerfilUsuario | undefined): readonly Ac
             ? 'entrada'
             : 'pedidos';
   return SECCIONES.filter((acceso) => puedeAcceder(perfil, acceso.id))
-    .map((acceso) => ({
-      ...acceso,
-      titulo:
-        acceso.id === 'productos' && tipoProductoDelPerfil(perfil)
-          ? perfil === 'cocinero'
-            ? 'Platos'
-            : 'Bebidas'
-          : acceso.titulo,
-    }))
+    .map((acceso) => ({ ...acceso, titulo: tituloPara(acceso, perfil) }))
     .sort((a, b) => Number(b.id === principal) - Number(a.id === principal));
+}
+
+/**
+ * Cómo se llama la sección para este perfil.
+ *
+ * Dos secciones cambian de nombre según quién mire: `productos` es
+ * «Platos» o «Bebidas» según el sector, y `reportes` es «Encuestas
+ * anteriores» para el cliente. Esto último lo pidió el profesor en el
+ * punto 20: al cliente no le dice nada la palabra «Reportes», que es
+ * vocabulario de gerencia.
+ */
+function tituloPara(acceso: AccesoSeccion, perfil: PerfilUsuario | undefined): string {
+  if (acceso.id === 'productos' && tipoProductoDelPerfil(perfil))
+    return perfil === 'cocinero' ? 'Platos' : 'Bebidas';
+  if (acceso.id === 'reportes' && perfil !== undefined && clientes.includes(perfil))
+    return 'Encuestas anteriores';
+  return acceso.titulo;
+}
+
+/**
+ * Lo que se muestra en el menú, que no es todo lo que se puede abrir.
+ *
+ * El menú es una lista de botones sueltos; `accesosDelPerfil` es «a
+ * dónde puede ir este perfil», y de ahí sale también el título de la
+ * pantalla. Separar las dos cosas es lo que permite sacar «Reportes»
+ * del menú del cliente sin que la pantalla de resultados se quede sin
+ * nombre ni se vuelva inalcanzable.
+ */
+export function menuDelPerfil(perfil: PerfilUsuario | undefined): readonly AccesoSeccion[] {
+  return accesosDelPerfil(perfil).filter(
+    (acceso) => perfil === undefined || !acceso.fueraDelMenu?.includes(perfil),
+  );
 }
 export function puedeAcceder(perfil: PerfilUsuario | undefined, seccion: Seccion): boolean {
   return (

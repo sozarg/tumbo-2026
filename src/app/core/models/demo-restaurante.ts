@@ -101,6 +101,12 @@ export interface PersonaEsperaDemo {
   readonly foto: string;
   readonly fecha: string;
   readonly mesaAsignada?: number;
+  /**
+   * El código con el que un cliente SIN CUENTA vuelve a su visita si
+   * pierde la sesión. Solo lo llevan las visitas anónimas: el cliente
+   * registrado vuelve con su correo y su clave.
+   */
+  readonly codigo?: string | null;
 }
 
 /**

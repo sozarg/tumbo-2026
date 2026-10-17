@@ -178,10 +178,19 @@ export class DemoRestauranteService {
     pedidosEnSeguimiento([this.pedidoActivo(), ...this.otrosPedidos()]),
   );
   readonly carrito = signal<PedidoItemDemo[]>([]);
+  /*
+   * El mensaje sembrado lo firma el mozo CON SU NOMBRE (corrección P2).
+   *
+   * Decía «Mozo», puesto a mano acá, así que el modo demostración
+   * mostraba lo mismo que queríamos sacar. El nombre es el del mozo de
+   * `empleadosIniciales` —quien atiende la mesa 2 en la demo— y va solo
+   * el primero, igual que lo que arma `nombreDelMozo` con los datos
+   * reales.
+   */
   readonly mensajes = signal<MensajeDemo[]>([
     {
       id: 'mensaje-1',
-      autor: 'Mozo',
+      autor: 'Matías',
       texto: 'Hola, ¿en qué podemos ayudarte?',
       fecha: '26/08/2026 20:18',
       esPropio: false,
@@ -193,6 +202,14 @@ export class DemoRestauranteService {
   readonly notificaciones = signal<NotificacionDemo[]>([]);
   readonly descuento = signal(0);
   readonly intentosJuego = signal<Record<string, number>>({});
+  /**
+   * Partidas jugadas en la visita, de CUALQUIER juego (punto 15).
+   *
+   * `intentosJuego` cuenta por juego y eso no alcanza para la regla del
+   * descuento: lo que decide es la primera partida de la visita, sin
+   * importar con qué juego se haya jugado.
+   */
+  readonly partidasJugadas = signal(0);
   readonly encuestaRespondida = signal(false);
   readonly cuenta = signal<CuentaDemo | null>(null);
   /** Para el mozo: las cuentas que todavía no se confirmaron. */
@@ -590,15 +607,26 @@ export class DemoRestauranteService {
     ]);
   }
 
+  /**
+   * Punto 15: el descuento lo decide la PRIMERA partida de la visita.
+   *
+   * Acá estaba la misma falla que en la base: el «primer intento» se
+   * contaba por juego, así que perder la memoria y después ganar
+   * piedra, papel o tijera daba el 20 %. Perder no costaba nada.
+   *
+   * Lo que devuelve es el número de partida de la visita, que es lo
+   * que mira la pantalla para saber si esta era la que definía.
+   */
   jugar(idJuego: string, gano: boolean): number {
     const intentos = this.intentosJuego();
-    const intentoActual = (intentos[idJuego] ?? 0) + 1;
-    this.intentosJuego.set({ ...intentos, [idJuego]: intentoActual });
-    if (gano && intentoActual === 1 && this.descuento() === 0) {
+    const previas = this.partidasJugadas();
+    this.intentosJuego.set({ ...intentos, [idJuego]: (intentos[idJuego] ?? 0) + 1 });
+    this.partidasJugadas.set(previas + 1);
+    if (gano && previas === 0) {
       const beneficios: Record<string, number> = { memoria: 10, adivinanza: 15, piedra: 20 };
       this.descuento.set(beneficios[idJuego] ?? 10);
     }
-    return intentoActual;
+    return previas + 1;
   }
 
   /** Punto 20: la encuesta se guarda una vez y solo si todas las respuestas son válidas. */

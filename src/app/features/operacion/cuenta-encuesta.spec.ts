@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 import { vi } from 'vitest';
 import { LectorDeDni } from '../../core/dispositivo/lector-de-dni.service';
+import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { OperacionService } from '../../core/services/operacion.service';
 import { Cobros } from './cobros.component';
 import { CuentaCliente } from './cuenta-cliente.component';
@@ -85,6 +87,43 @@ describe('La cuenta del cliente (punto 21)', () => {
       'Mesa 2: libre, lista para el próximo cliente.',
     ]);
   });
+
+  /**
+   * El cierre de la visita tiene salida.
+   *
+   * Antes la pantalla terminaba en «gracias por venir» y nada más: la
+   * mesa estaba liberada y la persona quedaba adentro de una pantalla
+   * terminada. La sesión no se cierra sola —la confirma el mozo desde
+   * otro teléfono—, así que las puertas tienen que estar a la vista.
+   */
+  it('el cierre ofrece los resultados de encuestas y la salida (punto 22)', async () => {
+    const fixture = await abrirComo('cliente_registrado', 'cuenta');
+    await pedidoRecibido();
+    const servicio = TestBed.inject(OperacionService);
+    await servicio.solicitarCuenta();
+    await servicio.generarCuenta('10', 10);
+    await servicio.pagarCuenta();
+    await servicio.confirmarPago(servicio.cuenta()!.id);
+    fixture.detectChanges();
+
+    const cuenta = fixture.debugElement.query(By.directive(CuentaCliente))
+      .componentInstance as CuentaCliente;
+
+    // La salida: cierra la sesión y vuelve al ingreso, como el botón del menú.
+    const cerrar = vi.spyOn(TestBed.inject(AUTENTICACION), 'cerrarSesion').mockResolvedValue();
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    cuenta.salir.emit();
+    await fixture.whenStable();
+    expect(cerrar).toHaveBeenCalled();
+    expect(navegar).toHaveBeenCalledWith(['/ingreso'], { replaceUrl: true });
+
+    // Y la consulta de encuestas, que el punto pide que siga disponible.
+    cuenta.verResultados.emit();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance['seccion']()).toBe('reportes');
+    expect(fixture.debugElement.query(By.directive(ResultadosEncuesta))).not.toBeNull();
+  });
 });
 
 describe('Los cobros del mozo (puntos 21 y 22)', () => {
@@ -138,7 +177,33 @@ describe('La encuesta (punto 20)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(TestBed.inject(OperacionService).encuestaRespondida()).toBe(true);
-    expect(texto(fixture, '.locked-card strong')).toEqual(['¡Gracias por responder!']);
+    expect(texto(fixture, '.encuesta-hecha strong')).toEqual(['¡Gracias por responder!']);
+  });
+
+  /**
+   * Lo que el profesor pidió para el punto 20: el botón de «Reportes»
+   * sale del menú del cliente y su lugar es la encuesta ya respondida,
+   * con un cartel grande y un acceso a las anteriores.
+   */
+  it('respondida, la pantalla lleva a las encuestas anteriores', async () => {
+    const fixture = await abrirComo('cliente_registrado', 'encuesta');
+    await pedidoRecibido();
+    TestBed.inject(OperacionService).encuestaRespondida.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const boton = fixture.debugElement.query(By.css('.encuesta-hecha ion-button'));
+    expect(boton).not.toBeNull();
+    expect((boton.nativeElement as HTMLElement).textContent).toContain('Ver encuestas anteriores');
+
+    boton.triggerEventHandler('click', {});
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['seccion']()).toBe('reportes');
+    expect(fixture.debugElement.query(By.directive(ResultadosEncuesta))).not.toBeNull();
+    // Y la pantalla se llama por su nombre de cliente, no «Reportes».
+    expect(fixture.componentInstance['titulo']()).toBe('Encuestas anteriores');
   });
 });
 

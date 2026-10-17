@@ -65,95 +65,111 @@ import { errorDeRespuesta } from '../../core/services/cuenta-y-encuesta';
             }
           </legend>
 
-          @switch (pregunta.tipo) {
-            @case ('estrellas') {
-              <div class="estrellas" role="radiogroup" [attr.aria-label]="pregunta.texto">
-                @for (valor of escala(pregunta); track valor) {
-                  <button
-                    type="button"
-                    role="radio"
-                    [attr.aria-checked]="control(pregunta).value === valor"
-                    [attr.aria-label]="valor + (valor === 1 ? ' estrella' : ' estrellas')"
-                    (click)="elegir(pregunta, valor)"
-                  >
-                    <ion-icon
-                      aria-hidden="true"
-                      [name]="numero(control(pregunta).value) >= valor ? 'star' : 'star-outline'"
-                    />
-                  </button>
-                }
-              </div>
+          <!--
+            EL CONTROL VA ENVUELTO, Y NO ES UN DIV DE ADORNO.
+
+            Los siete tipos dibujan elementos distintos —un grupo de
+            botones, un grupo de radios, un desplegable suelto—, así que
+            sin envoltorio cada regla de composición había que
+            escribirla siete veces, una por tipo. Con esta caja, «el
+            control se queda con el alto que sobra y se centra» es una
+            sola regla.
+
+            (Sin comillas invertidas acá adentro: esto vive dentro de
+            una plantilla literal de JavaScript y una comilla invertida
+            la corta al medio.)
+          -->
+          <div class="encuesta__control">
+            @switch (pregunta.tipo) {
+              @case ('estrellas') {
+                <div class="estrellas" role="radiogroup" [attr.aria-label]="pregunta.texto">
+                  @for (valor of escala(pregunta); track valor) {
+                    <button
+                      type="button"
+                      role="radio"
+                      [attr.aria-checked]="control(pregunta).value === valor"
+                      [attr.aria-label]="valor + (valor === 1 ? ' estrella' : ' estrellas')"
+                      (click)="elegir(pregunta, valor)"
+                    >
+                      <ion-icon
+                        aria-hidden="true"
+                        [name]="numero(control(pregunta).value) >= valor ? 'star' : 'star-outline'"
+                      />
+                    </button>
+                  }
+                </div>
+              }
+              @case ('radio') {
+                <ion-radio-group [formControlName]="pregunta.id">
+                  @for (opcion of pregunta.opciones; track opcion) {
+                    <ion-radio [value]="opcion" labelPlacement="end" justify="start">{{
+                      opcion
+                    }}</ion-radio>
+                  }
+                </ion-radio-group>
+              }
+              @case ('checkbox') {
+                <div class="opciones">
+                  @for (opcion of pregunta.opciones; track opcion) {
+                    <ion-checkbox
+                      labelPlacement="end"
+                      justify="start"
+                      [checked]="marcada(pregunta, opcion)"
+                      (ionChange)="alternar(pregunta, opcion, $event.detail.checked)"
+                      >{{ opcion }}</ion-checkbox
+                    >
+                  }
+                </div>
+              }
+              @case ('select') {
+                <ion-select
+                  [formControlName]="pregunta.id"
+                  interface="popover"
+                  label="Elegí una opción"
+                  labelPlacement="stacked"
+                  fill="outline"
+                  placeholder="Elegí una opción"
+                >
+                  @for (opcion of pregunta.opciones; track opcion) {
+                    <ion-select-option [value]="opcion">{{ opcion }}</ion-select-option>
+                  }
+                </ion-select>
+              }
+              @case ('rango') {
+                <ion-range
+                  [formControlName]="pregunta.id"
+                  [min]="pregunta.minimo ?? 1"
+                  [max]="pregunta.maximo ?? 10"
+                  [step]="1"
+                  [ticks]="true"
+                  [snaps]="true"
+                  [pin]="true"
+                  [attr.aria-label]="pregunta.texto"
+                >
+                  <span slot="start">{{ pregunta.minimo ?? 1 }}</span>
+                  <span slot="end">{{ pregunta.maximo ?? 10 }}</span>
+                </ion-range>
+                <p class="encuesta__valor">Elegiste: {{ control(pregunta).value ?? '—' }}</p>
+              }
+              @case ('interruptor') {
+                <ion-toggle [formControlName]="pregunta.id" labelPlacement="end" justify="start">
+                  {{ control(pregunta).value ? 'Sí' : 'No' }}
+                </ion-toggle>
+              }
+              @case ('texto_largo') {
+                <ion-textarea
+                  [formControlName]="pregunta.id"
+                  label="Tu comentario"
+                  labelPlacement="stacked"
+                  fill="outline"
+                  [autoGrow]="true"
+                  [counter]="true"
+                  [maxlength]="500"
+                  placeholder="Contanos lo que quieras."
+                />
+              }
             }
-            @case ('radio') {
-              <ion-radio-group [formControlName]="pregunta.id">
-                @for (opcion of pregunta.opciones; track opcion) {
-                  <ion-radio [value]="opcion" labelPlacement="end" justify="start">{{
-                    opcion
-                  }}</ion-radio>
-                }
-              </ion-radio-group>
-            }
-            @case ('checkbox') {
-              <div class="opciones">
-                @for (opcion of pregunta.opciones; track opcion) {
-                  <ion-checkbox
-                    labelPlacement="end"
-                    justify="start"
-                    [checked]="marcada(pregunta, opcion)"
-                    (ionChange)="alternar(pregunta, opcion, $event.detail.checked)"
-                    >{{ opcion }}</ion-checkbox
-                  >
-                }
-              </div>
-            }
-            @case ('select') {
-              <ion-select
-                [formControlName]="pregunta.id"
-                interface="popover"
-                label="Elegí una opción"
-                labelPlacement="stacked"
-                fill="outline"
-                placeholder="Elegí una opción"
-              >
-                @for (opcion of pregunta.opciones; track opcion) {
-                  <ion-select-option [value]="opcion">{{ opcion }}</ion-select-option>
-                }
-              </ion-select>
-            }
-            @case ('rango') {
-              <ion-range
-                [formControlName]="pregunta.id"
-                [min]="pregunta.minimo ?? 1"
-                [max]="pregunta.maximo ?? 10"
-                [step]="1"
-                [ticks]="true"
-                [snaps]="true"
-                [pin]="true"
-                [attr.aria-label]="pregunta.texto"
-              >
-                <span slot="start">{{ pregunta.minimo ?? 1 }}</span>
-                <span slot="end">{{ pregunta.maximo ?? 10 }}</span>
-              </ion-range>
-              <p class="encuesta__valor">Elegiste: {{ control(pregunta).value ?? '—' }}</p>
-            }
-            @case ('interruptor') {
-              <ion-toggle [formControlName]="pregunta.id" labelPlacement="end" justify="start">
-                {{ control(pregunta).value ? 'Sí' : 'No' }}
-              </ion-toggle>
-            }
-            @case ('texto_largo') {
-              <ion-textarea
-                [formControlName]="pregunta.id"
-                label="Tu comentario"
-                labelPlacement="stacked"
-                fill="outline"
-                [autoGrow]="true"
-                [counter]="true"
-                [maxlength]="500"
-                placeholder="Contanos lo que quieras."
-              />
-            }
-          }
+          </div>
 
           @if (error(); as mensaje) {
             <p class="encuesta__error" [id]="'error-' + pregunta.id" role="alert">{{ mensaje }}</p>
