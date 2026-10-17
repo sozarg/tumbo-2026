@@ -114,3 +114,29 @@ svg {
   font-size: 12px;
   font-weight: 700;
 }
+
+/*
+ * En teléfonos bajos el dibujo cede antes que la leyenda.
+ *
+ * La leyenda lleva los números, así que es la que no se puede recortar;
+ * el círculo se entiende igual más chico. Con esto, en la mayoría de los
+ * teléfonos el gráfico entra entero y la tarjeta ni siquiera necesita
+ * deslizar.
+ */
+@media (max-height: 800px) {
+  svg {
+    max-width: min(11rem, 58%);
+  }
+
+  figure {
+    gap: 0.7rem;
+  }
+}
+
+/* En los más bajos todavía, el círculo cede un poco más y entran dos
+   renglones más de leyenda sin tener que deslizar. */
+@media (max-height: 680px) {
+  svg {
+    max-width: min(8.5rem, 48%);
+  }
+}

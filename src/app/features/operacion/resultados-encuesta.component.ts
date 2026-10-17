@@ -61,13 +61,33 @@ type TipoDeGrafico = 'torta' | 'barras' | 'linea';
     </section>
   `,
   styles: `
+    /*
+     * UN GRÁFICO POR PANTALLA, Y LA PANTALLA NO DESLIZA.
+     *
+     * El gráfico más su leyenda no entraban en los teléfonos bajos: a
+     * 740 px se pasaba 81 px y a 640, 166. Lo que desliza ahora es la
+     * tarjeta del gráfico; el título y el paginador quedan fijos, que
+     * es lo que hace falta para poder pasar al gráfico siguiente sin
+     * tener que buscar el control.
+     */
     :host {
-      display: block;
-      margin-top: clamp(1rem, 4vw, 2rem);
+      display: flex;
+      flex: 1;
+      min-height: 0;
     }
     .resultados {
-      display: grid;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
       gap: 0.9rem;
+      min-height: 0;
+    }
+    .resultados__grafico {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
     }
     .resultados__encabezado {
       display: flex;
@@ -87,6 +107,7 @@ type TipoDeGrafico = 'torta' | 'barras' | 'linea';
     }
     .resultados__grafico {
       display: grid;
+      align-content: start;
       gap: 0.75rem;
       border-radius: 1rem;
       padding: clamp(0.9rem, 4vw, 1.25rem);

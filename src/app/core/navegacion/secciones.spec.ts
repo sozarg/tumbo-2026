@@ -27,7 +27,7 @@ describe('Acceso a secciones por rol', () => {
       expect(puedeAcceder(perfil, 'cuenta')).toBe(true);
     }
   });
-  it('limita cocina y barra a su sector y excluye juegos para anónimos', () => {
+  it('limita cocina y barra a su sector, y deja los juegos abiertos a los dos clientes', () => {
     expect(SECCIONES.filter((s) => puedeAcceder('cocinero', s.id)).map((s) => s.id)).toEqual([
       'productos',
       'cocina',
@@ -36,7 +36,12 @@ describe('Acceso a secciones por rol', () => {
       'productos',
       'barra',
     ]);
-    expect(puedeAcceder('cliente_anonimo', 'juegos')).toBe(false);
+    /*
+     * El anónimo entra a los juegos: juega, pero su partida no otorga
+     * descuento. La encuesta sigue siendo solo del registrado.
+     */
+    expect(puedeAcceder('cliente_anonimo', 'juegos')).toBe(true);
+    expect(puedeAcceder('cliente_anonimo', 'encuesta')).toBe(false);
     expect(puedeAcceder(undefined, 'personal')).toBe(false);
   });
   it('habilita las tareas de salón sin otorgar permisos de gerencia', () => {

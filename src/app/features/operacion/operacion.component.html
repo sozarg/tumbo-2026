@@ -392,7 +392,11 @@
                 </div>
               </form>
             } @else {
-              <section #listaPaginada class="person-list" aria-label="Lista de personal">
+              <section
+                #listaPaginada
+                class="person-list person-list--personal"
+                aria-label="Lista de personal"
+              >
                 @for (empleado of paginar(demo.empleados(), porPagina()); track empleado.id) {
                   <!--
                     LA TARJETA MUESTRA TODO EL LEGAJO.
@@ -407,7 +411,19 @@
                     crecer entran menos y solas. Una tarjeta más alta es
                     la forma de mostrar una o dos por vez.
                   -->
-                  <article class="person-card">
+                  <!--
+                    QUIÉN ES ARRIBA, EL LEGAJO ABAJO.
+
+                    Antes la foto, el nombre y los tres datos iban en
+                    una fila: al lado de una foto de 130px y del botón
+                    de baja, a la columna del legajo le quedaban unos
+                    150px y el correo se partía al medio
+                    («ignacio@tu / mbo.demo»). Ahora la foto comparte
+                    renglón solo con el nombre y el perfil, y el legajo
+                    cruza la ficha entera, que es el ancho que un correo
+                    necesita para entrar de una pieza.
+                  -->
+                  <article class="person-card person-card--legajo">
                     <img
                       class="person-card__foto"
                       [src]="empleado.fotoUrl ?? 'imagenes/logo.png'"
@@ -418,15 +434,21 @@
                     <div class="person-card__details">
                       <h2>{{ empleado.nombres }} {{ empleado.apellidos }}</h2>
                       <p class="person-card__perfil">{{ empleado.etiquetaPerfil }}</p>
-                      <dl class="person-card__datos">
+                    </div>
+                    <dl class="person-card__datos">
+                      <div class="person-card__dato">
                         <dt>Correo</dt>
                         <dd>{{ empleado.correo }}</dd>
+                      </div>
+                      <div class="person-card__dato">
                         <dt>DNI</dt>
                         <dd>{{ empleado.dni || 'Sin cargar' }}</dd>
+                      </div>
+                      <div class="person-card__dato">
                         <dt>CUIL</dt>
                         <dd>{{ empleado.cuil || 'Sin cargar' }}</dd>
-                      </dl>
-                    </div>
+                      </div>
+                    </dl>
                     <tumbo-boton-confirmacion
                       buttonClass="icon-danger"
                       [disabled]="dandoDeBaja() !== null"
@@ -446,6 +468,15 @@
                   </article>
                 } @empty {
                   <p class="empty-state">Todavía no hay empleados.</p>
+                }
+                @if (hayLugarEnPersonal()) {
+                  <!-- Lo mismo que en la lista de espera: la última
+                       página casi nunca viene llena, y ese hueco no
+                       puede quedar en blanco. -->
+                  <div class="wait-slot">
+                    <ion-icon aria-hidden="true" name="people-outline" />
+                    <p>Ese es todo el personal cargado. Para sumar a alguien, «Nuevo empleado».</p>
+                  </div>
                 }
               </section>
             }
@@ -1379,8 +1410,8 @@
                 <div><h2>Lista de espera</h2></div>
                 <ion-badge>{{ demo.espera().length }}</ion-badge>
               </div>
-              <div class="wait-list">
-                @for (persona of paginar(demo.espera()); track persona.id) {
+              <div #listaPaginada class="wait-list">
+                @for (persona of paginar(demo.espera(), porPagina()); track persona.id) {
                   <article class="wait-row">
                     <img [ngSrc]="persona.foto" width="58" height="58" alt="" />
                     <div>
@@ -1390,22 +1421,33 @@
                     @if (persona.mesaAsignada; as asignada) {
                       <ion-chip class="assigned-chip">Mesa {{ asignada }}</ion-chip>
                     } @else {
-                      <div class="assign-actions">
-                        @for (mesa of mesaVisible(); track mesa.id) {
-                          @if (mesa.disponible) {
-                            <ion-button
-                              fill="outline"
-                              size="small"
-                              (click)="asignarMesa(persona.id, mesa.numero)"
-                              >Mesa {{ mesa.numero }}</ion-button
-                            >
-                          }
+                      <!--
+                        Las mesas libres van como fila de fichas: una sola
+                        altura pase lo que pase, y un toque para cualquiera.
+                        Antes había un paginador acá adentro que mostraba
+                        una mesa por vez y se leía como si la persona
+                        tuviera varias mesas asignadas.
+                      -->
+                      @if (mesasDisponibles().length) {
+                        <p class="assign-label">Mesas libres para asignarle:</p>
+                      }
+                      <div
+                        class="assign-actions"
+                        role="group"
+                        [attr.aria-label]="'Mesas libres para ' + persona.nombre"
+                      >
+                        @for (mesa of mesasDisponibles(); track mesa.id) {
+                          <button
+                            class="assign-actions__mesa"
+                            type="button"
+                            (click)="asignarMesa(persona.id, mesa.numero)"
+                          >
+                            Mesa {{ mesa.numero }}
+                          </button>
+                        } @empty {
+                          <p class="assign-actions__vacio">No hay mesas libres en este momento.</p>
                         }
                       </div>
-                      <tumbo-paginador
-                        [total]="mesasDisponibles().length"
-                        [(pagina)]="paginaItems"
-                      />
                     }
                     <tumbo-boton-confirmacion
                       buttonClass="icon-danger"
@@ -1420,6 +1462,17 @@
                   </article>
                 } @empty {
                   <div class="empty-state">La lista de espera está vacía.</div>
+                }
+                @if (hayLugarEnEspera()) {
+                  <!--
+                    El lugar que sobra abajo de la lista no queda en
+                    blanco: lo ocupa este panel, que además dice lo que
+                    pasa (no hay nadie más anotado).
+                  -->
+                  <div class="wait-slot">
+                    <ion-icon aria-hidden="true" name="people-outline" />
+                    <p>Por ahora no hay nadie más esperando.</p>
+                  </div>
                 }
               </div>
             </section>
@@ -1946,18 +1999,7 @@
                 <div><h2>Juegos y descuentos</h2></div>
                 <ion-chip class="discount-chip">{{ demo.descuento() }}% ganado</ion-chip>
               </div>
-              @if (usuario()?.perfil === 'cliente_anonimo') {
-                <div class="locked-card">
-                  <ion-icon aria-hidden="true" name="close-circle-outline" />
-                  <div>
-                    <strong>Función exclusiva para clientes registrados</strong>
-                    <p>
-                      El cliente anónimo puede pedir, responder la encuesta y pagar, pero no accede
-                      a juegos ni descuentos.
-                    </p>
-                  </div>
-                </div>
-              } @else if (perfilEsCliente() && !demo.juegosHabilitados()) {
+              @if (usuario()?.perfil === 'cliente_registrado' && !demo.juegosHabilitados()) {
                 <div class="locked-card" role="status">
                   <ion-icon aria-hidden="true" name="time-outline" />
                   <div>
@@ -1966,49 +2008,101 @@
                   </div>
                 </div>
               } @else {
-                <p class="games-regla">
-                  Ganá en el primer intento y llevate el descuento: 10, 15 o 20 %. Es uno solo por
-                  visita; después podés seguir jugando.
-                </p>
+                @if (juegaSinDescuento()) {
+                  <p class="games-regla">{{ avisoSinDescuento() }}</p>
+                } @else {
+                  <p class="games-regla">
+                    Ganá en el primer intento y llevate el descuento: 10, 15 o 20 %. Es uno solo por
+                    visita; después podés seguir jugando.
+                  </p>
+                }
+                <!--
+                  LOS TRES JUEGOS, A LA VISTA.
+
+                  Antes estaban detrás del paginador de abajo: había que
+                  ir pasando sin saber qué venía ni cuánto pagaba cada
+                  uno. Con las fichas se ve de una qué hay y se salta al
+                  que uno quiera; por eso el paginador de abajo ya no
+                  sale en esta sección.
+
+                  Son tres y siempre van a ser tres, así que se reparten
+                  el ancho en partes iguales en vez de ir en una tira que
+                  desliza: el número arriba y lo que paga abajo entran
+                  hasta en 320px, y no queda ninguno cortado.
+                -->
+                <div class="games-selector" role="tablist" aria-label="Juegos disponibles">
+                  @for (juego of premiosDeJuegos; track juego.numero) {
+                    <button
+                      class="games-selector__juego"
+                      type="button"
+                      role="tab"
+                      [class.games-selector__juego--activo]="pagina() === juego.numero - 1"
+                      [attr.aria-selected]="pagina() === juego.numero - 1"
+                      [attr.aria-label]="
+                        juego.etiqueta + ', ' + juego.porcentaje + ' % de descuento'
+                      "
+                      (click)="pagina.set(juego.numero - 1)"
+                    >
+                      <strong>Juego {{ juego.numero }}</strong>
+                      <span>{{ juego.porcentaje }} %</span>
+                    </button>
+                  }
+                </div>
+                <!--
+                  UNA SOLA FICHA PARA LOS TRES.
+
+                  Antes había tres artículos casi iguales, uno por `@if`.
+                  Lo único que cambia de verdad es el control de abajo, y
+                  tenerlo tres veces significaba tocar tres lugares cada
+                  vez que se movía algo de la ficha.
+                -->
                 <div class="games-grid">
-                  @if (pagina() === 0) {
-                    <article class="game-card" aria-labelledby="juego-1">
-                      <span>01 · 10 %</span>
-                      <h2 id="juego-1">Recolección tumbito</h2>
-                      <p>
-                        Juntá 50 puntos de comida en 10 segundos. ¡Cuidado! A Tumbito no le gusta el
-                        brócoli.
+                  <article class="game-card" aria-labelledby="juego-titulo">
+                    <span>0{{ juegoActual().numero }} · {{ juegoActual().porcentaje }} %</span>
+                    <h2 id="juego-titulo">{{ juegoActual().titulo }}</h2>
+                    <p>{{ juegoActual().detalle }}</p>
+                    <!--
+                      El tablero ocupa el aire que quedaba en blanco y de
+                      paso dice lo único que acá importa saber: cuánto
+                      paga este juego y cuánto se lleva ganado.
+                    -->
+                    <div class="game-board">
+                      <p class="game-board__intro">Si ganás en el primer intento</p>
+                      <strong class="game-board__premio">{{ juegoActual().porcentaje }} %</strong>
+                      <p class="game-board__estado">
+                        @if (juegaSinDescuento()) {
+                          Esta partida no otorga descuento.
+                        } @else if (demo.descuento() > 0) {
+                          Ya tenés {{ demo.descuento() }} % de descuento en la cuenta: no se
+                          acumula.
+                        } @else {
+                          Todavía no tenés descuento en esta visita.
+                        }
                       </p>
-                      <ion-button
-                        size="small"
-                        [disabled]="jugando()"
-                        (click)="ingresoJuego('juegoRecoleccion')"
-                        >Jugar</ion-button
-                      >
-                    </article>
-                  }
-                  @if (pagina() === 1) {
-                    <article class="game-card" aria-labelledby="juego-2">
-                      <span>02 · 15 %</span>
-                      <h2 id="juego-2">Adivinanza del número</h2>
-                      <p>Adiviná el número del 1 al 50 en seis intentos.</p>
-                      <tumbo-juego-adivinanza
-                        [deshabilitado]="jugando()"
-                        (terminado)="jugar('adivinanza', $event)"
-                      />
-                    </article>
-                  }
-                  @if (pagina() === 2) {
-                    <article class="game-card" aria-labelledby="juego-3">
-                      <span>03 · 20 %</span>
-                      <h2 id="juego-3">Piedra, papel o tijera</h2>
-                      <p>Una mano contra Tumbito. Si empatan, se elige de nuevo.</p>
-                      <tumbo-juego-piedra-papel-tijera
-                        [deshabilitado]="jugando()"
-                        (terminado)="jugar('piedra', $event)"
-                      />
-                    </article>
-                  }
+                    </div>
+                    @switch (pagina()) {
+                      @case (1) {
+                        <tumbo-juego-adivinanza
+                          [deshabilitado]="jugando()"
+                          (terminado)="jugar('adivinanza', $event)"
+                        />
+                      }
+                      @case (2) {
+                        <tumbo-juego-piedra-papel-tijera
+                          [deshabilitado]="jugando()"
+                          (terminado)="jugar('piedra', $event)"
+                        />
+                      }
+                      @default {
+                        <ion-button
+                          size="small"
+                          [disabled]="jugando()"
+                          (click)="ingresoJuego('juegoRecoleccion')"
+                          >Jugar</ion-button
+                        >
+                      }
+                    }
+                  </article>
                 </div>
               }
             </section>
