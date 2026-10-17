@@ -45,16 +45,20 @@ export class JuegoRecoleccionComponent implements AfterViewInit, OnDestroy {
   /**
    * Quién puede abrir el juego.
    *
-   * El cliente registrado necesita el pedido ya confirmado: es lo que
-   * pide el punto 14 para que el descuento valga. El anónimo y el
-   * personal entran sin esa condición, porque su partida no se registra
-   * ni otorga descuento: el primero juega por jugar y el segundo para
-   * poder mostrarlo sin armar una estadía completa.
+   * CUALQUIER cliente necesita el pedido ya confirmado por el mozo: es
+   * la condición del punto 14, y el profesor la marcó como faltante
+   * porque el anónimo entraba sin ella. Que la partida otorgue
+   * descuento o no es una decisión aparte —esa sigue siendo del
+   * registrado— y la resuelve `esPartidaDePrueba`.
+   *
+   * El personal entra sin condición, para poder mostrar el juego sin
+   * armar una estadía completa.
    */
   private get puedeAbrir(): boolean {
     const perfil = this.sesion.usuario()?.perfil;
     if (!perfil) return false;
-    if (perfil === 'cliente_registrado') return this.operacion.juegosHabilitados();
+    if (perfil === 'cliente_registrado' || perfil === 'cliente_anonimo')
+      return this.operacion.juegosHabilitados();
     return true;
   }
 
@@ -112,21 +116,37 @@ export class JuegoRecoleccionComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
-      const antes = this.operacion.descuento();
       const r = await this.operacion.jugar('memoria', gano);
       this.guardando.set(false);
       this.resultado.set(
         !r.ok
           ? 'No pudimos registrar la partida. Revisá la conexión.'
-          : !gano
-            ? `Necesitabas ${PUNTOS_PARA_GANAR} puntos. Podés volver a jugar, pero el descuento es solo para el primer intento.`
-            : r.descuento > antes
-              ? `¡Ganaste! Tenés ${r.descuento} % de descuento en la cuenta.`
-              : antes > 0
-                ? `¡Ganaste! Ya tenías tu descuento de ${antes} %: no se acumula.`
-                : 'Ganaste, pero el descuento es solo para el primer intento.',
+          : this.comoQuedoElDescuento(r.intento, gano, r.descuento),
       );
     });
+  }
+
+  /**
+   * Cómo quedó el descuento después de esta partida (punto 15).
+   *
+   * El profesor precisó la regla: la PRIMERA partida de la visita es la
+   * que decide, no la primera de cada juego. Ganándola se lleva el
+   * porcentaje de ese juego; perdiéndola, la visita se queda sin
+   * descuento. Los textos de antes —«el descuento es solo para el
+   * primer intento»— no distinguían las dos cosas.
+   *
+   * `intento` lo numera la base, por visita.
+   */
+  private comoQuedoElDescuento(intento: number, gano: boolean, descuento: number): string {
+    if (intento === 1) {
+      return gano
+        ? `¡Ganaste! Tenés ${descuento} % de descuento en la cuenta.`
+        : `Necesitabas ${PUNTOS_PARA_GANAR} puntos. Era la partida que definía el descuento, así que esta visita no tiene. Podés seguir jugando igual.`;
+    }
+    const encabezado = gano ? '¡Ganaste!' : `Necesitabas ${PUNTOS_PARA_GANAR} puntos.`;
+    return descuento > 0
+      ? `${encabezado} Tu descuento sigue siendo el ${descuento} % de tu primera partida: no se acumula.`
+      : `${encabezado} El descuento lo definía tu primera partida, y esta visita ya no suma.`;
   }
 
   protected pedirSalida(): void {

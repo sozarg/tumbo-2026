@@ -132,6 +132,7 @@ import { SesionService } from '../../core/services/sesion.service';
 
 import {
   accesosDelPerfil,
+  menuDelPerfil,
   esGerencia,
   tipoProductoDelPerfil,
   Seccion,
@@ -294,6 +295,30 @@ export class Operacion implements OnInit {
     return enPantalla < this.porPagina() || this.sobraEnLista() >= 96;
   }
 
+  /*
+   * EL CÓDIGO DE VISITA DEL CLIENTE SIN CUENTA.
+   *
+   * Es la única forma que tiene de volver a su mesa si pierde la
+   * sesión: su identidad es el token guardado en el teléfono, no hay
+   * correo ni clave que pueda volver a escribir. Ver la migración
+   * `20261017180000_codigo_de_visita`.
+   */
+  protected readonly codigoVisitaAbierto = signal(false);
+  protected readonly codigoReclamado = signal('');
+  protected readonly reclamandoVisita = signal(false);
+
+  /**
+   * El código de ESTA persona.
+   *
+   * Solo se lee con perfil anónimo: para el personal, `espera()` trae
+   * la lista entera y el primer código sería el de otro.
+   */
+  protected readonly miCodigoDeVisita = computed(() =>
+    this.usuario()?.perfil === 'cliente_anonimo'
+      ? (this.demo.espera().find((persona) => persona.codigo)?.codigo ?? null)
+      : null,
+  );
+
   /** El juego que se está mostrando, elegido con las fichas de arriba. */
   protected readonly juegoActual = computed(
     () => this.premiosDeJuegos[Math.min(this.pagina(), this.premiosDeJuegos.length - 1)],
@@ -417,6 +442,14 @@ export class Operacion implements OnInit {
   protected readonly creando = signal(false);
   protected readonly productoEditado = signal<string | null>(null);
   protected readonly accesos = computed(() => accesosDelPerfil(this.usuario()?.perfil));
+  /**
+   * Lo que se dibuja en el menú del inicio.
+   *
+   * No es `accesos()`: de ahí sale además el título de la pantalla, así
+   * que una sección que se puede abrir pero no se lista —«Reportes»
+   * para el cliente, punto 20— tiene que seguir estando ahí.
+   */
+  protected readonly menu = computed(() => menuDelPerfil(this.usuario()?.perfil));
   protected readonly gestiona = computed(() => esGerencia(this.usuario()?.perfil));
   protected readonly tipoDeSector = computed(() => tipoProductoDelPerfil(this.usuario()?.perfil));
   /**
@@ -518,6 +551,21 @@ export class Operacion implements OnInit {
     if (!this.perfilEsCliente()) return [];
     return [
       ...(this.demo.mesaVinculada() === null ? (['consulta'] as const) : []),
+      /*
+       * LOS JUEGOS SE ABREN CON LA CONFIRMACIÓN DEL MOZO, PARA LOS DOS
+       * TIPOS DE CLIENTE (corrección del profesor sobre el punto 14).
+       *
+       * Antes el candado era solo para el registrado y el anónimo
+       * entraba desde el minuto cero. El punto 14 no habla de
+       * descuentos cuando pone la condición: «El mozo confirma y deriva
+       * cada parte a cocina y bar. El cliente ve el estado y puede
+       * acceder a juegos». La puerta es la confirmación; el descuento
+       * es otra cosa, y esa sí sigue siendo del registrado.
+       *
+       * Así que el anónimo entra igual que antes y su partida sigue sin
+       * pagar nada, pero recién después de que el mozo confirme. Al
+       * personal no le aplica: esta lista se arma solo para clientes.
+       */
       ...(this.demo.juegosHabilitados() ? [] : (['juegos'] as const)),
       ...(this.demo.encuestaYCuentaHabilitadas() ? [] : (['encuesta', 'cuenta'] as const)),
     ];
@@ -657,9 +705,22 @@ export class Operacion implements OnInit {
    * profesor resumió toda la corrección del recorrido del cliente.
    */
   protected readonly etapaDeEntrada = computed(() => {
-    if (this.anotadoEnEspera() || this.demo.mesaAsignada() !== null) return 3;
+    if (this.anotadoEnEspera() || this.enLaEspera() || this.demo.mesaAsignada() !== null) return 3;
     return this.ingresoEscaneado() ? 2 : 1;
   });
+
+  /**
+   * Si esta persona YA está anotada, según la base y no según un botón.
+   *
+   * `anotadoEnEspera` es una señal local y la pantalla no se destruye al
+   * navegar, así que sobrevivía a un cierre de sesión. Preguntarle a la
+   * lista —que para un cliente trae solo su propia fila— dice la verdad
+   * después de cerrar sesión, de recuperar una visita con el código y de
+   * volver a abrir la aplicación.
+   */
+  protected readonly enLaEspera = computed(
+    () => this.perfilEsCliente() && this.demo.anotadoEnLaEspera(),
+  );
 
   protected readonly etapasDeEntrada = [
     { numero: 1, texto: 'Escaneá el QR' },
@@ -1295,6 +1356,21 @@ export class Operacion implements OnInit {
     this.quitarFotoCliente();
     this.empleadoForm.reset({ perfil: 'cocinero' });
     this.clienteForm.reset();
+    /*
+     * SIN SESIÓN, EL RECORRIDO DE ENTRADA EMPIEZA DE CERO.
+     *
+     * Estas señales son locales y la pantalla no se destruye al salir,
+     * así que después de cerrar sesión seguían prendidas: quien tocaba
+     * «entrar sin cuenta» caía directo en «escaneá el QR de tu mesa»,
+     * con la mesa del cliente anterior.
+     */
+    if (!this.usuario()) {
+      this.anotadoEnEspera.set(false);
+      this.ingresoEscaneado.set(false);
+      this.codigoVisitaAbierto.set(false);
+      this.codigoReclamado.set('');
+      this.estadoQrMesa.set(null);
+    }
     void this.demo.cargar().then(() => this.aterrizar());
   }
 
@@ -1376,8 +1452,50 @@ export class Operacion implements OnInit {
    * justo lo que R13 pide poder verificar que no pasa.
    */
   protected async cerrarSesion(): Promise<void> {
+    this.bajarAvisos();
     await this.autenticacion.cerrarSesion();
     await this.router.navigate(['/ingreso'], { replaceUrl: true });
+  }
+
+  /**
+   * Baja los dos toasts, y los baja A MANO.
+   *
+   * ─────────────────────────────────────────────────────────────────
+   * POR QUÉ NO ALCANZA CON APAGAR LA SEÑAL
+   *
+   * `ion-router-outlet` no destruye esta pantalla al navegar: la deja
+   * en la pila y le DESATA el detector de cambios. Una vista desatada
+   * no vuelve a evaluar sus bindings, así que `[isOpen]="mensaje() !==
+   * ''"` se queda con el último valor que alcanzó a ver. Apagar la
+   * señal —como hacíamos— no cierra nada si la navegación llega antes
+   * que el ciclo de detección, que es siempre: la señal se escribe y la
+   * detección se agenda para después.
+   *
+   * Y el toast no está acá adentro: Ionic lo mueve al tope de la
+   * aplicación cuando se abre. Por eso sobrevive a la navegación y se
+   * queda flotando sobre la pantalla de ingreso, que ya es de otra
+   * sesión. Lo mismo pasa con el temporizador de 3,2 segundos: el
+   * `setTimeout` corre igual, pero escribe en una vista que ya nadie
+   * está mirando.
+   *
+   * Por eso se busca el overlay en el documento y se lo cierra. Es la
+   * excepción a «no tocar el DOM» que AGENTS.md pide documentar: el
+   * elemento vive fuera de esta plantilla y no hay binding que lo
+   * alcance.
+   */
+  private bajarAvisos(): void {
+    this.mensaje.set('');
+    this.error.set('');
+
+    for (const overlay of Array.from(document.querySelectorAll('ion-toast'))) {
+      const cerrable = overlay as HTMLElement & { dismiss?: () => Promise<boolean> };
+      void cerrable.dismiss?.();
+    }
+  }
+
+  /** Cualquier salida de la pantalla, no solo el cierre de sesión. */
+  ionViewWillLeave(): void {
+    this.bajarAvisos();
   }
 
   protected campoInvalido(control: AbstractControl): boolean {
@@ -2261,6 +2379,55 @@ export class Operacion implements OnInit {
     this.mensaje.set('Te anotamos en la lista de espera.');
   }
 
+  protected actualizarCodigoReclamado(evento: Event): void {
+    const valor = (evento as CustomEvent<{ value?: string }>).detail?.value ?? '';
+    this.codigoReclamado.set(valor.toUpperCase());
+  }
+
+  protected alternarRecuperarVisita(): void {
+    this.codigoVisitaAbierto.update((abierto) => !abierto);
+    this.codigoReclamado.set('');
+  }
+
+  /**
+   * Recupera la visita con el código anotado (solo clientes sin cuenta).
+   *
+   * Si sale bien, la pantalla queda como estaba antes de perder la
+   * sesión: la base movió la espera, la estadía y la encuesta a esta
+   * identidad, así que alcanza con mirar el estado recargado.
+   */
+  protected async recuperarVisita(): Promise<void> {
+    this.reclamandoVisita.set(true);
+    const resultado = await this.demo.reclamarVisita(this.codigoReclamado());
+    this.reclamandoVisita.set(false);
+
+    if (!resultado.ok) {
+      await this.avisarError(resultado.error ?? 'No pudimos recuperar tu visita.');
+      return;
+    }
+
+    this.codigoVisitaAbierto.set(false);
+    this.codigoReclamado.set('');
+    this.anotadoEnEspera.set(true);
+    this.ingresoEscaneado.set(true);
+
+    /*
+     * Si la visita ya tenía la mesa vinculada, la persona vuelve a
+     * donde estaba: al home, con su pedido y su cuenta a mano. Quedarse
+     * en la pantalla de entrada sería pedirle que vuelva a recorrer un
+     * trámite que ya hizo. Si todavía estaba esperando mesa, en cambio,
+     * la entrada ES su pantalla y ahí se queda.
+     */
+    if (this.demo.mesaVinculada() !== null) {
+      this.seccion.set(null);
+      this.enfocarEncabezado();
+      this.avisarExito('Listo, recuperamos tu visita. Seguimos donde estabas.');
+      return;
+    }
+
+    this.avisarExito('Listo, recuperamos tu visita. Seguís en la lista de espera.');
+  }
+
   /** El recolector ocupa toda la pantalla: tiene su propia ruta. */
   protected async ingresoJuego(idJuego: string): Promise<void> {
     if (idJuego === 'juegoRecoleccion') {
@@ -2786,6 +2953,21 @@ export class Operacion implements OnInit {
     );
   }
 
+  /**
+   * Punto 22: terminada la visita, el cliente consulta las encuestas.
+   *
+   * Es la otra mitad de lo que pide el punto —«desde el QR de ingreso,
+   * el cliente puede consultar resultados de encuestas en gráficos
+   * separados por pantalla»—, y por eso vive en el cierre de la cuenta
+   * y no solo en el menú: ahí es donde la persona está parada cuando
+   * su mesa se libera.
+   */
+  protected verResultadosDeEncuestas(): void {
+    this.seccion.set('reportes');
+    this.pagina.set(0);
+    this.enfocarEncabezado();
+  }
+
   private async operarCuenta(
     operar: () => Promise<{ ok: boolean; error?: string }>,
     exito: string,
@@ -2883,7 +3065,6 @@ export class Operacion implements OnInit {
       return;
     }
 
-    const antes = this.demo.descuento();
     this.jugando.set(true);
     const r = await this.demo.jugar(idJuego, gano);
     this.jugando.set(false);
@@ -2891,15 +3072,31 @@ export class Operacion implements OnInit {
       await this.avisarError('No pudimos registrar la partida. Revisá la conexión.');
       return;
     }
-    this.mensaje.set(
-      !gano
-        ? 'Partida registrada. El descuento es solo si ganás en el primer intento.'
-        : r.descuento > antes
-          ? `¡Ganaste! Tenés ${r.descuento} % de descuento en la cuenta.`
-          : antes > 0
-            ? `¡Ganaste! Ya tenías ${antes} % de descuento: no se acumula.`
-            : 'Ganaste, pero el descuento es solo para el primer intento.',
-    );
+    this.mensaje.set(this.resultadoDeLaPartida(r.intento, gano, r.descuento));
+  }
+
+  /**
+   * Qué se le dice a quien acaba de jugar (punto 15).
+   *
+   * La regla que precisó el profesor: la PRIMERA partida de la visita
+   * decide todo. Si la gana, se lleva el porcentaje de ese juego; si la
+   * pierde, esta visita no tiene descuento, juegue lo que juegue
+   * después. Los mensajes de antes decían «el descuento es solo para el
+   * primer intento» sin aclarar que el intento es uno por visita y no
+   * uno por juego, que es justo lo que estaba mal implementado.
+   *
+   * `intento` viene de la base, que lo numera por visita.
+   */
+  private resultadoDeLaPartida(intento: number, gano: boolean, descuento: number): string {
+    if (intento === 1) {
+      return gano
+        ? `¡Ganaste! Tenés ${descuento} % de descuento en la cuenta.`
+        : 'Perdiste la partida que definía el descuento, así que esta visita no tiene. Podés seguir jugando igual.';
+    }
+    const encabezado = gano ? '¡Ganaste!' : 'Esta vez no.';
+    return descuento > 0
+      ? `${encabezado} Tu descuento sigue siendo el ${descuento} % de tu primera partida: no se acumula.`
+      : `${encabezado} El descuento lo definía tu primera partida, y esta visita ya no suma.`;
   }
 
   /**

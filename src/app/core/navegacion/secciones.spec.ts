@@ -2,6 +2,7 @@ import {
   puedeAcceder,
   SECCIONES,
   accesosDelPerfil,
+  menuDelPerfil,
   tipoProductoDelPerfil,
   esGerencia,
 } from './secciones';
@@ -67,5 +68,27 @@ describe('Acceso a secciones por rol', () => {
     expect(puedeAcceder('cliente_registrado', 'reportes')).toBe(true);
     expect(puedeAcceder('cliente_anonimo', 'reportes')).toBe(true);
     expect(accesosDelPerfil(undefined)).toEqual([]);
+  });
+
+  /**
+   * Punto 20, corrección del profesor: el cliente ya no tiene el botón
+   * de «Reportes» suelto en el menú. Se llega desde la encuesta
+   * respondida, desde el QR de ingreso (punto 9) y desde el cierre de
+   * la cuenta (punto 22), así que la sección sigue siendo accesible:
+   * lo que se saca es el botón, no el permiso.
+   */
+  it('el cliente no ve «Reportes» en el menú pero puede abrirlo, y se llama por su nombre', () => {
+    for (const perfil of ['cliente_registrado', 'cliente_anonimo'] as const) {
+      expect(puedeAcceder(perfil, 'reportes')).toBe(true);
+      expect(menuDelPerfil(perfil).map((s) => s.id)).not.toContain('reportes');
+      expect(accesosDelPerfil(perfil).find((s) => s.id === 'reportes')?.titulo).toBe(
+        'Encuestas anteriores',
+      );
+    }
+    // A la gerencia no le cambia nada: lo ve en el menú y con su nombre.
+    expect(menuDelPerfil('supervisor').map((s) => s.id)).toContain('reportes');
+    expect(accesosDelPerfil('supervisor').find((s) => s.id === 'reportes')?.titulo).toBe(
+      'Reportes',
+    );
   });
 });

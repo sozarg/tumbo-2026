@@ -805,7 +805,9 @@
 .view-content > .section-block:has(> .menu-grid),
 .view-content > .section-block:has(> .chat-card),
 .view-content > .section-block:has(> .wait-list),
-.view-content > .section-block:has(> .games-grid) {
+.view-content > .section-block:has(> .games-grid),
+.view-content > .section-block:has(> tumbo-encuesta-form),
+.view-content > .section-block:has(> .encuesta-hecha) {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -1095,20 +1097,80 @@
  * El `overflow: hidden` no es decorativo: la imagen del QR mide más de
  * lo que entra y sin eso se derrama por encima de la tira de pasos.
  */
+/*
+ * EL `nowrap` ES LO QUE EVITA QUE SE PARTA EN DOS COLUMNAS.
+ *
+ * La tarjeta hereda `flex-wrap: wrap` de la versión en fila. En una
+ * COLUMNA de alto acotado, envolver no significa pasar al renglón de
+ * abajo: significa armar una segunda columna al costado. Mientras
+ * adentro hubo solo el QR y el texto entraba justo; al sumar el
+ * formulario del código de visita dejó de entrar, y el QR y el texto se
+ * acomodaron uno al lado del otro, saliéndose de la pantalla.
+ */
 .entrada > .anonymous-entry {
   align-items: center;
   flex-direction: column;
-  justify-content: center;
+  flex-wrap: nowrap;
+  /*
+   * `safe center` y no `center` a secas.
+   *
+   * Centrado, cuando el contenido no entra se desborda por los DOS
+   * lados: la mitad de arriba se dibuja por encima de la tira de pasos.
+   * Pasa apenas se abre el teclado del teléfono, que se come 300px de
+   * alto. `safe` le dice al navegador que, cuando no entra, se comporte
+   * como si estuviera arriba de todo; con lugar de sobra centra igual.
+   */
+  justify-content: safe center;
+  /* Y con el teclado abierto la tarjeta se desliza, que es lo normal
+     mientras se escribe. Sin teclado entra entera y no aparece. */
+  overflow-y: auto;
   gap: 14px;
   min-height: 0;
 }
 
+/*
+ * La tira de pasos se va cuando el alto no da.
+ *
+ * Cuenta el recorrido de entrar por primera vez: con la pantalla entera
+ * ayuda y no molesta, pero son 78 px que en un teléfono corto hacen la
+ * diferencia entre ver y no ver lo que hay que tocar. Dos casos la
+ * necesitan:
+ *
+ * - El teclado abierto sobre el formulario del código, que se come
+ *   unos 300 px (era el único caso que cubría esta regla).
+ * - El paso 2 con la foto puesta. Medido en Chromium: en 320×568 el
+ *   paso pedía 40 px más de los que hay INCLUSO con la vista previa
+ *   aplastada a cero, y en 360×740 la foto quedaba en 74 px. Entre la
+ *   tira de pasos y la foto que el metre usa para encontrar a la
+ *   persona, se va la tira.
+ *
+ * Por eso el corte sube a 780 px y deja de mirar solo el modo código.
+ */
+@media (max-height: 780px) {
+  .entrada > .entrada-pasos {
+    display: none;
+  }
+}
+
+/*
+ * Con el formulario del código abierto, el QR no va.
+ *
+ * Son dos cosas distintas: o escaneás el QR de la puerta, o escribís el
+ * código que anotaste. Dejar las dos achica el QR hasta dejarlo
+ * ilegible —medido: 23px de alto en un teléfono de 740—, y un QR que no
+ * se puede leer no sirve para nada.
+ */
+.entrada > .anonymous-entry--codigo > .qr-preview {
+  display: none;
+}
+
+/* El QR es lo que cede: con el formulario abierto hay menos para él. */
 .entrada > .anonymous-entry > .qr-preview {
   flex: 1;
   align-self: stretch;
   width: auto;
   min-width: 0;
-  min-height: 120px;
+  min-height: 0;
   height: auto;
   overflow: hidden;
 }
@@ -1126,4 +1188,55 @@
 
 .entrada > .anonymous-entry ion-button {
   margin-top: 10px;
+}
+
+/*
+ * EL CÓDIGO DE VISITA DEL CLIENTE SIN CUENTA.
+ *
+ * Se muestra para que la persona lo ANOTE, así que el código va grande,
+ * con espacio entre letras y en una tipografía donde no se confundan
+ * entre sí. El alfabeto ya evita I, O, 0 y 1; el resto lo hace esto.
+ */
+.codigo-visita {
+  border: 1px dashed var(--tumbo-azul-accion, #006ae7);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgb(0 106 231 / 6%);
+  text-align: center;
+}
+
+.codigo-visita strong {
+  color: var(--tumbo-azul-sombra, #003592);
+  font-size: 13px;
+}
+
+.codigo-visita__valor {
+  margin: 4px 0 6px;
+  color: var(--tumbo-azul-accion, #006ae7);
+  font-family: 'Courier New', monospace;
+  font-size: clamp(26px, 9vw, 38px);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  /* El espaciado empuja a la derecha; esto recentra el bloque. */
+  text-indent: 0.22em;
+}
+
+.codigo-visita__ayuda {
+  margin: 0;
+  color: #526582;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.codigo-visita__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.codigo-visita__form ion-input {
+  --background: var(--tumbo-azul-brillante, #f8fbfd);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }

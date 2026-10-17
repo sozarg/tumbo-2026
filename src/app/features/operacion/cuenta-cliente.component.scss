@@ -201,8 +201,14 @@ ion-button.secundario {
  *
  * Así que en esos estados el aviso se queda con el alto, centrado, y
  * el botón de la acción baja al pie.
+ *
+ * EL CIERRE QUEDA AFUERA (de ahí el segundo `:not`). Ahí tampoco hay
+ * detalle, pero la pantalla no está vacía: tiene el total y tres
+ * botones. Medido en Chromium, el aviso en versión grande se plantaba
+ * en 188 px —no baja de ahí porque su contenido centrado no se deja
+ * achicar— y empujaba «Salir» fuera de la pantalla en 360×640.
  */
-.cuenta:not(:has(.detalle)) > .aviso {
+.cuenta:not(:has(.detalle, .aviso--listo)) > .aviso {
   flex: 1;
   align-items: center;
   justify-content: center;
@@ -212,14 +218,78 @@ ion-button.secundario {
   text-align: center;
 }
 
-.cuenta:not(:has(.detalle)) > .aviso > ion-icon {
+.cuenta:not(:has(.detalle, .aviso--listo)) > .aviso > ion-icon {
   font-size: 3rem;
 }
 
-.cuenta:not(:has(.detalle)) > .aviso strong {
+.cuenta:not(:has(.detalle, .aviso--listo)) > .aviso strong {
   font-size: 1.05rem;
 }
 
-.cuenta:not(:has(.detalle)) > .aviso p {
+.cuenta:not(:has(.detalle, .aviso--listo)) > .aviso p {
   max-width: 24rem;
+}
+
+/*
+ * EL TOTAL, MÁS CHICO UNA VEZ COBRADO.
+ *
+ * El número grande es del punto 21: es lo que la persona mira antes de
+ * pagar, y ahí manda. Terminada la visita ya no decide nada —es un
+ * comprobante— y los 133 px que medía dejaban sin lugar a las tres
+ * salidas en pantallas de 568 y 640 px de alto. Sigue siendo el texto
+ * más grande de la pantalla, solo que sin quedarse con el alto.
+ */
+.cuenta:has(.aviso--listo) > .total {
+  padding: 0.9rem 1rem;
+}
+
+.cuenta:has(.aviso--listo) > .total strong {
+  font-size: clamp(1.6rem, 8vw, 2.1rem);
+}
+
+/*
+ * EL CIERRE SE ADAPTA AL ALTO QUE HAY.
+ *
+ * Son dos problemas opuestos y por eso van en dos tramos medidos en
+ * Chromium, no en uno solo:
+ *
+ * - De 700 px para arriba sobraba aire al pie —284 px en 412×915—, que
+ *   es lo que el enunciado llama no ocupar el espacio disponible. El
+ *   aire se reparte con dos márgenes automáticos, que centran el par
+ *   «total + confirmación» entre el título y los botones.
+ *
+ *   NO se estira el aviso, que fue lo primero que probé: estirado medía
+ *   740 px y quedaba un recuadro amarillo casi vacío con una tilde en
+ *   el medio. El aire tiene que ir ENTRE las cajas, no adentro de una.
+ * - De 620 px para abajo faltaba: en 320×568 el conjunto desbordaba
+ *   50 px y «Salir» quedaba fuera de la pantalla. Ahí se achican los
+ *   espacios y los botones, que siguen por encima de los 44 px de área
+ *   táctil que pide WCAG.
+ */
+@media (min-height: 700px) {
+  .cuenta:has(.aviso--listo) > .total {
+    margin-top: auto;
+  }
+
+  .cuenta:has(.aviso--listo) > .aviso {
+    margin-bottom: auto;
+  }
+}
+
+@media (max-height: 620px) {
+  .cuenta:has(.aviso--listo) {
+    gap: 0.55rem;
+  }
+
+  .cuenta:has(.aviso--listo) > .total {
+    padding: 0.6rem 1rem;
+  }
+
+  .cuenta:has(.aviso--listo) > .aviso {
+    padding: 0.7rem;
+  }
+
+  .cuenta:has(.aviso--listo) ion-button {
+    min-height: 46px;
+  }
 }

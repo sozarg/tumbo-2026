@@ -72,6 +72,19 @@ export class RegistroClienteService {
     // formulario deja escribirlo con puntos, así que se limpian acá.
     const dni = datos.dni.replace(/\D/g, '');
 
+    /*
+     * Se pregunta ANTES de crear nada.
+     *
+     * Auth crea la cuenta y el perfil en la misma transacción, así que
+     * un dato repetido vuelve como «Database error saving new user»,
+     * sin decir cuál. Esta consulta es la única forma de nombrar el
+     * campo. Si la función todavía no está en la base —la migración no
+     * se aplicó— se sigue de largo: el alta funciona igual, solo que el
+     * mensaje vuelve a ser el genérico.
+     */
+    const tomado = await this.datoTomado(cliente, correo, dni);
+    if (tomado) return { ok: false, error: tomado };
+
     const { data, error } = await cliente.auth.signUp({
       email: correo,
       password: datos.clave,
@@ -84,7 +97,12 @@ export class RegistroClienteService {
       },
     });
 
-    if (error) return { ok: false, error: this.traducir(error.message) };
+    if (error) {
+      // Queda en la consola del teléfono: el mensaje que se muestra está
+      // traducido y pierde el detalle que hace falta para diagnosticar.
+      console.error('[TUMBO] Error al crear la cuenta del cliente', error);
+      return { ok: false, error: this.traducir(error.message) };
+    }
     if (!data.user) return { ok: false, error: 'No se pudo crear la cuenta. Reintentá.' };
 
     /*
@@ -197,6 +215,27 @@ export class RegistroClienteService {
    * esto, el cliente lee «duplicate key value violates unique
    * constraint usuarios_dni_key» y no entiende nada.
    */
+  /** El mensaje del dato repetido, o `undefined` si se puede seguir. */
+  private async datoTomado(
+    cliente: SupabaseClient,
+    correo: string,
+    dni: string,
+  ): Promise<string | undefined> {
+    const { data, error } = await cliente.rpc('alta_cliente_disponible', {
+      p_correo: correo,
+      p_dni: dni,
+    });
+
+    if (error) {
+      console.error('[TUMBO] No se pudo revisar si el correo o el DNI estaban tomados', error);
+      return undefined;
+    }
+
+    if (data === 'correo') return 'Ese correo ya tiene una cuenta. Probá ingresar.';
+    if (data === 'dni') return 'Ese DNI ya está registrado.';
+    return undefined;
+  }
+
   private traducir(mensaje: string): string {
     const texto = mensaje.toLowerCase();
 
@@ -205,6 +244,28 @@ export class RegistroClienteService {
     }
     if (texto.includes('already registered') || texto.includes('usuarios_correo_key')) {
       return 'Ese correo ya tiene una cuenta. Probá ingresar.';
+    }
+    /*
+     * «DATABASE ERROR SAVING NEW USER».
+     *
+     * Es lo que contesta Auth cuando el trigger que crea la fila de
+     * `usuarios` levanta una excepción, y no dice cuál: la cuenta de
+     * Auth y el perfil se crean en la misma transacción, así que un DNI
+     * repetido, un correo repetido o un nombre que no pasa el formato
+     * llegan todos como este mismo texto.
+     *
+     * Antes caía en el mensaje de abajo —«revisá los datos y la
+     * conexión»—, que manda a mirar el wifi cuando el problema es que
+     * el DNI ya está usado. Nombrar los dos candidatos reales es lo
+     * honesto mientras la comprobación previa no esté disponible.
+     */
+    if (
+      texto.includes('database error') ||
+      texto.includes('unexpected_failure') ||
+      texto.includes('duplicate key') ||
+      texto.includes('violates')
+    ) {
+      return 'No pudimos crear la cuenta: fijate que el DNI y el correo no estén ya registrados.';
     }
     if (texto.includes('password')) {
       return 'La contraseña no cumple con lo que pide el servidor. Probá con una más larga.';

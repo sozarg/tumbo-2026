@@ -19,6 +19,28 @@
       <div class="login-card-wrapper">
         <div class="login-card">
           <div class="login-card__content">
+            <!--
+              LA SESIÓN QUE QUEDÓ ABIERTA.
+
+              Va arriba de todo y no al final: quien llega acá con la
+              sesión viva casi siempre llegó sin querer (el botón de
+              atrás de Android), y lo que necesita es volver, no
+              escribir su correo de nuevo. Para el cliente anónimo es
+              la única puerta de vuelta: su identidad es el token del
+              teléfono, no tiene clave que escribir.
+            -->
+            @if (sesionAbierta(); as abierta) {
+              <section class="login-card__sesion" aria-labelledby="sesion-abierta-title">
+                <h2 id="sesion-abierta-title">Tenés una sesión abierta</h2>
+                <p>
+                  {{ abierta.nombres }} {{ abierta.apellidos ?? '' }} · {{ abierta.etiquetaPerfil }}
+                </p>
+                <ion-button expand="block" type="button" (click)="seguirEnLaSesion()">
+                  Seguir como {{ abierta.nombres }}
+                </ion-button>
+                <p class="login-card__sesion-pie">O ingresá con otra cuenta.</p>
+              </section>
+            }
             <form [formGroup]="formulario" (ngSubmit)="ingresar()" novalidate>
               <div class="field" [class.field--invalid]="campoInvalido('correo')">
                 <label for="correo">Correo electrónico</label>

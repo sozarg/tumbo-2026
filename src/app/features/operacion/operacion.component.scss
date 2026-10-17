@@ -510,6 +510,131 @@
   flex: 1 1 14rem;
 }
 
+/*
+ * LA FOTO DE LA ENTRADA CEDE, NO MANDA (corrección del profesor).
+ *
+ * No tenía ninguna regla: la vista previa salía al tamaño natural de lo
+ * que da la cámara —vertical, 3:4— y el paso entero desbordaba. Medido
+ * en Chromium con una foto 1200×1600: 184 px de más en 412×915 y
+ * 446 px en 320×568, o sea el scroll que marcó el profesor.
+ *
+ * `object-fit: contain` y no `cover` porque esto es la comprobación de
+ * lo que se va a mandar: recortarla mostraría algo distinto de lo que
+ * el metre va a ver para encontrar a la persona. El recuadro queda
+ * detrás, así que el aire de los lados no se lee como un agujero.
+ *
+ * El alto lo decide el hueco que queda, con la regla de más abajo en
+ * `operacion-visual.scss`; acá solo se define cómo se dibuja.
+ */
+.photo-control {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  /*
+   * `min-content` y no `0`: el recuadro puede achicarse todo lo que
+   * haga falta, pero NUNCA por debajo de lo que miden sus partes. Con
+   * `0` el flex le daba 77 px para un contenido de 154 y el «Quitar
+   * foto» se salía de la caja, pisado por «Anotarme». Lo que cede es la
+   * imagen, que para eso tiene `flex` y su propio piso.
+   */
+  min-height: min-content;
+}
+
+.photo-control img {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border-radius: 0.8rem;
+  background: var(--tumbo-azul-brillante);
+  object-fit: contain;
+}
+
+/*
+ * El «Quitar foto» no se achica NUNCA.
+ *
+ * Por defecto un hijo de flex puede encogerse, y en 320×568 se encogía
+ * a cero: la foto quedaba y el botón para cambiarla desaparecía, que es
+ * la peor combinación posible —quien se sacó una foto mala no tenía
+ * cómo repetirla—. Lo que cede es la imagen, para eso tiene el `flex`
+ * de arriba.
+ */
+.photo-control ion-button {
+  flex: 0 0 auto;
+}
+
+/*
+ * EL PASO DE LA ENTRADA, EN COLUMNA DE VERDAD (corrección del profesor).
+ *
+ * Angosto ya se veía apilado, pero no era una columna: era una FILA con
+ * `flex-wrap: wrap` —la regla de arriba, la que comparte con `.form-row`
+ * y compañía— donde cada campo ocupaba un renglón porque no entraban dos.
+ * Mientras nada tuviera que repartir alto daba igual; con la foto no,
+ * porque en una fila no hay forma de decir «quedate con lo que sobre de
+ * alto».
+ *
+ * `flex-wrap: nowrap` explícito y en mayúsculas mentales: una columna
+ * con `wrap` y alto acotado no desborda hacia abajo, arma una SEGUNDA
+ * COLUMNA al costado. Ya nos pasó en el tablero de juegos y en la
+ * tarjeta de entrada. La primera versión de este arreglo lo escribió en
+ * `operacion-visual.scss` y perdió el desempate de especificidad contra
+ * esta misma hoja: los campos se encimaron.
+ *
+ * El `flex: 1 1 14rem` del campo también se apaga: en una columna ese
+ * 14rem es ALTO, no ancho, y el campo se comía la pantalla.
+ */
+@media (max-width: 560px) {
+  .anonymous-form {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .anonymous-form ion-input {
+    flex: 0 0 auto;
+  }
+
+  .anonymous-form > .photo-control {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+/*
+ * Con poco alto, la vista previa tiene un piso.
+ *
+ * Es el único elástico del paso, así que sin piso se aplastaba hasta
+ * desaparecer —0 px medidos en 360×640— y la persona no veía lo que
+ * acababa de sacar. Una vista previa que no se ve no es una vista
+ * previa. 6 rem es lo mínimo para reconocer una cara.
+ *
+ * El piso va en la imagen y no en `.photo-control`: el recuadro incluye
+ * el «Quitar foto», así que un piso puesto ahí se lo comía el botón y
+ * a la foto le quedaban 22 px.
+ *
+ * El aire para esos 6 rem sale de la tira de pasos, que a esta misma
+ * altura ya se escondió (`operacion-layout.component.scss`), y del
+ * aviso de «QR validado», que acá se achica: son tres renglones en
+ * 320 px de ancho y en esta pantalla cada renglón se paga con foto.
+ *
+ * El corte está en 780 px y no en 640: en 360×740 —un teléfono chico,
+ * pero de los que hay— la foto quedaba en 74 px con la tira de pasos
+ * puesta.
+ */
+@media (max-height: 780px) {
+  .photo-control img {
+    min-height: 6rem;
+  }
+
+  .anonymous-form > .form-hint {
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+}
+
 .qr-preview {
   display: grid;
   width: 5.5rem;
@@ -817,9 +942,18 @@
 .chat-messages {
   display: grid;
   flex: 1;
-  /* Los mensajes se apoyan abajo: una conversación corta no queda
-     flotando arriba con media tarjeta vacía debajo. */
-  align-content: end;
+  /*
+   * Los mensajes se apoyan abajo: una conversación corta no queda
+   * flotando arriba con media tarjeta vacía debajo.
+   *
+   * `safe end` y no `end` a secas: cuando la conversación es más larga
+   * que la tarjeta, `end` empuja el principio FUERA del área que se
+   * puede desplazar, así que los mensajes viejos quedan recortados y no
+   * hay forma de llegar a ellos. Con `safe`, apenas deja de entrar se
+   * comporta como si estuviera apoyado arriba y la lista desliza
+   * entera.
+   */
+  align-content: safe end;
   gap: 0.55rem;
   min-height: 0;
   padding: 0.25rem;
@@ -970,9 +1104,20 @@ ion-button::part(native) {
   position: static;
   margin: 0;
 }
+/*
+ * La conversación DESLIZA ADENTRO DE SU TARJETA.
+ *
+ * Acá había `overflow: visible`, que es lo contrario: los mensajes se
+ * derramaban fuera de la tarjeta y se dibujaban encima del título de la
+ * sección. Quedó de cuando el chat paginaba y la tarjeta mostraba de a
+ * pocos; desde P2 la conversación entera vive adentro y tiene que
+ * deslizar sola, que es como el profesor la pidió.
+ *
+ * El `max-height: none` sí se queda: el alto lo decide el flex de la
+ * tarjeta, no un tope fijo.
+ */
 .chat-messages {
   max-height: none;
-  overflow: visible;
 }
 .chat-message {
   width: 100%;
@@ -1310,4 +1455,103 @@ strong {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/*
+ * EL TELÉFONO MÁS CORTO: TODO ENTRA, PERO AJUSTADO.
+ *
+ * En 320×568 —y con la tira de pasos ya escondida— el paso seguía
+ * pidiendo unos 55 px más de los que hay: el recuadro de la foto
+ * recibía 77 px cuando su contenido necesitaba 154, así que el «Quitar
+ * foto» se iba de la caja y quedaba pisado por «Anotarme». Un botón que
+ * no se ve es peor que una foto chica: quien se sacó una foto mala no
+ * tenía cómo repetirla.
+ *
+ * Los 55 px salen de tres lados, ninguno de ellos el área táctil: los
+ * botones bajan a 44 px, que es el mínimo de WCAG AA y no menos; el
+ * piso de la vista previa baja a 4 rem, que sigue dejando ver qué se
+ * sacó; y el aire entre campos se acorta.
+ */
+@media (max-height: 620px) {
+  .anonymous-form {
+    gap: 0.4rem;
+  }
+
+  /*
+   * Acá la imagen se queda sin piso: es el último recurso antes de que
+   * algo se salga de la pantalla, y entre una vista previa de 48 px y
+   * un botón pisado, preferimos la vista previa chica.
+   */
+  .photo-control img {
+    min-height: 0;
+  }
+
+  .photo-control ion-button,
+  .anonymous-form > ion-button,
+  .anonymous-form tumbo-boton-confirmacion ion-button {
+    min-height: 44px;
+  }
+}
+
+/*
+ * LA ENCUESTA YA RESPONDIDA, EN GRANDE (punto 20).
+ *
+ * El profesor pidió un cartel «bastante grande» y el acceso a las
+ * encuestas anteriores. Como la sección no tiene nada más que mostrar
+ * una vez respondida, la tarjeta se queda con todo el alto en lugar de
+ * ser una franja arriba con fondo vacío debajo, que es justo lo que el
+ * enunciado marca como error:
+ *
+ *   «Las pantallas de espera, error y contenido vacío deben ocupar el
+ *    espacio disponible con una composición intencional.»
+ *
+ * `flex-wrap: nowrap` explícito y `justify-content: safe center`: una
+ * columna de alto acotado con `wrap` arma una segunda columna al
+ * costado, y un `center` a secas desborda para los DOS lados cuando el
+ * contenido no entra, escondiendo el principio. Las dos cosas ya nos
+ * mordieron antes en esta misma pantalla.
+ */
+.encuesta-hecha {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: safe center;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  border: 0.12rem solid var(--tumbo-azul-accion);
+  border-radius: 1rem;
+  padding: 1.5rem 1.25rem;
+  overflow-y: auto;
+  background: var(--tumbo-crema-brillante);
+  color: var(--tumbo-azul-sombra);
+  text-align: center;
+  min-height: 0;
+}
+
+.encuesta-hecha > ion-icon {
+  flex-shrink: 0;
+  color: var(--tumbo-azul-accion);
+  font-size: clamp(2.5rem, 14vw, 3.5rem);
+}
+
+.encuesta-hecha strong {
+  font-size: clamp(1.1rem, 5.5vw, 1.4rem);
+  line-height: 1.2;
+}
+
+.encuesta-hecha p {
+  max-width: 24rem;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* El botón no se achica: es la única acción que queda en la pantalla. */
+.encuesta-hecha ion-button {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 22rem;
+  margin-top: 0.5rem;
+  min-height: 48px;
 }

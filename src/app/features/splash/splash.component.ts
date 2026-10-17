@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { IonButton } from '@ionic/angular/ion-button';
 import { IonContent } from '@ionic/angular/ion-content';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
+import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { SesionService } from '../../core/services/sesion.service';
 import { SonidosService } from '../../core/services/sonidos.service';
 import { FondoDecorativo } from '../../shared/components/fondo-decorativo/fondo-decorativo.component';
@@ -20,6 +21,22 @@ const ESPERA_IMAGEN = 1_500;
 })
 export class Splash implements OnInit, OnDestroy {
   private readonly router = inject(Router);
+  /*
+   * SE INYECTA ACÁ A PROPÓSITO, AUNQUE SOLO SE USE `listo`.
+   *
+   * El proveedor de autenticación es una factory, o sea perezoso: se
+   * construye recién cuando alguien lo pide, y con él arranca la
+   * restauración de la sesión guardada. Mientras el splash no lo
+   * pedía, nadie la había restaurado todavía cuando esta pantalla
+   * decidía a dónde ir: `estaAutenticado()` daba falso SIEMPRE y la
+   * aplicación abría en el ingreso aunque hubiera sesión.
+   *
+   * Para un empleado eso se notaba apenas —volvía a entrar con su
+   * correo—, pero al cliente anónimo lo dejaba afuera para siempre:
+   * su identidad es el token guardado y no tiene credenciales con qué
+   * volver a entrar.
+   */
+  private readonly autenticacion = inject(AUTENTICACION);
   private readonly sesion = inject(SesionService);
   private readonly sonidos = inject(SonidosService);
   private readonly precarga = inject(PrecargaDiferida);
@@ -77,6 +94,9 @@ export class Splash implements OnInit, OnDestroy {
     this.navegando = true;
     this.error.set(false);
     try {
+      // Y se espera a que termine: si la restauración tarda más que la
+      // animación, igual se decide con la sesión ya cargada.
+      await this.autenticacion.listo;
       const destino = this.sesion.estaAutenticado() ? '/operacion' : '/ingreso';
       const completo = await this.router.navigate([destino], { replaceUrl: true });
       if (completo) {

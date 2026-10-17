@@ -349,3 +349,32 @@
 .carousel-position .carousel-position--active {
   background: var(--tumbo-azul-sombra);
 }
+
+/*
+ * El aviso de sesión abierta. Se despega del formulario con una línea
+ * abajo para que se lea como «esto es otra cosa» y no como el primer
+ * campo del ingreso.
+ */
+.login-card__sesion {
+  border-bottom: 1px solid #bac5d3;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  text-align: center;
+}
+
+.login-card__sesion h2 {
+  margin: 0 0 2px;
+  color: var(--tumbo-azul-sombra, #003592);
+  font-size: 15px;
+}
+
+.login-card__sesion p {
+  margin: 0 0 10px;
+  color: #526582;
+  font-size: 13px;
+}
+
+.login-card__sesion-pie {
+  margin: 10px 0 0;
+  font-size: 12px;
+}

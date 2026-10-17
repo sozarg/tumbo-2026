@@ -1,14 +1,65 @@
+/*
+ * LA ENCUESTA OCUPA LA PANTALLA (corrección del profesor).
+ *
+ * Estaba toda arriba y abajo quedaba un vacío enorme: medido en
+ * Chromium, 557 px libres en la pregunta del desplegable en 412×915,
+ * 530 en la del comentario, 513 en la del interruptor. Una pregunta
+ * sola con un control chiquito arriba de todo y media pantalla en
+ * blanco es justo lo que el enunciado marca como error:
+ *
+ *   «Las pantallas de espera, error y contenido vacío deben ocupar el
+ *    espacio disponible con una composición intencional.»
+ *
+ * Y al mismo tiempo pasaba lo contrario en teléfonos cortos: las
+ * preguntas con muchas opciones DESBORDABAN —176 px de más en 320×568
+ * con las casillas—, así que no alcanzaba con estirar, había que
+ * repartir.
+ *
+ * El reparto es: el progreso arriba, la pregunta debajo, los botones
+ * abajo de todo, y en el medio el control con el alto que quede,
+ * centrado ahí. Los botones al pie no es un detalle: es donde llega el
+ * pulgar sin reacomodar la mano.
+ *
+ * ESTIRAR LA CAJA NO ALCANZA, y lo probé: con la tarjeta a todo el
+ * alto y los controles como estaban, el interruptor quedaba como un
+ * renglón de 44 px flotando en 500 px de amarillo. El hueco se mudaba,
+ * no se iba. Por eso la segunda mitad del arreglo está más abajo: los
+ * controles crecen de verdad —estrellas grandes, opciones como fichas,
+ * comentario alto—, así el aire se llena con contenido legible y no
+ * estirando una caja vacía.
+ *
+ * Probé también la tarjeta compacta centrada, y es peor: el encabezado
+ * de la sección queda colgado arriba y el hueco pasa al panel crema,
+ * que es más grande todavía.
+ */
 :host {
-  display: block;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .encuesta {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /*
+   * `nowrap` explícito: una columna de alto acotado con `wrap` no
+   * desborda hacia abajo, arma una SEGUNDA COLUMNA al costado. Ya nos
+   * pasó en el tablero de juegos y en la tarjeta de entrada.
+   */
+  flex-wrap: nowrap;
   gap: 1rem;
   border-radius: 1rem;
   padding: clamp(0.9rem, 4vw, 1.25rem);
   background: var(--tumbo-crema-brillante);
   box-shadow: 0 0.5rem 1.3rem rgb(0 53 146 / 8%);
+  min-height: 0;
+}
+
+.encuesta__progreso,
+.encuesta__acciones {
+  flex: 0 0 auto;
 }
 
 .encuesta__progreso {
@@ -19,20 +70,63 @@
 }
 
 fieldset {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  flex-wrap: nowrap;
   gap: 0.8rem;
   min-width: 0;
+  min-height: 0;
   margin: 0;
   border: 0;
   padding: 0;
 }
 
+legend,
+.encuesta__error {
+  flex: 0 0 auto;
+}
+
+/*
+ * EL CONTROL SE QUEDA CON LO QUE SOBRA.
+ *
+ * `justify-content: safe center` y no `center` a secas: un centrado
+ * común desborda para los DOS lados cuando el contenido no entra, y lo
+ * que se va por arriba queda tapado por la pregunta y fuera del
+ * alcance del deslizamiento. Con `safe`, cuando no entra se comporta
+ * como `start` y se puede deslizar hasta el final.
+ */
+.encuesta__control {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: safe center;
+  gap: 0.6rem;
+  min-height: 0;
+  /*
+   * El relleno de arriba no es estético: `overflow-y: auto` recorta lo
+   * que sobresale de la caja, y la etiqueta flotante del comentario
+   * —«Tu comentario», que se dibuja montada sobre el borde— quedaba
+   * cortada al medio.
+   */
+  padding-top: 0.6rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/*
+ * La pregunta es lo que la persona tiene que leer primero, así que
+ * crece con la pantalla en vez de quedarse en tamaño de etiqueta.
+ */
 legend {
-  margin-bottom: 0.8rem;
+  margin: 0;
   padding: 0;
   color: var(--tumbo-azul-sombra);
-  font-size: clamp(1.05rem, 4.5vw, 1.2rem);
+  font-size: clamp(1.15rem, 5.5vw, 1.5rem);
   font-weight: 700;
+  line-height: 1.25;
 }
 
 legend small {
@@ -41,20 +135,38 @@ legend small {
 
 .estrellas {
   display: flex;
-  flex-wrap: wrap;
+  /*
+   * `nowrap`: con `wrap` y estrellas grandes, la quinta se caía sola a
+   * un segundo renglón —4 arriba y 1 abajo, medido en 412 px— y una
+   * escala de 5 partida en dos no se lee como escala.
+   */
+  flex-wrap: nowrap;
+  justify-content: center;
   gap: 0.35rem;
 }
 
+/*
+ * Las estrellas crecen con la pantalla. Medían 48 px fijos, que en un
+ * teléfono grande son cinco puntitos en medio de medio metro de aire;
+ * el tope las deja en 72 px para que sigan entrando cinco en 320 px.
+ */
 .estrellas button {
   display: grid;
   place-items: center;
-  min-width: 48px;
-  min-height: 48px;
+  /*
+   * Se reparten el ancho en partes iguales en vez de medir un tamaño
+   * fijo: así entran las cinco en cualquier teléfono y crecen todo lo
+   * que el ancho permita.
+   */
+  flex: 1 1 0;
+  aspect-ratio: 1;
+  min-width: 44px;
+  max-width: 76px;
   border: 0;
   border-radius: 0.6rem;
   background: transparent;
   color: var(--tumbo-naranja-profundo);
-  font-size: 2rem;
+  font-size: clamp(1.8rem, 11vw, 2.9rem);
   cursor: pointer;
 }
 
@@ -67,24 +179,63 @@ legend small {
   background: rgb(251 177 3 / 25%);
 }
 
+/*
+ * LAS OPCIONES SON FICHAS, NO RENGLONES.
+ *
+ * Una lista de radios pelados ocupa 44 px cada uno y deja el resto del
+ * alto vacío. Con fondo, borde y aire propio cada opción se vuelve un
+ * blanco de toque cómodo y la lista llena la pantalla con contenido de
+ * verdad, no estirando una caja. El `clamp` con `vh` las achica sola
+ * en teléfonos cortos, que es donde antes desbordaban.
+ */
 ion-radio-group,
 .opciones {
   display: grid;
-  gap: 0.4rem;
+  gap: clamp(0.4rem, 1.2vh, 0.7rem);
 }
 
 ion-radio,
 ion-checkbox,
 ion-toggle {
+  /*
+   * El alto se da con relleno y no con `min-height`: el control de
+   * Ionic alinea su contenido arriba cuando la caja crece por altura
+   * mínima, y la etiqueta quedaba pegada al borde superior de la
+   * ficha. Con relleno simétrico queda centrada sin pelearse con las
+   * partes internas del componente.
+   */
   min-height: 44px;
+  border: 0.1rem solid rgb(0 53 146 / 18%);
+  border-radius: 0.8rem;
+  padding: clamp(0.35rem, 2.6vh, 1.6rem) 0.85rem;
+  background: var(--tumbo-azul-brillante);
   color: var(--tumbo-azul-sombra);
+  font-size: clamp(0.95rem, 4vw, 1.05rem);
   --border-color: var(--tumbo-azul-sombra);
   --border-color-checked: var(--tumbo-azul-accion);
   --checkbox-background-checked: var(--tumbo-azul-accion);
   --color-checked: var(--tumbo-azul-accion);
 }
 
+/* La elegida se distingue sin depender solo del punto del control. */
+ion-radio.radio-checked,
+ion-checkbox.checkbox-checked,
+ion-toggle.toggle-checked {
+  border-color: var(--tumbo-azul-accion);
+  background: rgb(0 106 231 / 10%);
+}
+
+/* El desplegable es una sola línea: se le da cuerpo para que no quede
+   como un renglón perdido en el medio de la pantalla. */
+ion-select {
+  min-height: clamp(56px, 13vh, 110px);
+  font-size: clamp(0.95rem, 4vw, 1.05rem);
+  --padding-top: 0.6rem;
+  --padding-bottom: 0.6rem;
+}
+
 ion-range {
+  padding-block: clamp(0.5rem, 6vh, 3rem);
   --bar-background-active: var(--tumbo-azul-accion);
   --knob-background: var(--tumbo-azul-accion);
   --pin-background: var(--tumbo-azul-sombra);
@@ -109,6 +260,16 @@ ion-range {
   gap: 0.6rem;
 }
 
+/*
+ * El comentario se queda con el alto, que es el control al que más le
+ * sirve: una caja alta invita a escribir y una de dos renglones, no.
+ */
+ion-textarea {
+  flex: 1;
+  min-height: clamp(7rem, 34vh, 22rem);
+  font-size: clamp(0.95rem, 4vw, 1.05rem);
+}
+
 ion-button {
   min-height: 52px;
   margin: 0;
@@ -124,4 +285,28 @@ ion-button.siguiente {
 ion-button.anterior {
   --color: var(--tumbo-azul-sombra);
   --border-color: var(--tumbo-azul-sombra);
+}
+
+/*
+ * EN EL TELÉFONO MÁS CORTO, EL AIRE SE RECORTA ANTES QUE EL CONTENIDO.
+ *
+ * En 320×568 los dos botones no entraban en un renglón —`minmax(8rem)`
+ * pedía 256 px más el espacio, y el ancho útil es 270— así que se
+ * apilaban y se comían 58 px que le hacían falta a las opciones: de
+ * las seis casillas se veía una y media. Con 7 rem entran los dos
+ * juntos, y los 44 px de alto siguen siendo el mínimo táctil de WCAG.
+ */
+@media (max-height: 640px) {
+  .encuesta {
+    gap: 0.6rem;
+    padding: 0.75rem;
+  }
+
+  .encuesta__acciones {
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  }
+
+  ion-button {
+    min-height: 44px;
+  }
 }

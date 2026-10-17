@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { vi } from 'vitest';
 import { PrecargaDiferida } from '../../core/rutas/precarga-diferida';
+import { AUTENTICACION } from '../../core/services/autenticacion.port';
 import { SesionService } from '../../core/services/sesion.service';
 import { SonidosService } from '../../core/services/sonidos.service';
 import { Splash } from './splash.component';
@@ -41,6 +42,11 @@ describe('Splash', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: Router, useValue: { navigate: navegar } },
+        /*
+         * El splash espera a que la sesión guardada se restaure antes
+         * de decidir a dónde ir; sin esta promesa no decide nunca.
+         */
+        { provide: AUTENTICACION, useValue: { listo: Promise.resolve() } },
         { provide: SesionService, useValue: { estaAutenticado: () => autenticado } },
         { provide: PrecargaDiferida, useValue: { liberar } },
         { provide: SonidosService, useValue: { sonarApertura: sonido } },
