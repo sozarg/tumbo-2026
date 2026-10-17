@@ -47,7 +47,6 @@ import { IonSelectOption } from '@ionic/angular/ion-select-option';
 import { IonTextarea } from '@ionic/angular/ion-textarea';
 import { IonToast } from '@ionic/angular/ion-toast';
 import { addIcons } from 'ionicons';
-import { Paginador } from '../../shared/components/paginador/paginador.component';
 import { BotonConfirmacion } from '../../shared/components/boton-confirmacion/boton-confirmacion.component';
 import { CampoClave } from '../../shared/components/campo-clave/campo-clave.component';
 import { ResumenAlta } from '../../shared/components/resumen-alta/resumen-alta.component';
@@ -168,7 +167,6 @@ import { EsperaGlobal } from '../../core/ui/espera-global.service';
     IonSelectOption,
     IonTextarea,
     IonToast,
-    Paginador,
     BotonConfirmacion,
     CampoClave,
     ResumenAlta,
@@ -227,7 +225,82 @@ export class Operacion implements OnInit {
    * Arranca en 1 para que la primera pasada dibuje al menos una tarjeta:
    * es la que se mide para saber cuántas entran.
    */
+  /**
+   * Los tres juegos del punto 15, con lo que paga cada uno.
+   *
+   * Vive acá y no en el servicio porque es la cara visible de la
+   * sección: el descuento que otorga cada partida lo decide la base
+   * (`validar_partida`), esto solo lo cuenta.
+   */
+  protected readonly premiosDeJuegos = [
+    {
+      numero: 1,
+      etiqueta: 'Recolección',
+      porcentaje: 10,
+      titulo: 'Recolección tumbito',
+      detalle:
+        'Juntá 50 puntos de comida en 10 segundos. ¡Cuidado! A Tumbito no le gusta el brócoli.',
+    },
+    {
+      numero: 2,
+      etiqueta: 'Adivinanza',
+      porcentaje: 15,
+      titulo: 'Adivinanza del número',
+      detalle: 'Adiviná el número del 1 al 50 en seis intentos.',
+    },
+    {
+      numero: 3,
+      etiqueta: 'Piedra, papel o tijera',
+      porcentaje: 20,
+      titulo: 'Piedra, papel o tijera',
+      detalle: 'Una mano contra Tumbito. Si empatan, se elige de nuevo.',
+    },
+  ] as const;
+
+  /**
+   * Quién juega sin que la partida cuente para el descuento.
+   *
+   * El descuento del punto 15 es del cliente registrado con el pedido
+   * confirmado: lo decide la base. El anónimo y el personal igual pueden
+   * jugar —el primero porque se lo pidió así, el segundo para poder
+   * mostrarlo— pero su partida no se registra ni paga nada.
+   */
+  protected readonly juegaSinDescuento = computed(
+    () => this.usuario()?.perfil !== 'cliente_registrado',
+  );
+
+  /** Lo que se le explica a quien juega sin descuento. */
+  protected readonly avisoSinDescuento = computed(() =>
+    this.usuario()?.perfil === 'cliente_anonimo'
+      ? 'Podés jugar todas las veces que quieras. El descuento es solo para clientes registrados.'
+      : 'Estás jugando de prueba: el descuento es del cliente registrado con su pedido confirmado.',
+  );
+
+  /** Lo mismo que `hayLugarEnEspera`, para el listado de personal. */
+  protected readonly hayLugarEnPersonal = computed(() => this.sobraLugarEn(this.demo.empleados()));
+
+  /**
+   * Si abajo del listado queda lugar sin usar.
+   *
+   * Son dos casos distintos y los dos dejan la tarjeta a medio llenar:
+   * que la última página venga incompleta (entran dos fichas y queda
+   * una sola) o que sobre espacio aun con la página llena, porque
+   * `porPagina` redondea para abajo. El segundo se mide en píxeles
+   * (`sobraEnLista`); el primero se cuenta.
+   */
+  private sobraLugarEn(elementos: readonly unknown[]): boolean {
+    if (elementos.length === 0) return false;
+    const enPantalla = this.paginar(elementos, this.porPagina()).length;
+    return enPantalla < this.porPagina() || this.sobraEnLista() >= 96;
+  }
+
+  /** El juego que se está mostrando, elegido con las fichas de arriba. */
+  protected readonly juegoActual = computed(
+    () => this.premiosDeJuegos[Math.min(this.pagina(), this.premiosDeJuegos.length - 1)],
+  );
   protected readonly porPagina = signal(1);
+  /** Píxeles sin usar abajo de la última tarjeta de la lista paginada. */
+  protected readonly sobraEnLista = signal(0);
 
   /** Guardado en una propiedad para poder sacar el listener al destruir. */
   private readonly alRedimensionar = () => this.medirCuantasEntran();
@@ -322,7 +395,16 @@ export class Operacion implements OnInit {
     ['foto', 'nombres', 'apellidos'],
     ['dni', 'correo', 'clave', 'repetirClave'],
   ];
-  protected readonly paginaItems = signal(0);
+  /**
+   * Si abajo de la lista de espera queda lugar sin usar.
+   *
+   * La lista muestra tantas personas como entren enteras en la pantalla,
+   * y lo que queda abajo de la última (`sobraEnLista`) es el blanco que
+   * el profesor no quiere ver. Desde unos 96 px —media tarjeta— lo tapa
+   * un panel punteado que además cuenta lo que pasa; por debajo de eso
+   * es el aire normal entre el contenido y el borde.
+   */
+  protected readonly hayLugarEnEspera = computed(() => this.sobraLugarEn(this.demo.espera()));
   protected readonly mesasDisponibles = computed(() =>
     this.demo
       .mesas()
@@ -331,19 +413,6 @@ export class Operacion implements OnInit {
           mesa.disponible &&
           !this.demo.espera().some((persona) => persona.mesaAsignada === mesa.numero),
       ),
-  );
-  protected readonly itemsPedido = computed(() => {
-    const sector =
-      this.seccion() === 'cocina' ? 'cocina' : this.seccion() === 'barra' ? 'bar' : null;
-    return this.demo
-      .pedidoActivo()
-      .items.filter((item) => sector === null || item.sector === sector);
-  });
-  protected readonly itemVisible = computed(() =>
-    this.itemsPedido().slice(this.paginaItems(), this.paginaItems() + 1),
-  );
-  protected readonly mesaVisible = computed(() =>
-    this.mesasDisponibles().slice(this.paginaItems(), this.paginaItems() + 1),
   );
   protected readonly creando = signal(false);
   protected readonly productoEditado = signal<string | null>(null);
@@ -1039,7 +1108,6 @@ export class Operacion implements OnInit {
     this.seccion.set(seccion);
     this.enfocarEncabezado();
     this.pagina.set(0);
-    this.paginaItems.set(0);
     this.paso.set(0);
     this.creando.set(false);
     if (seccion === 'productos')
@@ -1162,6 +1230,13 @@ export class Operacion implements OnInit {
     const marco = lista?.closest('.view-content');
     if (!lista || !tarjeta || !marco) return;
 
+    /*
+     * Si la lista está vacía, su primer hijo es el cartelito de «no hay
+     * nada»: medirlo daría una tarjeta chiquita y, por lo tanto, muchas
+     * más de las que entran de verdad. Se deja el número anterior.
+     */
+    if (tarjeta.classList.contains('empty-state')) return;
+
     const alto = tarjeta.getBoundingClientRect().height;
     if (!alto) return;
 
@@ -1186,8 +1261,22 @@ export class Operacion implements OnInit {
     const filas = Math.max(1, Math.floor((disponible + hueco) / (alto + hueco)));
     const entran = filas * columnas;
 
-    if (entran !== this.porPagina()) {
+    /*
+     * LO QUE SOBRA ABAJO DE LA ÚLTIMA TARJETA.
+     *
+     * `porPagina` redondea para abajo, así que casi siempre queda un
+     * resto: con una tarjeta alta y una sola persona en la lista, ese
+     * resto es media pantalla en blanco. Se guarda en píxeles para que
+     * la lista de espera pueda taparlo con su panel, y no se deduce de
+     * «cuántas personas faltan» porque eso daba cero justo en el caso
+     * que más se nota.
+     */
+    const ocupado = filas * alto + (filas - 1) * hueco;
+    const sobra = Math.max(0, Math.round(disponible - ocupado - hueco));
+
+    if (entran !== this.porPagina() || sobra !== this.sobraEnLista()) {
       this.porPagina.set(entran);
+      this.sobraEnLista.set(sobra);
       this.detector.detectChanges();
     }
   }
@@ -1261,7 +1350,7 @@ export class Operacion implements OnInit {
       case 'clientes':
         return 1;
       case 'espera':
-        return this.demo.espera().length;
+        return Math.ceil(this.demo.espera().length / this.porPagina());
       /*
        * El chat no pagina más (P2): la conversación entera está en la
        * tarjeta y desliza por su cuenta, así que el paginador de abajo
@@ -1269,8 +1358,13 @@ export class Operacion implements OnInit {
        */
       case 'consulta':
         return 1;
+      /*
+       * Los juegos se eligen con las fichas de arriba, que muestran los
+       * tres a la vez; el paginador de abajo sería un segundo control
+       * para lo mismo.
+       */
       case 'juegos':
-        return 3;
+        return 1;
       default:
         return 1;
     }
@@ -2109,11 +2203,27 @@ export class Operacion implements OnInit {
     );
   }
 
+  /**
+   * Asigna la mesa que el metre eligió para quien está esperando.
+   *
+   * El servicio devuelve un `Resultado`, que es un objeto y por lo tanto
+   * siempre da verdadero: hay que mirar `ok`, y mostrar el motivo que
+   * viene de la base en vez de uno inventado acá.
+   */
   protected async asignarMesa(idEspera: string, numero: number): Promise<void> {
-    const asignada = await this.demo.asignarMesa(idEspera, numero);
-    this.mensaje.set(
-      asignada ? 'Mesa ' + numero + ' asignada y notificada.' : 'Esa mesa no está disponible.',
-    );
+    const resultado = await this.demo.asignarMesa(idEspera, numero);
+    if (!resultado.ok) {
+      /*
+       * Si la base rechazó la asignación es porque lo que estaba en
+       * pantalla ya no es lo que hay (la persona se fue, la mesa la tomó
+       * otro). Se recarga antes de avisar, así el metre ve la lista como
+       * está de verdad y no vuelve a tocar lo mismo.
+       */
+      await this.demo.cargar();
+      await this.avisarError(resultado.error ?? 'No se pudo asignar la mesa.');
+      return;
+    }
+    this.avisarExito('Mesa ' + numero + ' asignada y notificada.');
   }
 
   protected async anotarCliente(): Promise<void> {
@@ -2763,6 +2873,16 @@ export class Operacion implements OnInit {
    * (primer intento, uno por visita) y eso es lo que se muestra.
    */
   protected async jugar(idJuego: string, gano: boolean): Promise<void> {
+    /*
+     * El anónimo y el personal juegan, pero la partida no se guarda: la
+     * base solo acepta las del cliente registrado, así que mandarla
+     * terminaría en un «revisá la conexión» que no tiene nada que ver.
+     */
+    if (this.juegaSinDescuento()) {
+      this.avisarExito((gano ? '¡Ganaste! ' : 'Esta vez no. ') + this.avisoSinDescuento());
+      return;
+    }
+
     const antes = this.demo.descuento();
     this.jugando.set(true);
     const r = await this.demo.jugar(idJuego, gano);

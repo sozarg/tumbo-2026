@@ -42,12 +42,29 @@ export class JuegoRecoleccionComponent implements AfterViewInit, OnDestroy {
   protected readonly resultado = signal('');
   protected readonly guardando = signal(false);
 
+  /**
+   * Quién puede abrir el juego.
+   *
+   * El cliente registrado necesita el pedido ya confirmado: es lo que
+   * pide el punto 14 para que el descuento valga. El anónimo y el
+   * personal entran sin esa condición, porque su partida no se registra
+   * ni otorga descuento: el primero juega por jugar y el segundo para
+   * poder mostrarlo sin armar una estadía completa.
+   */
+  private get puedeAbrir(): boolean {
+    const perfil = this.sesion.usuario()?.perfil;
+    if (!perfil) return false;
+    if (perfil === 'cliente_registrado') return this.operacion.juegosHabilitados();
+    return true;
+  }
+
+  /** Toda partida que no sea del cliente registrado: no se guarda ni paga. */
+  private get esPartidaDePrueba(): boolean {
+    return this.sesion.usuario()?.perfil !== 'cliente_registrado';
+  }
+
   ngAfterViewInit(): void {
-    // Solo el cliente registrado, con el pedido ya confirmado (punto 14).
-    if (
-      this.sesion.usuario()?.perfil !== 'cliente_registrado' ||
-      !this.operacion.juegosHabilitados()
-    ) {
+    if (!this.puedeAbrir) {
       void this.router.navigate(['/operacion'], { replaceUrl: true });
       return;
     }
@@ -81,6 +98,20 @@ export class JuegoRecoleccionComponent implements AfterViewInit, OnDestroy {
       this.showGameOverModal.set(true);
       this.guardando.set(true);
       const gano = puntos >= PUNTOS_PARA_GANAR;
+
+      if (this.esPartidaDePrueba) {
+        this.guardando.set(false);
+        const anonimo = this.sesion.usuario()?.perfil === 'cliente_anonimo';
+        this.resultado.set(
+          gano
+            ? anonimo
+              ? '¡Juntaste los puntos! El descuento es solo para clientes registrados.'
+              : 'Partida de prueba: juntaste los puntos. El descuento es del cliente registrado con su pedido confirmado.'
+            : `Necesitabas ${PUNTOS_PARA_GANAR} puntos. Podés volver a intentar.`,
+        );
+        return;
+      }
+
       const antes = this.operacion.descuento();
       const r = await this.operacion.jugar('memoria', gano);
       this.guardando.set(false);

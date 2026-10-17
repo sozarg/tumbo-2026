@@ -251,10 +251,22 @@
   --border-radius: 0.7rem;
 }
 
-.client-list,
-.wait-list {
+.client-list {
   display: grid;
   gap: 0.7rem;
+}
+
+/*
+ * La lista de espera es una columna que llena la tarjeta: las personas
+ * arriba con su alto natural y los lugares libres abajo repartiéndose
+ * lo que sobre.
+ */
+.wait-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 0;
 }
 
 .client-row,
@@ -311,10 +323,86 @@
   grid-column: 1 / -1;
 }
 
-.row-actions ion-button,
-.assign-actions ion-button {
+.row-actions ion-button {
   margin: 0;
   flex: 1 1 7rem;
+  font-size: 0.7rem;
+}
+
+.assign-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #003592;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+/*
+ * Las mesas libres son una tira de fichas en una sola línea: la tarjeta
+ * mide siempre lo mismo haya dos mesas o diez, que es justo lo que el
+ * paginador anterior no garantizaba.
+ */
+.assign-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.assign-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.assign-actions__mesa {
+  flex: 0 0 auto;
+  min-height: 36px;
+  border: 0.1rem solid rgb(0 53 146 / 25%);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  background: #fff;
+  color: #003592;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.assign-actions__mesa:focus-visible {
+  outline: 0.18rem solid #003592;
+  outline-offset: 0.12rem;
+}
+
+/* El panel que ocupa lo que sobra abajo de la lista de espera. */
+.wait-slot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 0.1rem dashed #bac5d3;
+  border-radius: 0.9rem;
+  min-height: 3.5rem;
+  padding: 0.9rem;
+  color: #526582;
+  text-align: center;
+}
+
+.wait-slot ion-icon {
+  font-size: 1.8rem;
+}
+
+.wait-slot p {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.assign-actions__vacio {
+  margin: 0;
+  color: #003592;
   font-size: 0.7rem;
 }
 
@@ -965,14 +1053,6 @@ ion-button[fill='outline'] {
 .demo-form {
   justify-content: flex-start;
 }
-.assign-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.wait-row tumbo-paginador {
-  grid-column: 1 / -1;
-}
 @media (max-height: 650px) {
   .demo-form {
     gap: 6px;
@@ -1230,8 +1310,4 @@ strong {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.assign-actions ion-button {
-  flex: 0 0 auto;
 }

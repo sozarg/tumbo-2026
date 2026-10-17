@@ -323,10 +323,21 @@ export class OperacionService {
           this.cliente.from('producto_fotos').select('*').order('orden'),
           this.cliente.from('mesas').select('*').order('numero'),
           this.cliente.from('usuarios').select('*').order('apellidos'),
+          /*
+           * Solo quien está esperando o ya tiene mesa.
+           *
+           * Antes venía todo lo que no estuviera 'eliminado', y eso
+           * incluía a los 'finalizado': gente que ya comió, pagó y se
+           * fue. Como al finalizar la estadía la fila se queda sin
+           * mesa_id, esas personas volvían a aparecer en la lista como
+           * si estuvieran esperando, con sus botones de asignar; al
+           * tocar uno la base contestaba, con razón, que esa persona ya
+           * no está esperando una mesa.
+           */
           this.cliente
             .from('lista_espera')
             .select('*')
-            .neq('estado', 'eliminado')
+            .in('estado', ['esperando', 'asignado'])
             .order('creado_en'),
           this.cliente
             .from('sesiones_mesa')

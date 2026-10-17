@@ -50,11 +50,16 @@ export const SECCIONES: readonly AccesoSeccion[] = [
   },
   { id: 'entrada', titulo: 'Entrada', icono: 'qr-code-outline', perfiles: clientes },
   { id: 'menu', titulo: 'Menú', icono: 'restaurant-outline', perfiles: clientes },
+  /*
+   * El anónimo también juega: puede entrar a los juegos aunque su
+   * partida no otorgue descuento (eso lo sigue decidiendo la base, que
+   * solo se lo da al registrado con el pedido confirmado).
+   */
   {
     id: 'juegos',
     titulo: 'Juegos',
     icono: 'game-controller-outline',
-    perfiles: ['cliente_registrado'],
+    perfiles: clientes,
   },
   {
     id: 'encuesta',

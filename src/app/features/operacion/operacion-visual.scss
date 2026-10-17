@@ -225,8 +225,40 @@
   border-radius: 14px;
 }
 
+.operation-layout--detail .wait-slot {
+  border-color: #bac5d3;
+  color: var(--tumbo-azul-sombra);
+}
+
+.operation-layout--detail .wait-slot p {
+  font-size: 0.82rem;
+}
+
+.operation-layout--detail .assign-label {
+  color: var(--tumbo-azul-sombra);
+  font-size: 0.78rem;
+}
+
 .operation-layout--detail .assign-actions {
   gap: 8px;
+}
+
+.operation-layout--detail .assign-actions__mesa {
+  min-height: 38px;
+  border: 1px solid rgb(0 106 231 / 30%);
+  background: var(--tumbo-azul-brillante);
+  color: var(--tumbo-azul-sombra);
+  font-size: 0.8rem;
+}
+
+.operation-layout--detail .assign-actions__mesa:focus-visible {
+  outline: 3px solid rgb(0 106 231 / 45%);
+  outline-offset: 2px;
+}
+
+.operation-layout--detail .assign-actions__vacio {
+  color: var(--tumbo-azul-sombra);
+  font-size: 0.8rem;
 }
 
 .operation-layout--detail .assigned-chip {

@@ -326,7 +326,9 @@
 .view-content > .person-list,
 .view-content > .table-section,
 .view-content > .employee-form,
-.view-content > tumbo-cuenta-cliente {
+.view-content > tumbo-cuenta-cliente,
+.view-content > tumbo-cobros,
+.view-content > tumbo-resultados-encuesta {
   flex: 1;
   min-height: 0;
 }
@@ -534,6 +536,26 @@
   margin-top: 0;
 }
 
+/*
+ * El listado de personal es una columna: las fichas con su alto y el
+ * panel de «esto es todo» quedándose con lo que sobra abajo. La hoja
+ * de clientes usa `.person-list` para otra cosa, por eso el modificador.
+ */
+.person-list--personal {
+  display: flex;
+  flex-direction: column;
+  align-content: stretch;
+  gap: 12px;
+}
+
+.person-list--personal > .person-card {
+  flex: 0 0 auto;
+}
+
+.person-list--personal > .wait-slot {
+  flex: 1;
+}
+
 .person-card {
   display: flex;
   align-items: center;
@@ -617,14 +639,37 @@
   font-size: clamp(15px, 2.1dvh, 18px);
 }
 
+/*
+ * La foto cede un poco de ancho para que el nombre entre en un renglón:
+ * entre la foto y el botón de baja, al nombre le quedaban 150px y
+ * «Ignacio Agustín Cruz» se partía en tres líneas.
+ */
 .person-card__foto {
   flex: none;
-  width: clamp(88px, 26vw, 132px);
-  height: clamp(88px, 26vw, 132px);
+  width: clamp(76px, 21vw, 120px);
+  height: clamp(76px, 21vw, 120px);
   border-radius: 14px;
   border: 2px solid var(--tumbo-azul-accion-claro);
   object-fit: cover;
   background: var(--tumbo-crema-brillante);
+}
+
+/*
+ * El nombre se mide contra el ANCHO, no contra el alto.
+ *
+ * El `clamp` de la ficha común usa `dvh`, que en un teléfono angosto y
+ * largo da el tamaño grande justo donde menos lugar hay: «Matías
+ * Gabriel Ferrari» entraba en tres renglones. Con `vw` el nombre se
+ * achica cuando la pantalla se angosta, que es cuando hace falta.
+ */
+.person-card.person-card--legajo h2 {
+  margin: 0;
+  font-size: clamp(15px, 4.4vw, 20px);
+  text-wrap: balance;
+}
+
+.person-card.person-card--legajo .person-card__perfil {
+  margin: 2px 0 0;
 }
 
 .person-card h2 {
@@ -641,15 +686,64 @@
   letter-spacing: 0.02em;
 }
 
-/* Etiqueta y valor en dos columnas: el dato se lee sin tener que
-   adivinar cuál es cuál, y las tres filas quedan alineadas. */
+/*
+ * LA FICHA DE PERSONAL, EN DOS PISOS.
+ *
+ * Arriba quién es: foto, nombre y perfil, más el botón de baja. Abajo
+ * el legajo, cruzando la ficha entera. Compartiendo renglón con la
+ * foto, la columna del dato medía unos 150px y el correo se partía al
+ * medio; a lo ancho de la ficha entra de una pieza.
+ *
+ * Solo la ficha del personal: `.person-card` también la usan la lista
+ * de clientes pendientes y sus lugares libres, que siguen siendo una
+ * fila.
+ */
+.person-card--legajo {
+  display: grid;
+  align-items: center;
+  grid-template-areas:
+    'foto encabezado acciones'
+    'datos datos datos';
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 12px;
+  row-gap: 12px;
+}
+
+.person-card--legajo > .person-card__foto {
+  grid-area: foto;
+}
+
+.person-card--legajo > .person-card__details {
+  grid-area: encabezado;
+}
+
+.person-card--legajo > tumbo-boton-confirmacion {
+  grid-area: acciones;
+}
+
+.person-card--legajo > .person-card__datos {
+  grid-area: datos;
+}
+
+/* El legajo arranca con una línea: se lee como otro bloque y no como
+   una continuación del nombre. */
 .person-card__datos {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 10px;
+  gap: 6px;
+  border-top: 1px solid #bac5d3;
   margin: 0;
+  padding-top: 10px;
   font-size: clamp(12px, 1.7dvh, 14px);
-  line-height: 1.5;
+  line-height: 1.45;
+}
+
+/* Etiqueta y valor en dos columnas, con la etiqueta de ancho fijo para
+   que los tres valores arranquen alineados. */
+.person-card__dato {
+  display: grid;
+  align-items: baseline;
+  grid-template-columns: 3.6rem minmax(0, 1fr);
+  gap: 10px;
 }
 
 .person-card__datos dt {
@@ -709,7 +803,9 @@
 .view-content > .entrada,
 .view-content > .carrito,
 .view-content > .section-block:has(> .menu-grid),
-.view-content > .section-block:has(> .chat-card) {
+.view-content > .section-block:has(> .chat-card),
+.view-content > .section-block:has(> .wait-list),
+.view-content > .section-block:has(> .games-grid) {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -745,9 +841,246 @@
   min-height: 0;
 }
 
+/*
+ * LA FOTO CEDE; LOS BOTONES DE CANTIDAD NO.
+ *
+ * La foto tenía `min-height: 150px` y la tarjeta `overflow: hidden`:
+ * con una descripción larga el cuerpo no entraba y lo que quedaba
+ * afuera eran justo los botones de − y +, que es lo único con lo que
+ * se puede hacer algo en esta pantalla. Ahora la foto se queda con lo
+ * que sobra después del texto, y el cuerpo nunca se achica.
+ */
 .product-card > .product-card__image {
   flex: 1;
-  min-height: 150px;
+  min-height: 0;
+}
+
+.product-card > .product-card__body {
+  flex: 0 0 auto;
+}
+
+/*
+ * Y la descripción se recorta en vez de empujar: tres líneas alcanzan
+ * para saber qué es el plato, y en pantallas bajas con dos.
+ */
+.product-card__body > p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@media (max-height: 820px) {
+  .product-card__body > p {
+    -webkit-line-clamp: 2;
+  }
+}
+
+/*
+ * En un teléfono bajo la ficha se acuesta: la foto al costado y el
+ * texto al lado, como en cualquier carta. Apilada no entra, y la
+ * alternativa era esconder la foto, que es lo que el cliente mira.
+ */
+@media (max-height: 700px) {
+  .menu-grid > .product-card {
+    flex-direction: row;
+  }
+  .product-card > .product-card__image {
+    flex: 0 0 40%;
+    height: auto;
+    align-self: stretch;
+  }
+  .product-card > .product-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding: 0.6rem;
+  }
+  /*
+   * Acostada, el cuerpo es una columna flex y la descripción es un
+   * hijo que se encoge: sin esto se achicaba hasta desaparecer y la
+   * ficha quedaba sin texto.
+   */
+  .product-card__body > p {
+    flex: 0 0 auto;
+    margin: 0.3rem 0 0.5rem;
+  }
+  /* 44px sigue siendo un botón cómodo; 52 no entra. */
+  .product-card .quantity-button {
+    min-height: 44px;
+  }
+}
+
+/*
+ * En lo más bajo que probamos (640px de alto) entra una línea de
+ * descripción y una de título: con dos de cada una los botones se
+ * vuelven a ir abajo del borde.
+ */
+@media (max-height: 660px) {
+  .product-card__body > p {
+    -webkit-line-clamp: 1;
+  }
+  .product-card__body > h2 {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+}
+
+/*
+ * EL SELECTOR DE JUEGOS: TRES PARTES IGUALES, SIN DESLIZAR.
+ *
+ * Al principio reusé la tira de filtros de la carta, que desliza en
+ * horizontal porque las categorías pueden crecer. Los juegos son tres y
+ * van a seguir siendo tres, así que se reparten el ancho: el número
+ * arriba y lo que paga abajo entran hasta en 320px y ninguno queda
+ * cortado, que es lo que se veía mal.
+ */
+.games-selector {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.games-selector__juego {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid rgb(0 106 231 / 30%);
+  border-radius: 14px;
+  min-height: 48px;
+  padding: 5px 4px;
+  background: transparent;
+  color: var(--tumbo-azul-accion);
+  font: inherit;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.games-selector__juego strong {
+  font-size: 0.78rem;
+}
+
+.games-selector__juego span {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+/* El puesto se distingue por fondo, no solo por color de letra. */
+.games-selector__juego--activo {
+  border-color: var(--tumbo-azul-accion);
+  background: var(--tumbo-azul-accion);
+  color: var(--tumbo-azul-brillante);
+}
+
+.games-selector__juego:focus-visible {
+  outline: 3px solid var(--tumbo-azul-sombra);
+  outline-offset: 2px;
+}
+
+/*
+ * LOS JUEGOS: LA FICHA OCUPA LA PANTALLA.
+ *
+ * Se juega de a uno, así que la ficha puede quedarse con todo el alto
+ * en vez de dejar media pantalla de fondo abajo. Lo que crece es la
+ * ilustración de Tumbito, que ya es la cara de los tres juegos, y el
+ * control queda abajo donde el pulgar lo encuentra.
+ */
+.section-block > .games-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+}
+
+.games-grid > .game-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+/*
+ * El `nowrap` no es de adorno.
+ *
+ * La ficha le pone `flex-wrap: wrap` a todos sus `div` (lo necesitan
+ * las filas de botones de los juegos). En una columna, envolver
+ * significa armar una SEGUNDA COLUMNA: cuando el tablero quedaba justo
+ * de alto, el porcentaje se iba al costado del texto y aparecía scroll
+ * horizontal. Acá no hay nada que envolver.
+ */
+.game-card > .game-board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border: 1px solid rgb(0 106 231 / 18%);
+  border-radius: 14px;
+  min-height: 0;
+  padding: 0.8rem;
+  background: rgb(0 106 231 / 6%);
+  text-align: center;
+}
+
+.game-board__intro {
+  margin: 0;
+  color: var(--tumbo-azul-sombra);
+  font-size: 0.85rem;
+}
+
+.game-board__premio {
+  color: var(--tumbo-azul-accion);
+  font-size: clamp(2.4rem, 11dvh, 4rem);
+  line-height: 1.1;
+}
+
+.game-board__estado {
+  margin: 0;
+  max-width: 24ch;
+  color: #526582;
+  font-size: 0.8rem;
+}
+
+/*
+ * Entre medio, el tablero se achica antes que desbordar: el número más
+ * chico y el texto apretado contra los bordes le ahorran unos 45px, que
+ * es justo lo que le faltaba en un teléfono de alto medio.
+ */
+@media (max-height: 820px) {
+  .game-card > .game-board {
+    gap: 0;
+    padding: 0.5rem;
+  }
+  .game-board__intro,
+  .game-board__estado {
+    font-size: 0.72rem;
+  }
+  .game-board__premio {
+    font-size: 2.2rem;
+  }
+}
+
+/*
+ * Y en pantallas bajas el tablero no va: primero tiene que entrar el
+ * control del juego, que es a lo que se vino, y el descuento ganado ya
+ * se ve en la ficha azul del encabezado.
+ */
+@media (max-height: 730px) {
+  .game-card > .game-board {
+    display: none;
+  }
+  .games-grid > .game-card {
+    justify-content: space-evenly;
+  }
 }
 
 /*
